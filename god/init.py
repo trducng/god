@@ -1,7 +1,7 @@
 """Inititate the repo
 """
 
-from constants import BASE_DIR, GOD_DIR, HASH_DIR
+from constants import BASE_DIR, GOD_DIR, HASH_DIR, MAIN_DIR
 from pathlib import Path
 
 
@@ -12,6 +12,7 @@ def init():
     """
     Path(GOD_DIR).mkdir(parents=True, exist_ok=True)
     Path(HASH_DIR).mkdir(parents=True, exist_ok=True)
+    Path(MAIN_DIR).mkdir(parents=True, exist_ok=True)
 
 if __name__ == '__main__':
     init()

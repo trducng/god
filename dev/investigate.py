@@ -97,8 +97,7 @@ def get_nonsymlinks_worker(root, output=None):
     # Returns
         <[Paths]>: list of paths to non-symlink files
     """
-    non_links = []
-    for child in os.scandir(root):
+    non_links = [] for child in os.scandir(root):
         if child.is_symlink():
             continue
 
@@ -114,7 +113,7 @@ def get_nonsymlinks_worker(root, output=None):
         return non_links
 
 
-def get_nonsymlinks_mp(root):
+def get_nonsymlinks_mp(root, cache):
     non_links = []
     counter = 1
     process_list = []
@@ -129,37 +128,40 @@ def get_nonsymlinks_mp(root):
                 print(f'=> Run {child.path} in process')
                 p = Process(
                     target=get_nonsymlinks_worker,
-                    args=(child, f'/home/john/datasets/temp/cache/{counter}.txt'))
+                    args=(child, Path(cache, f'{counter}.txt')))
                 p.start()
                 process_list.append(p)
             else:
                 print(f'    => Run {child.path} in main')
-                get_nonsymlinks_worker(child, f'/home/john/datasets/temp/cache/{counter}.txt')
+                get_nonsymlinks_worker(child, Path(cache, f'{counter}.txt'))
 
             counter += 1
         else:
             non_links.append(child.path)
 
-    with open('/home/john/datasets/temp/cache/0.txt', 'w') as f_out:
+    with open(Path(cache, '0.txt'), 'w') as f_out:
         f_out.write('\n'.join(non_links))
 
 
 if __name__ == '__main__':
+
+    root = '/home/john/temp/benchmark-god/hashes'
+    symlink_folder = '/home/john/temp/benchmark-god/symlink'
+    cache_folder = '/home/john/temp/benchmark-god/cache'
 
     # start_time = time.time()
     # create_hash_folder_structure(root, n_files=1e5, start_idx=0)
     # print(f'Create folders and files in {time.time() - start_time} seconds')
 
     # start_time = time.time()
-    # create_symlink('/home/john/datasets/temp/objects', '/home/john/datasets/temp/symlink')
+    # create_symlink(root, symlink_folder)
     # print(f'Create symlink in {time.time() - start_time} seconds')
 
     # start_time = time.time()
-    # change_symlink_to_files('/home/john/datasets/temp/symlink')
+    # change_symlink_to_files(symlink_folder)
     # print(f'Change symlink to file in {time.time() - start_time} seconds')
 
     start_time = time.time()
-    result = get_nonsymlinks_mp('/home/john/datasets/temp/symlink')
+    result = get_nonsymlinks_mp(symlink_folder, cache_folder)
     print(f'Check for symlinks and files in {time.time() - start_time} seconds')
-    import pdb; pdb.set_trace()
 
