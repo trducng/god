@@ -58,7 +58,9 @@ def commit():
 
     # Save the records
     out_file = Path(MAIN_DIR, 'temp_record')
-    out_records = [f'Add {Path(src).relative_to(BASE_DIR)}' for src, _ in add_records]
+    out_records = [
+        f'+{Path(src).relative_to(BASE_DIR)} {hash_table[src].replace("/", "")}'
+        for src, _ in add_records]
     with out_file.open('w') as f_out:
         f_out.write('\n'.join(out_records))
     with out_file.open('rb') as f_in:
