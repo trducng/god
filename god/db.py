@@ -33,22 +33,40 @@ def get_nonsymlinks(root):
 def create_sqlite():
     con = sqlite3.connect(str(Path(MAIN_DIR, 'main.db')))
     cursor = con.cursor()
-    cursor.execute("CREATE TABLE main(hash text, path text)")
+    cursor.execute("CREATE TABLE main(path text, hash text)")
 
     # Collect files
-    files = get_nonsymlinks(BASE_DIR)
-
-    # Calculate hash
-    for each_file in files:
-        with open(each_file, 'rb') as f_in:
-            file_hash = hashlib.sha256(f_in.read()).hexdigest()
-            file_path = Path(each_file).relative_to(BASE_DIR)
+    record_name = '8204ef54fe8e9ef1f893ac73bb41b30c78602f406182897aa778e06833e4aa05'
+    with Path(MAIN_DIR, record_name).open('r') as f_in:
+        lines = f_in.read().splitlines()
+        for each_line in lines:
+            fp, fh = each_line.split(' ')
             cursor.execute(
-                f"INSERT INTO main VALUES('{file_hash}', '{file_path}')")
+                    f"INSERT INTO main VALUES('{fp[1:]}', '{fh}')")
 
     con.commit()
     con.close()
 
 
+def create_index_sqlite_db():
+    con = sqlite3.connect(str(Path(MAIN_DIR, 'index.db')))
+    cursor = con.cursor()
+    cursor.execute("CREATE TABLE main(path text, hash text)")
+
+    # Collect files
+    record_name = '8204ef54fe8e9ef1f893ac73bb41b30c78602f406182897aa778e06833e4aa05'
+    with Path(MAIN_DIR, record_name).open('r') as f_in:
+        lines = f_in.read().splitlines()
+        for each_line in lines:
+            fp, fh = each_line.split(' ')
+            cursor.execute(
+                    f"INSERT INTO main VALUES('{fp[1:]}', '{fh}')")
+
+    cursor.execute("CREATE INDEX index_main ON main (path)")
+
+    con.commit()
+    con.close()
+
 if __name__ == '__main__':
-    create_sqlite()
+    # create_sqlite()
+    create_index_sqlite_db()

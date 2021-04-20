@@ -3,6 +3,7 @@ Commit the data for hashing
 """
 import hashlib
 import os
+import sqlite3
 from multiprocessing import Process, Pool
 from pathlib import Path
 import shutil
@@ -34,7 +35,14 @@ def get_nonsymlinks(root):
     return non_links
 
 
-def commit():
+def read_db():
+    con = sqlite3.connect(str(Path(MAIN_DIR, 'main.db')))
+    cur = con.cursor()
+    result = cur.execute("SELECT 1 + 1")
+
+
+
+def commit_add():
 
     # Collect files
     files = get_nonsymlinks(BASE_DIR)
@@ -79,4 +87,5 @@ def commit():
 
 
 if __name__ == '__main__':
-    commit()
+    # commit_add()
+    read_db()
