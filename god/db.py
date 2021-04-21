@@ -67,6 +67,24 @@ def create_index_sqlite_db():
     con.commit()
     con.close()
 
+
+def is_table_exists(table_name, cursor):
+    """Check if table exists
+
+    Usually, the table_name corresponds to a directory.
+
+    # Args
+        table_name <str>: the name of the table
+        cursor <sqlite3.cursor>: the cursor to database
+
+    # Returns
+        <bool>: True if table exists, else False
+    """
+    result = cursor.execute(
+            f'SELECT name FROM sqlite_master '
+            f'WHERE type = "table" AND name = "{table_name}"')
+    return len(result.fetchall()) > 0
+
 if __name__ == '__main__':
     # create_sqlite()
     create_index_sqlite_db()

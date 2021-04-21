@@ -8,7 +8,10 @@ from multiprocessing import Process, Pool
 from pathlib import Path
 import shutil
 
-from constants import BASE_DIR, GOD_DIR, HASH_DIR, MAIN_DIR
+from constants import BASE_DIR, GOD_DIR, HASH_DIR, MAIN_DIR, DB_DIR, MAIN_DB
+from db import is_table_exists
+from files import get_dir_detail, get_hash
+from logs import get_log_records
 
 
 def get_nonsymlinks(root):
@@ -33,13 +36,6 @@ def get_nonsymlinks(root):
             non_links.append(child.path)
 
     return non_links
-
-
-def read_db():
-    con = sqlite3.connect(str(Path(MAIN_DIR, 'main.db')))
-    cur = con.cursor()
-    result = cur.execute("SELECT 1 + 1")
-
 
 
 def commit_add():
@@ -86,6 +82,34 @@ def commit_add():
         sympath.symlink_to(dest)
 
 
+def commit(path=None):
+    """Commit from path
+
+    # @TODO: currently support path as directory. Will need to support file
+    """
+    if path is None:
+        path = BASE_DIR
+
+    con = sqlite3.connect(DB_DIR, MAIN_DB)
+    cur = con.cursor()
+
+    if is_table_exists(str(path.relative_to(BASE_DIR)), cur):
+        # check if the timestamp still okie, if the timestamp is not okie, 
+        pass
+    else: # this is a new thing, add to log
+
+        # get directories and files
+        directories, files = get_dir_detail(path)
+        hashes = get_hash(files)
+        log_records = get_log_records(files, hashes)
+        save_log(log_records)
+
+        # create table
+
+        # add record to dir table
+        pass
+
+
 if __name__ == '__main__':
-    # commit_add()
-    read_db()
+    commit()
+    # read_db()
