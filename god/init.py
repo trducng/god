@@ -26,7 +26,7 @@ def init():
     # create db
     con = sqlite3.connect(str(Path(DB_DIR, MAIN_DB)))
     cur = con.cursor()
-    cur.execute("CREATE TABLE dirs(path text, hash text, timestamp int)")
+    cur.execute("CREATE TABLE dirs(path text, hash text, timestamp float)")
     con.commit()
     con.close()
 

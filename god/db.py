@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 import sqlite3
 
-from constants import BASE_DIR, GOD_DIR, HASH_DIR, MAIN_DIR
+from constants import BASE_DIR, GOD_DIR, HASH_DIR, MAIN_DIR, DB_DIR
 
 
 def get_nonsymlinks(root):
@@ -68,22 +68,58 @@ def create_index_sqlite_db():
     con.close()
 
 
-def is_table_exists(table_name, cursor):
-    """Check if table exists
+def get_directory_hash(directory, db_name='main.db'):
+    """Get directory hash
 
-    Usually, the table_name corresponds to a directory.
+    Usually, the directory corresponds to a directory.
 
     # Args
-        table_name <str>: the name of the table
-        cursor <sqlite3.cursor>: the cursor to database
+        directory <str>: the name of the directory (relative path)
+        db_name <str>: name of database storing directory detail
 
     # Returns
-        <bool>: True if table exists, else False
+        <str>: hash if the directory exist, else ""
     """
-    result = cursor.execute(
-            f'SELECT name FROM sqlite_master '
-            f'WHERE type = "table" AND name = "{table_name}"')
-    return len(result.fetchall()) > 0
+    con = sqlite3.connect(DB_DIR / db_name)
+    cur = con.cursor()
+
+    result = cur.execute(
+            f'SELECT hash FROM dirs '
+            f'WHERE path = "{directory}"')
+
+    result = result.fetchall()
+    if result:
+        return result[0][0]
+
+    return ""
+
+
+def is_directory_maintained(directory, timestamp, db_name='main.db'):
+    """Check if a directory is the same (based on timestamp)
+
+    # Args
+        directory <str>: the name of the directory
+        timestamp <int>: timestamp, based on `st_mtime`
+        db_name <str>: name of database storing directory detail
+
+    # Returns
+        <bool>: True if the directory is the same, else False
+    """
+    con = sqlite3.connect(DB_DIR / db_name)
+    cur = con.cursor()
+
+    result = cur.execute(
+            f'SELECT timestamp FROM dirs '
+            f'WHERE path = "{directory}"')
+
+    result = result.fetchall()[0]
+    if timestamp > result:
+        return False
+
+    return True
+
+
+
 
 if __name__ == '__main__':
     # create_sqlite()

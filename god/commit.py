@@ -9,7 +9,7 @@ from pathlib import Path
 import shutil
 
 from constants import BASE_DIR, GOD_DIR, HASH_DIR, MAIN_DIR, DB_DIR, MAIN_DB
-from db import is_table_exists
+from db import get_directory_hash
 from files import get_dir_detail, get_hash
 from logs import get_log_records
 
@@ -82,6 +82,62 @@ def commit_add():
         sympath.symlink_to(dest)
 
 
+def check_directory(dir_name):
+    """Check the content of directory
+
+    # Args
+        dir_name <str>: the path of the directory
+
+    # Returns
+        <[]>: sub-directory newly added or modified
+        <[]>: sub-directory newly removed
+        <[]>: sub-directories that stay the same
+        <[]>: files newly added
+        <[]>: files newly removed
+        <[]>: files that stay the same
+    """
+    directory_add, directory_remove, directory_remain = [], [], []
+    file_add, file_remove, file_remain = [], [], []
+    files = []      # aggregate files because they are both symlink + files
+
+    for child in os.scandir(dir_name):
+        if child.is_symlink():
+            # TODO calculate the hash
+            file_path = Path(child.path)
+            original = file_path.resolve()
+            file_hash = str(Path(original).relative_to(HASH_DIR)).replace('/', '')
+            rel_path = str(file_path.relative_to(BASE_DIR))
+            files.append((rel_path, file_hash))
+            continue
+
+        if child.is_dir():
+            if child.name == '.god':
+                continue
+
+            rel_path = str(Path(child.path).relative_to(BASE_DIR))
+            dhash = get_directory_hash(rel_path)
+            if not dhash:
+                directory_add.append(rel_path)
+                continue
+
+            same = is_directory_maintained(rel_path, child.stat().st_mtime)
+            if same:
+                directory_remain.append(rel_path)
+                continue
+
+            directory_add.append(rel_path)
+        else:
+            file_path = Path(child.path)
+            with file_path.open('rb') as f_in:
+                file_hash = hashlib.sha256(f_in.read()).hexdigest()
+            rel_path = str(file_path.relative_to(BASE_DIR))
+            files.append((rel_path, file_path))
+
+    for each_file in files:
+
+
+
+
 def commit(path=None):
     """Commit from path
 
@@ -99,7 +155,7 @@ def commit(path=None):
     else: # this is a new thing, add to log
 
         # get directories and files
-        directories, files = get_dir_detail(path)
+        directories, files = get_dir_detail(path)   # the directory here is for check timestamp
         hashes = get_hash(files)
         log_records = get_log_records(files, hashes)
         save_log(log_records)
