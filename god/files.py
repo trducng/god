@@ -1,32 +1,62 @@
 import hashlib
 import os
 from pathlib import Path
+import shutil
 
 from constants import BASE_DIR, GOD_DIR, HASH_DIR, MAIN_DIR, DB_DIR, MAIN_DB
 
 
-def get_nonsymlinks(root):
-    """Get non-symlink files in folder `root` (recursively)
+def get_nonsymlinks(path, recursive=False):
+    """Get non-symlink files in folder `path` (recursively)
 
     # Args
-        root: the path to begin checking for files.
+        path: the relative path to begin checking for files.
+        recursive <bool>: find nonsymlinks recursively in sub-directories
 
     # Returns
         <[Paths]>: list of paths to non-symlink files
     """
     non_links = []
-    for child in os.scandir(root):
+    for child in os.scandir(path):
         if child.is_symlink():
             continue
 
         if child.is_dir():
             if child.name == '.god':
                 continue
-            non_links += get_nonsymlinks(child)
+            if recursive:
+                non_links += get_nonsymlinks(child.path)
         else:
             non_links.append(child.path)
 
     return non_links
+
+
+def construct_symlinks(paths):
+    """Construct symlinks
+
+    # Args
+        paths <[str]>: list of relative paths
+    """
+    if not isinstance(paths, (list, tuple)):
+        paths = [paths]
+
+    # collect non-symlinks
+    files = []
+    for each_path in paths:
+        files += get_nonsymlinks(each_path)
+
+    # construct hash table
+    hash_table = {}
+    for each_file in files:
+        with open(each_file, 'rb') as f_in:
+            file_hash = hashlib.sha256(f_in.read()).hexdigest()
+            hash_path = f'{file_hash[:2]}/{file_hash[2:4]}/{file_hash[4:]}'
+        hash_path = Path(HASH_DIR, hash_path)
+        hash_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(each_file, hash_path)
+        sympath = Path(each_file)
+        sympath.symlink_to(hash_path)
 
 
 def get_dir_detail(dir_name):

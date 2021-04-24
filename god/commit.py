@@ -208,6 +208,9 @@ def commit(path=None):
     commit_hash = create_index_db(records)
 
     # move files to symlinks
+    construct_symlinks([fp for (fp, _) in records])
+
+    # construct logs
 
     # change pointer
     change_index(commit_hash)
@@ -218,8 +221,6 @@ def commit(path=None):
 
 
 if __name__ == '__main__':
-    # commit()
-    # read_db()
     (
         directory_add, directory_remove, directory_remain,
         file_add, file_remove, file_remain
