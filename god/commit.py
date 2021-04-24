@@ -9,33 +9,13 @@ from pathlib import Path
 import shutil
 
 from constants import BASE_DIR, GOD_DIR, HASH_DIR, MAIN_DIR, DB_DIR, MAIN_DB
-from db import get_directory_hash
-from files import get_dir_detail, get_hash, get_sub_directory
+from db import (
+    get_directory_hash, get_sub_directory, get_file_hash, get_removed_files,
+    is_directory_maintained, get_connection_cursor, create_directory_db,
+    create_index_db, get_untouched_directories)
+from files import get_dir_detail, get_hash
 from logs import get_log_records
-
-
-def get_nonsymlinks(root):
-    """Get non-symlink files in folder `root` (recursively)
-
-    # Args
-        root: the path to begin checking for files.
-
-    # Returns
-        <[Paths]>: list of paths to non-symlink files
-    """
-    non_links = []
-    for child in os.scandir(root):
-        if child.is_symlink():
-            continue
-
-        if child.is_dir():
-            if child.name == '.god':
-                continue
-            non_links += get_nonsymlinks(child)
-        else:
-            non_links.append(child.path)
-
-    return non_links
+from history import change_index
 
 
 def commit_add():
@@ -85,8 +65,16 @@ def commit_add():
 def check_directory(dir_name):
     """Check the content of directory
 
+    The output of this function serves:
+        - directory_add: follow up on these directories
+        - directory_remove: remove these sub-directories out of the new commit
+        - directory_remain: keep these sub-directories in the new commit
+        - file_add: add these files to the table in the new commit
+        - file_remove: remove these files from the table in the new commit
+        - file_remain: keep these files to the table in the new commit
+
     # Args
-        dir_name <str>: the relative path of the directory
+        dir_name <str>: the absolute path of the directory
 
     # Returns
         <[]>: sub-directory newly added or modified
@@ -137,7 +125,7 @@ def check_directory(dir_name):
             files.append((rel_path, file_hash))
 
     # populate directory_remove
-    sub_dir = get_sub_directory(dir_name)
+    sub_dir = get_sub_directory(Path(dir_name).relative_to(BASE_DIR))
     directory_remove = [
         each for each in sub_dir if each not in directory_remain]
 
@@ -151,16 +139,30 @@ def check_directory(dir_name):
         )
 
     # populate file_add and file_remain
-    cur = get_cursor(dhash)
+    con, cur = get_connection_cursor(dhash)
     for file_path, file_hash in files:
-        file_db_hash = get_file_hash(Path(each_file).name, cur)
+        file_db_hash = get_file_hash(Path(file_path).name, cur)
         if not file_db_hash:
             file_add.append((file_path, file_hash))
+            continue
         if file_db_hash == file_hash:
-            file_remain.append(file_path)
+            file_remain.append((file_path, file_hash))
         else:
             file_add.append((file_path, file_hash))
-            file_remove.append((file_path, file_db_hash))
+            # file_remove.append((file_path, file_db_hash))
+
+    # populate file_remove
+    exist = [str(Path(fp).name) for (fp, fh) in file_remain]
+    file_remove = get_removed_files(exist, cur)
+    file_remove = [
+            (str(Path(dir_name, file_name).relative_to(BASE_DIR)), file_hash)
+            for (file_name, file_hash) in file_remove]
+    con.commit()
+
+    return (
+            directory_add, directory_remove, directory_remain,
+            file_add, file_remove, file_remain
+    )
 
 
 def commit(path=None):
@@ -171,26 +173,55 @@ def commit(path=None):
     if path is None:
         path = BASE_DIR
 
-    con = sqlite3.connect(DB_DIR, MAIN_DB)
-    cur = con.cursor()
+    directory_adds, directory_removes, directory_remains = [], [], []
+    file_adds, file_removes, file_remains = [], [], []
+    db_hashes = []
+    remainings = [path]
 
-    if is_table_exists(str(path.relative_to(BASE_DIR)), cur):
-        # check if the timestamp still okie, if the timestamp is not okie, 
-        pass
-    else: # this is a new thing, add to log
+    # get the files and folders recursively
+    idx = 0
+    while idx < len(remainings):
+        (
+            directory_add, directory_remove, directory_remain,
+            file_add, file_remove, file_remain
+        ) = check_directory(remainings[idx])
+        directory_adds += directory_add
+        directory_removes += directory_remove
+        directory_remains += directory_remain
+        file_adds += file_add
+        file_removes += file_remove
+        file_remains += file_remain
 
-        # get directories and files
-        directories, files = get_dir_detail(path)   # the directory here is for check timestamp
-        hashes = get_hash(files)
-        log_records = get_log_records(files, hashes)
-        save_log(log_records)
+        # create the DB
+        db_hashes.append(create_directory_db(file_add + file_remain))
 
-        # create table
+        remainings += [str(Path(BASE_DIR, each)) for each in directory_add]
+        idx += 1
 
-        # add record to dir table
-        pass
+    # construct index table
+    temp_ = remainings + directory_removes + directory_remains
+    temp_ = [str(Path(path).relative_to(BASE_DIR)) for each in temp_]
+    other_remainings = get_untouched_directories(temp_)
+    other_remainings = [(str(Path(BASE_DIR, path)), dh) for (path, dh) in other_remainings]
+    records = list(zip(remainings, db_hashes))
+    records += other_remainings
+    commit_hash = create_index_db(records)
+
+    # move files to symlinks
+
+    # change pointer
+    change_index(commit_hash)
+
+    return (
+            directory_adds, directory_removes, directory_remains,
+            file_adds, file_removes, file_remains)
 
 
 if __name__ == '__main__':
-    commit()
+    # commit()
     # read_db()
+    (
+        directory_add, directory_remove, directory_remain,
+        file_add, file_remove, file_remain
+    ) = commit('/home/john/datasets/dogs-cats')
+    import pdb; pdb.set_trace()
