@@ -10,7 +10,7 @@ import shutil
 
 from constants import BASE_DIR, GOD_DIR, HASH_DIR, MAIN_DIR, DB_DIR, MAIN_DB
 from db import get_directory_hash
-from files import get_dir_detail, get_hash
+from files import get_dir_detail, get_hash, get_sub_directory
 from logs import get_log_records
 
 
@@ -86,7 +86,7 @@ def check_directory(dir_name):
     """Check the content of directory
 
     # Args
-        dir_name <str>: the path of the directory
+        dir_name <str>: the relative path of the directory
 
     # Returns
         <[]>: sub-directory newly added or modified
@@ -100,9 +100,11 @@ def check_directory(dir_name):
     file_add, file_remove, file_remain = [], [], []
     files = []      # aggregate files because they are both symlink + files
 
+    # get detail of each child item
+    # populate directory_add & directory_remain
     for child in os.scandir(dir_name):
         if child.is_symlink():
-            # TODO calculate the hash
+            # get the symlink hash
             file_path = Path(child.path)
             original = file_path.resolve()
             file_hash = str(Path(original).relative_to(HASH_DIR)).replace('/', '')
@@ -127,15 +129,38 @@ def check_directory(dir_name):
 
             directory_add.append(rel_path)
         else:
+            # calculate hash
             file_path = Path(child.path)
             with file_path.open('rb') as f_in:
                 file_hash = hashlib.sha256(f_in.read()).hexdigest()
             rel_path = str(file_path.relative_to(BASE_DIR))
-            files.append((rel_path, file_path))
+            files.append((rel_path, file_hash))
 
-    for each_file in files:
+    # populate directory_remove
+    sub_dir = get_sub_directory(dir_name)
+    directory_remove = [
+        each for each in sub_dir if each not in directory_remain]
 
+    # populate file_add
+    dhash = get_directory_hash(Path(dir_name).relative_to(BASE_DIR))
+    if not dhash:
+        file_add = files
+        return (
+                directory_add, directory_remove, directory_remain,
+                file_add, file_remove, file_remain
+        )
 
+    # populate file_add and file_remain
+    cur = get_cursor(dhash)
+    for file_path, file_hash in files:
+        file_db_hash = get_file_hash(Path(each_file).name, cur)
+        if not file_db_hash:
+            file_add.append((file_path, file_hash))
+        if file_db_hash == file_hash:
+            file_remain.append(file_path)
+        else:
+            file_add.append((file_path, file_hash))
+            file_remove.append((file_path, file_db_hash))
 
 
 def commit(path=None):

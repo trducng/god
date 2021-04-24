@@ -2,7 +2,7 @@
 from pathlib import Path
 
 
-BASE_DIR = Path("/home/john/datasets/dogs-cats")
+BASE_DIR = Path("/home/john/dogs-cats")
 # BASE_DIR = "/home/john/datasets/imagenet/object_localization/temp"
 
 GOD_DIR = Path(BASE_DIR,  ".god")

@@ -119,6 +119,50 @@ def is_directory_maintained(directory, timestamp, db_name='main.db'):
     return True
 
 
+def get_sub_directory(directory, db_name='main.db', recursive=False):
+    """Get recorded sub-directories of `directory`
+
+    # Args
+        directory <str>: the name of the directory
+        db_name <str>: name of database storing directory detail
+        recursive <bool>: whether to look for sub-directories recursively
+
+    # Returns
+        <[str]>: list of sub-directories (relative to BASE_DIR)
+    """
+    con = sqlite3.connect(DB_DIR / db_name)
+    cur = con.cursor()
+
+    result = cur.execute('SELECT path FROM dirs WHERE path LIKE "{directory}%"')
+    result = [each[0] for each in result.fetchall()]
+
+    if recursive:
+        return result
+
+    return = [
+        each for each in result
+        if str(Path(each).parent) == directory
+    ]
+
+
+def get_file_hash(file_name, cursor):
+    """Check if file exists
+
+    # Args
+        file_name <str>: the file to check
+        cursor <sqlite3.cursor>: the cursor to check
+
+    # Returns
+        <int>: 0 if not exist, 1 if exist,
+    """
+    result = cursor.execute(f'SELECT (path, hash) FROM dir WHERE path = "{file_name}"')
+    result = result.fetchall()
+
+    if not result:
+        return None
+
+    return result[0][1]
+
 
 
 if __name__ == '__main__':
