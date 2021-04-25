@@ -21,7 +21,6 @@ def create_index_db(directories):
     # Returns
         <str>: the hash name of the index db
     """
-    directories = [(str(Path(path).relative_to(BASE_DIR)), dh) for (path, dh) in directories]
     directories = sorted(directories, key=lambda obj: obj[0])
     directories_text = [','.join(each) for each in directories]
 
@@ -156,12 +155,16 @@ def get_sub_directory(directory, recursive=False):
     # Returns
         <[str]>: list of sub-directories (relative to BASE_DIR)
     """
+    directory = str(directory)
     db_name = get_current_db()
 
     con = sqlite3.connect(str(DB_DIR / db_name))
     cur = con.cursor()
 
-    result = cur.execute('SELECT path FROM dirs WHERE path LIKE "{directory}%"')
+    if directory == '.':
+        result = cur.execute('SELECT path FROM dirs')
+    else:
+        result = cur.execute('SELECT path FROM dirs WHERE path LIKE "{directory}%"')
     result = [each[0] for each in result.fetchall()]
 
     if recursive:

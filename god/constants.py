@@ -2,7 +2,7 @@
 from pathlib import Path
 
 
-BASE_DIR = Path("/home/john/datasets/dogs-cats")
+BASE_DIR = Path("/home/john/datasets/dogs-cats").resolve()
 # BASE_DIR = "/home/john/datasets/imagenet/object_localization/temp"
 
 GOD_DIR = Path(BASE_DIR,  ".god")
@@ -12,3 +12,4 @@ LOG_DIR = Path(MAIN_DIR, 'logs')
 DB_DIR = Path(MAIN_DIR, 'db')
 POINTER_FILE = Path(MAIN_DIR, 'pointers')
 MAIN_DB = 'main.db'
+CACHE_TEMP_DIR = Path(MAIN_DIR, 'cache')

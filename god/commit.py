@@ -13,53 +13,9 @@ from db import (
     get_directory_hash, get_sub_directory, get_file_hash, get_removed_files,
     is_directory_maintained, get_connection_cursor, create_directory_db,
     create_index_db, get_untouched_directories)
-from files import get_dir_detail, get_hash
-from logs import get_log_records
+from files import get_dir_detail, get_hash, construct_symlinks
+from logs import get_log_records, save_log
 from history import change_index
-
-
-def commit_add():
-
-    # Collect files
-    files = get_nonsymlinks(BASE_DIR)
-
-    # Calculate hash
-    hash_table = {}
-    for each_file in files:
-        with open(each_file, 'rb') as f_in:
-            file_hash = hashlib.sha256(f_in.read()).hexdigest()
-            hash_path = f'{file_hash[:2]}/{file_hash[2:4]}/{file_hash[4:]}'
-            hash_table[each_file] = hash_path
-
-    # Record the add
-    add_records = []
-    for src, dest in hash_table.items():
-        dest = Path(HASH_DIR, dest)
-        if dest.is_file():      # NOTE: files can be moved here,
-                                # or can be unchanged here after unlock
-            continue
-        add_records.append((src, dest))
-
-    # Save the records
-    out_file = Path(MAIN_DIR, 'temp_record')
-    out_records = [
-        f'+{Path(src).relative_to(BASE_DIR)} {hash_table[src].replace("/", "")}'
-        for src, _ in add_records]
-    with out_file.open('w') as f_out:
-        f_out.write('\n'.join(out_records))
-    with out_file.open('rb') as f_in:
-        hash_name = hashlib.sha256(f_in.read()).hexdigest()
-    shutil.move(out_file, Path(out_file.parent, hash_name))
-
-    # Move objects to hash directory
-    for src, dest in add_records:
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        shutil.move(src, dest)
-
-    # Create symlink
-    for src, dest in add_records:
-        sympath = Path(src)
-        sympath.symlink_to(dest)
 
 
 def check_directory(dir_name):
@@ -127,7 +83,9 @@ def check_directory(dir_name):
     # populate directory_remove
     sub_dir = get_sub_directory(Path(dir_name).relative_to(BASE_DIR))
     directory_remove = [
-        each for each in sub_dir if each not in directory_remain]
+        each for each in sub_dir
+        if each not in
+        directory_remain + directory_add + [str(Path(dir_name).relative_to(BASE_DIR))]]
 
     # populate file_add
     dhash = get_directory_hash(Path(dir_name).relative_to(BASE_DIR))
@@ -198,22 +156,26 @@ def commit(path=None):
         remainings += [str(Path(BASE_DIR, each)) for each in directory_add]
         idx += 1
 
+    # construct logs
+    # hash_name = save_log(file_add, file_remove)
+    # @TODO: this log can be used later by other components (not really necessary
+    # right now)
+
     # construct index table
+    remainings = [str(Path(path).relative_to(BASE_DIR)) for path in remainings]
     temp_ = remainings + directory_removes + directory_remains
-    temp_ = [str(Path(path).relative_to(BASE_DIR)) for each in temp_]
     other_remainings = get_untouched_directories(temp_)
     other_remainings = [(str(Path(BASE_DIR, path)), dh) for (path, dh) in other_remainings]
     records = list(zip(remainings, db_hashes))
     records += other_remainings
     commit_hash = create_index_db(records)
 
-    # move files to symlinks
-    construct_symlinks([fp for (fp, _) in records])
-
-    # construct logs
-
     # change pointer
     change_index(commit_hash)
+
+    # construct symlinks
+    # @TODO: get from database
+    # construct_symlinks(directory_adds + directory_remains)
 
     return (
             directory_adds, directory_removes, directory_remains,
@@ -221,8 +183,9 @@ def commit(path=None):
 
 
 if __name__ == '__main__':
+    path = Path('/home/john/datasets/dogs-cats').resolve()
     (
         directory_add, directory_remove, directory_remain,
         file_add, file_remove, file_remain
-    ) = commit('/home/john/datasets/dogs-cats')
-    import pdb; pdb.set_trace()
+    ) = commit(path)
+    # import pdb; pdb.set_trace()
