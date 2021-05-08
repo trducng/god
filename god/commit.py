@@ -81,7 +81,7 @@ def check_directory(dir_name):
             files.append((rel_path, file_hash))
 
     # populate directory_remove
-    sub_dir = get_sub_directory(Path(dir_name).relative_to(BASE_DIR))
+    sub_dir = get_sub_directory(Path(dir_name).relative_to(BASE_DIR), recursive=True)
     directory_remove = [
         each for each in sub_dir
         if each not in
