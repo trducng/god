@@ -2,6 +2,23 @@ import hashlib
 from pathlib import Path
 
 from constants import BASE_DIR, LOG_DIR
+from db import get_sub_directory, get_untouched_directories, get_files
+
+
+def compare_states(state1, state2):
+    """Get the operations from state1 to state2"""
+    pass
+
+
+def get_state_ops(state):
+    """Get the state operations"""
+    result = []
+    folders = get_untouched_directories([])
+    for folder_name, folder_hash in folders:
+        each_files = [(str(Path(folder_name, name)), h) for (name, h) in get_files(folder_hash)]
+        result += each_files
+
+    return result
 
 
 def get_log_records(files, hashes):
@@ -39,3 +56,8 @@ def save_log(add_records, remove_records):
         f_out.write(records)
 
     return hash_name
+
+
+if __name__ == '__main__':
+    result = get_state_ops('.')
+    import pdb; pdb.set_trace()

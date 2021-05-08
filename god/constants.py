@@ -13,3 +13,5 @@ DB_DIR = Path(MAIN_DIR, 'db')
 POINTER_FILE = Path(MAIN_DIR, 'pointers')
 MAIN_DB = 'main.db'
 CACHE_TEMP_DIR = Path(MAIN_DIR, 'cache')
+
+ORGE_DIR = Path(BASE_DIR, ".godorge")
