@@ -163,9 +163,8 @@ def commit(path=None):
 
     # construct index table
     remainings = [str(Path(path).relative_to(BASE_DIR)) for path in remainings]
-    temp_ = remainings + directory_removes + directory_remains
+    temp_ = remainings + directory_removes
     other_remainings = get_untouched_directories(temp_)
-    other_remainings = [(str(Path(BASE_DIR, path)), dh) for (path, dh) in other_remainings]
     records = list(zip(remainings, db_hashes))
     records += other_remainings
     commit_hash = create_index_db(records)
@@ -188,4 +187,3 @@ if __name__ == '__main__':
         directory_add, directory_remove, directory_remain,
         file_add, file_remove, file_remain
     ) = commit(path)
-    # import pdb; pdb.set_trace()
