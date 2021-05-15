@@ -6,20 +6,19 @@ from constants import BASE_DIR, GOD_DIR, HASH_DIR, MAIN_DIR, DB_DIR, ORGE_DIR
 from logs import get_state_ops
 
 
-
-
-NAME = 'train'
 TYPE1 = {
+    'NAME': 'index',
     'PATTERN': 'train1/(?P<label>cat|dog)\.(?P<id>\d+)\..+$',
     'PATH': 'path'
 }
 
 TYPE2 = {
+    'NAME': 'index',
     'PATTERN': '(?P<id>.+?)(_(?P<masktype_>GT\d))?.[^.]+$',
     'PATH': {
         'group': 'masktype_',
         'conversion': {
-            None: 'input'
+            None: 'input',
             'GT0': 'horizontal_mask',
             'GT1': 'vertical_mask',
             'GT2': 'area_mask',
@@ -33,6 +32,7 @@ TYPE2 = {
 }
 
 TYPE_3_4 = {
+    'NAME': 'index',
     'PATTERN': "train/(?P<class>.+?)/(?P<id>.+\d+)(?P<switch_>.pbdata|/geometry.pbdata|/video.MOV)$",
     'PATH': {
         'group': 'switch_',
@@ -40,25 +40,43 @@ TYPE_3_4 = {
             '.pbdata': 'location',
             '/geometry.pbdata': '3d_mask',
             '/video.MOV': 'input'
-    },
+        },
+    }
 }
 
-# 1. Construct comparisions
-# 2. Construct logs -> should be SQL string
-# 3. Create database
-# 4. Populate the database
 
-def create_db():
-    con = sqlite3.connect(str(Path(ORGE_DIR, NAME)))
+def create_db(config):
+    con = sqlite3.connect(str(Path(ORGE_DIR, config['NAME'])))
     cur = con.cursor()
 
-    sql = [f"{name} {attr['type']}" for (name, attr) in  TABLE_DEF['COLUMNS'].items()]
-    sql = ', '.join(sql)
-    sql = f'CREATE TABLE main({sql})'
+    pattern = re.compile(config['PATTERN'])
 
-    cur.execute(sql)
-    con.commit()
-    con.close()
+    # get columns from pattern
+    groups = list(pattern.groupindex.keys())
+    cols = [each for each in groups if each[-1] != '_']
+
+    # get columns from PATH
+    if isinstance(config['PATH'], str):
+        cols += [config['PATH'], config['PATH'] + '_hash']
+    else:
+        path_cols = list(config['PATH']['conversion'].values())
+        for _ in path_cols:
+            cols += [_, _ + '_hash']
+
+    # get columns from EXTRA_COLUMNS
+    if config['EXTRA_COLUMNS']:
+        cols += list(config['EXTRA_COLUMNS'].keys())
+
+    return cols
+
+
+    # sql = [f"{name} {attr['type']}" for (name, attr) in  TABLE_DEF['COLUMNS'].items()]
+    # sql = ', '.join(sql)
+    # sql = f'CREATE TABLE main({sql})'
+
+    # cur.execute(sql)
+    # con.commit()
+    # con.close()
 
 
 def construct_sql_logs():
@@ -106,7 +124,7 @@ def populate_db_from_sql_logs(sql_logs):
 
 
 if __name__ == '__main__':
-    # create_db()
-    sql_logs = construct_sql_logs()
+    # sql_logs = construct_sql_logs()
+    result = create_db(TYPE2)
     import pdb; pdb.set_trace()
     # populate_db_from_sql_logs(sql_logs)
