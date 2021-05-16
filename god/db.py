@@ -89,7 +89,7 @@ def create_directory_db(files):
     return db_name
 
 
-def get_directory_hash(directory):
+def get_directory_hash(directory, db_name=None):
     """Get directory hash
 
     Usually, the directory corresponds to a directory.
@@ -101,7 +101,7 @@ def get_directory_hash(directory):
     # Returns
         <str>: hash if the directory exist, else ""
     """
-    db_name = get_current_db()
+    db_name = get_current_db() if db_name is None else db_name
 
     con = sqlite3.connect(str(DB_DIR / db_name))
     cur = con.cursor()
@@ -117,7 +117,7 @@ def get_directory_hash(directory):
     return ""
 
 
-def is_directory_maintained(directory, timestamp):
+def is_directory_maintained(directory, timestamp, db_name=None):
     """Check if a directory is the same (based on timestamp)
 
     # Args
@@ -128,7 +128,7 @@ def is_directory_maintained(directory, timestamp):
     # Returns
         <bool>: True if the directory is the same, else False
     """
-    db_name = get_current_db()
+    db_name = get_current_db() if db_name is None else db_name
 
     con = sqlite3.connect(str(DB_DIR / db_name))
     cur = con.cursor()
@@ -144,19 +144,19 @@ def is_directory_maintained(directory, timestamp):
     return True
 
 
-def get_sub_directory(directory, recursive=False):
+def get_sub_directory(directory, recursive=False, db_name=None):
     """Get recorded sub-directories of `directory`
 
     # Args
         directory <str>: the name of the directory
-        db_name <str>: name of database storing directory detail
+        db_name <str>: name of database storing directory detail. If None, get current
         recursive <bool>: whether to look for sub-directories recursively
 
     # Returns
         <[str]>: list of sub-directories (relative to BASE_DIR)
     """
     directory = str(directory)
-    db_name = get_current_db()
+    db_name = get_current_db() if db_name is None else db_name
 
     con = sqlite3.connect(str(DB_DIR / db_name))
     cur = con.cursor()
@@ -176,16 +176,50 @@ def get_sub_directory(directory, recursive=False):
     ]
 
 
-def get_untouched_directories(directories):
+def get_sub_directory_and_hash(directory, recursive=False, db_name=None):
+    """Get recorded sub-directories of `directory`
+
+    # Args
+        directory <str>: the name of the directory
+        db_name <str>: name of database storing directory detail. If None, get current
+        recursive <bool>: whether to look for sub-directories recursively
+
+    # Returns
+        <[(str, str)]>: list of sub-directories and hashes (relative to BASE_DIR)
+    """
+    directory = str(directory)
+    db_name = get_current_db() if db_name is None else db_name
+
+    con = sqlite3.connect(str(DB_DIR / db_name))
+    cur = con.cursor()
+
+    if directory == '.':
+        result = cur.execute('SELECT path, hash FROM dirs')
+    else:
+        result = cur.execute('SELECT path, hash FROM dirs WHERE path LIKE "{directory}%"')
+
+    result = result.fetchall()
+
+    if recursive:
+        return result
+
+    return [
+        each for each in result
+        if str(Path(each[0]).parent) == directory
+    ]
+
+
+def get_untouched_directories(directories, db_name=None):
     """Get untouched directories
 
-    # Args:
+    # Args
         directories <[str]>: list of directory to exclude
+        db_name <str>: name of database storing directory detail. If None, get current
 
     # Returns
         <[str]>: list of untouched directories
     """
-    db_name = get_current_db()
+    db_name = get_current_db() if db_name is None else db_name
 
     con = sqlite3.connect(str(DB_DIR / db_name))
     cur = con.cursor()

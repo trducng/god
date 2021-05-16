@@ -115,7 +115,8 @@ def check_directory(dir_name):
     file_remove = [
             (str(Path(dir_name, file_name).relative_to(BASE_DIR)), file_hash)
             for (file_name, file_hash) in file_remove]
-    con.commit()
+
+    con.close()
 
     return (
             directory_add, directory_remove, directory_remain,
