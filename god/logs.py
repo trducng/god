@@ -22,8 +22,27 @@ def index(l, element):
         return i
     return -1
 
+
+def insert_path(files_hashes, path):
+    """Insert the path in file name
+
+    # Args
+        file_hashes <[str, str]>: filename , file hash
+
+    # Returns
+        <[str, str]>: filename, file hash
+    """
+    return [(str(Path(path, fn)), fh) for fn, fh in files_hashes]
+
+
 def get_transform_operations(state1, state2):
     """Get add and remove operations to transform from state1 to state2
+
+    The files from state1 to state2 are as follow:
+        - Same path - Same hash -> Ignore
+        - Same path - Different hash -> State2 is added, state1 is removed
+        - State1 doesn't have - State2 has -> Files are added
+        - State1 has - State1 doesn't have -> Files are moved
 
     The output of this function serves:
         - file_add: add these files to the table in the new commit
@@ -37,125 +56,54 @@ def get_transform_operations(state1, state2):
     # Returns
         <[]>: files newly added (recursively)
         <[]>: files newly removed (recursively)
-        <[]>: files that stay the same
     """
-    directory_add, directory_remove, directory_remain = [], [], []
-    file_add, file_remove, file_remain = [], [], []
-    files = []  # aggregate files because they are both symlink + files
+    file_add, file_remove = [], []
 
     state1_dirs_hashes = sorted(
-        get_sub_directory_and_hash(".", state1), key=lambda obj: obj[0]
+        get_sub_directory_and_hash(".", db_name=state1), key=lambda obj: obj[0]
     )
     state2_dirs_hashes = sorted(
-        get_sub_directory_and_hash(".", state2), key=lambda obj: obj[0]
+        get_sub_directory_and_hash(".", db_name=state2), key=lambda obj: obj[0]
     )
 
     # examine folders
-    state1_dirs, state1_hashes = **zip(state1_dirs_hashes)
+    state1_dirs, state1_hashes = zip(*state1_dirs_hashes)
     visited_state1_indices = []
     for state2_dir, state2_hash in state2_dirs_hashes:
         idx = index(state1_dirs, state2_dir)
-        if idx != -1:
-
-        if state1_hashes[idx] == state2_hash:
-            # unchanged directory, nothing to worry about
+        if idx == -1:
+            # dir exist in state2 but not in state1, add all files in state2 dir
+            file_add += insert_path(get_files(state2_hash), state2_dir)
             continue
-        else:
+
+        if state1_hashes[idx] != state2_hash:
             # same directory, different content
-    except ValueError:
-        # state2_dir not in state1_dirs
-        pass
+            state1_files = insert_path(get_files(state1_hashes[idx]), state2_dir)
+            state1_files = {fn: fh for fn, fh in state1_files}
+            state2_files = insert_path(get_files(state2_hash), state2_dir)
+            for state2_fn, state2_fh in state2_files:
+                if state2_fn in state1_files:
+                    if state2_fh != state1_files[state2_fn]:
+                        # files updated
+                        file_add.append((state2_fn, state2_fh))
+                        file_remove.append((state2_fn, state1_files[state2_fn]))
+                    state1_files.pop(state2_fn)
+                else:
+                    # new file
+                    file_add.append((state2_fn, state2_fh))
 
-    # get detail of each child item
-    # populate directory_add & directory_remain
-    for child in os.scandir(dir_name):
-        if child.is_symlink():
-            # get the symlink hash
-            file_path = Path(child.path)
-            original = file_path.resolve()
-            file_hash = str(Path(original).relative_to(HASH_DIR)).replace("/", "")
-            rel_path = str(file_path.relative_to(BASE_DIR))
-            files.append((rel_path, file_hash))
-            continue
+            for state1_fn, state1_fh in state1_files.items():
+                file_remove.append((state1_fn, state1_fh))
 
-        if child.is_dir():
-            if child.name == ".god":
-                continue
+        visited_state1_indices.append(idx)
 
-            rel_path = str(Path(child.path).relative_to(BASE_DIR))
-            dhash = get_directory_hash(rel_path)
-            if not dhash:
-                directory_add.append(rel_path)
-                continue
+    # add remove files:
+    unvisited_state1_indices = list(set(
+        range(len(state1_dirs))).difference(visited_state1_indices))
+    for idx in unvisited_state1_indices:
+        file_remove += insert_path(get_files(state1_hashes[idx]), state1_dirs[idx])
 
-            same = is_directory_maintained(rel_path, child.stat().st_mtime)
-            if same:
-                directory_remain.append(rel_path)
-                continue
-
-            directory_add.append(rel_path)
-        else:
-            # calculate hash
-            file_path = Path(child.path)
-            with file_path.open("rb") as f_in:
-                file_hash = hashlib.sha256(f_in.read()).hexdigest()
-            rel_path = str(file_path.relative_to(BASE_DIR))
-            files.append((rel_path, file_hash))
-
-    # populate directory_remove
-    sub_dir = get_sub_directory(Path(dir_name).relative_to(BASE_DIR), recursive=True)
-    directory_remove = [
-        each
-        for each in sub_dir
-        if each
-        not in directory_remain
-        + directory_add
-        + [str(Path(dir_name).relative_to(BASE_DIR))]
-    ]
-
-    # populate file_add
-    dhash = get_directory_hash(Path(dir_name).relative_to(BASE_DIR))
-    if not dhash:
-        file_add = files
-        return (
-            directory_add,
-            directory_remove,
-            directory_remain,
-            file_add,
-            file_remove,
-            file_remain,
-        )
-
-    # populate file_add and file_remain
-    con, cur = get_connection_cursor(dhash)
-    for file_path, file_hash in files:
-        file_db_hash = get_file_hash(Path(file_path).name, cur)
-        if not file_db_hash:
-            file_add.append((file_path, file_hash))
-            continue
-        if file_db_hash == file_hash:
-            file_remain.append((file_path, file_hash))
-        else:
-            file_add.append((file_path, file_hash))
-            # file_remove.append((file_path, file_db_hash))
-
-    # populate file_remove
-    exist = [str(Path(fp).name) for (fp, fh) in file_remain]
-    file_remove = get_removed_files(exist, cur)
-    file_remove = [
-        (str(Path(dir_name, file_name).relative_to(BASE_DIR)), file_hash)
-        for (file_name, file_hash) in file_remove
-    ]
-    con.commit()
-
-    return (
-        directory_add,
-        directory_remove,
-        directory_remain,
-        file_add,
-        file_remove,
-        file_remain,
-    )
+    return file_add, file_remove
 
 
 def get_state_ops(state):
@@ -211,7 +159,12 @@ def save_log(add_records, remove_records):
 
 
 if __name__ == "__main__":
-    result = get_state_ops(".")
-    import pdb
-
-    pdb.set_trace()
+    # result = get_state_ops(".")
+    file_add, file_remove = get_transform_operations(
+        # "477ea9463b74aa740be85359ed69a1ab90f0b545bcc238d629b6bb76803e700d",
+        # "4edd28d87b4223f086c6bb44c838082456eb7b5f97892311e5612aeb84fb9573",
+        # "44ba89e3f3afa22482b4961b4480371b38d521b8cb1c08c350f763375c915a47",
+        "ff7a72be8907be6dc50901db67baf268b1a784d8817a0021dbbaa8ca79cd362c",
+        "11a7936355d055bc5437d9fc7f22926ee91fced3f947491d41655fac041d6e23"
+    )
+    import pdb; pdb.set_trace()
