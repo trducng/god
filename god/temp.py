@@ -36,3 +36,34 @@ def get_columns_and_types_old(config):
         cols += list(config["EXTRA_COLUMNS"].keys())
 
     return cols, col_types
+
+
+def construct_sql_logs():
+    items = get_state_ops(".")
+    pattern = re.compile(TABLE_DEF["ID"])
+
+    # TODO basically everything is add here
+    sql_logs = []
+    for each_name, each_hash in items:
+        cols = {}
+        result = pattern.match(each_name)  # TODO HERE
+        if not result:
+            continue
+
+        result_dict = result.groupdict()
+        if "id" not in result_dict:
+            continue
+
+        # TODO: should check if this is a add / edit / remove, for now let assume
+        # it is add for simplicity.
+        # INSERT INTO main(id, path, hash, label) VALUES("{id}", "{path}", "{hash}", "{label}")
+
+        result_dict["hash"] = each_hash
+        result_dict["path"] = each_name
+        id_, path = result_dict["id"], result_dict["path"]
+        hash_, label = result_dict["hash"], result_dict["label"]
+
+        sql_log = f'INSERT INTO main(id, path, hash, label) VALUES("{id_}", "{path}", "{hash_}", "{label}")'
+        sql_logs.append(sql_log)
+
+    return sql_logs

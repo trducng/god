@@ -35,7 +35,7 @@ def insert_path(files_hashes, path):
     return [(str(Path(path, fn)), fh) for fn, fh in files_hashes]
 
 
-def get_transform_operations(state1, state2):
+def get_transform_operations(state1, state2=None):
     """Get add and remove operations to transform from state1 to state2
 
     The files from state1 to state2 are as follow:
@@ -47,11 +47,10 @@ def get_transform_operations(state1, state2):
     The output of this function serves:
         - file_add: add these files to the table in the new commit
         - file_remove: remove these files from the table in the new commit
-        - file_remain: keep these files to the table in the new commit
 
     # Args
         state1 <str>: the hash of state1
-        state2 <str>: the hash of state2
+        state2 <str>: the hash of state2. If None, this is the first time.
 
     # Returns
         <[]>: files newly added (recursively)
@@ -116,7 +115,7 @@ def get_state_ops(state):
         ]
         result += each_files
 
-    return result
+    return result, []
 
 
 def get_log_records(files, hashes):

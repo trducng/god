@@ -1,17 +1,21 @@
 import re
 import sqlite3
 from pathlib import Path
+from collections import defaultdict
 
 from constants import BASE_DIR, GOD_DIR, HASH_DIR, MAIN_DIR, DB_DIR, ORGE_DIR
-from logs import get_state_ops
+from logs import get_state_ops, get_transform_operations
 
 
 TYPE1 = {
     "NAME": "index",
-    "PATTERN": "train1/(?P<label>cat|dog)\.(?P<id>\d+)\..+$",
+    "PATTERN": "(?P<input>train1/(?P<id>(?P<label>cat|dog)\.\d+)\..+$)",
     "COLUMNS": {
         "id": "INTEGER",
         "label": "TEXT",
+        "input": {
+            "path": True
+        }
     },
 }
 
@@ -34,15 +38,55 @@ TYPE2 = {
 TYPE_3_4 = {
     "NAME": "index",
     "PATTERN": "train/(?P<class>.+?)/(?P<id>.+\d+)(?P<switch_>.pbdata|/geometry.pbdata|/video.MOV)$",
-    "PATH": {
-        "group": "switch_",
-        "conversion": {
-            ".pbdata": "location",
-            "/geometry.pbdata": "3d_mask",
-            "/video.MOV": "input",
-        },
-    },
+    "COLUMNS": {
+        "id": "INTERGER",
+        "class": "TEXT",
+        "location": {"path": True, "conversion_group": ("switch_", ".pbdata")},
+        "3d_mask": {"path": True, "conversion_group": ("switch_", "/geometry.pbdata")},
+        "input": {"path": True, "conversion_group": ("switch_", "/video.MOV")}
+    }
 }
+
+
+def get_path_cols(config):
+    """Get the group rule
+
+    # Args
+        config <{}>: the configuration
+
+    # Returns
+    """
+    result = []
+
+    COLUMNS = config.get('COLUMNS', {})
+    for col_name, col_rule in COLUMNS.items():
+        if not isinstance(col_rule, dict):
+            continue
+        if col_rule.get('path', False):
+            result.append(col_name)
+
+    return result
+
+def get_group_rule(config):
+    """Get the group rule
+
+    # Args
+        config <{}>: the configuration
+
+    # Returns
+    """
+    result = defaultdict(dict)
+
+    COLUMNS = config.get('COLUMNS', {})
+    for col_name, col_rule in COLUMNS.items():
+        if not isinstance(col_rule, dict):
+            continue
+        if 'conversion_group' not in col_rule:
+            continue
+        group_name, group_val = col_rule['conversion_group']
+        result[group_name][group_val] = col_name
+
+    return result
 
 
 def get_columns_and_types(config):
@@ -102,35 +146,58 @@ def create_db(config):
     return cols
 
 
-def construct_sql_logs():
-    items = get_state_ops(".")
-    pattern = re.compile(TABLE_DEF["ID"])
+def construct_sql_logs(file_add, file_remove, config):
+    """Construct sql logs from the file add and file remove
 
-    # TODO basically everything is add here
-    sql_logs = []
-    for each_name, each_hash in items:
-        cols = {}
-        result = pattern.match(each_name)  # TODO HERE
-        if not result:
+    # Args
+        file_add <[(str, str)]>: file name and file hash to add
+        file_remove <[(str, str)]>: file name and file hash to remove
+
+    # Returns
+        <[str]>: sql statements
+
+    # @TODO: currently it assumes that the ID exists
+    """
+    pattern = re.compile(config['PATTERN'])
+    conversion_groups = get_group_rule(config)
+    path_cols = get_path_cols(config)
+
+    logic = defaultdict(dict)
+    for fn, fh in file_add:
+        match = pattern.match(fn)
+        if match is None:
             continue
 
-        result_dict = result.groupdict()
-        if "id" not in result_dict:
+        match_dict = match.groupdict()
+
+        # get the id
+        if 'id' not in match_dict:
             continue
 
-        # TODO: should check if this is a add / edit / remove, for now let assume
-        # it is add for simplicity.
-        # INSERT INTO main(id, path, hash, label) VALUES("{id}", "{path}", "{hash}", "{label}")
+        id_ = match_dict.pop('id')
+        for group, match_key in match_dict.items():
+            if group in conversion_groups:
+                match_value = conversion_groups[group][match_key]
+                logic[id_][match_value].append(('+', fn))
+                logic[id_][match_value + '_hash'].append(('+', fh))
+            else:
+                if group in path_cols:
+                    items = logic[id_].get(group, [])
+                    items.append(('+', match_key))
+                    logic[id_][group] = items
 
-        result_dict["hash"] = each_hash
-        result_dict["path"] = each_name
-        id_, path = result_dict["id"], result_dict["path"]
-        hash_, label = result_dict["hash"], result_dict["label"]
+                    items = logic[id_].get(group + '_hash', [])
+                    items.append(('+', fh))
+                    logic[id_][group + '_hash'] = items
+                else:
+                    items = logic[id_].get(group, [])
+                    items.append(('+', match_key))
+                    logic[id_][group] = items
 
-        sql_log = f'INSERT INTO main(id, path, hash, label) VALUES("{id_}", "{path}", "{hash_}", "{label}")'
-        sql_logs.append(sql_log)
+    # construct logic
 
-    return sql_logs
+    return logic
+
 
 
 def populate_db_from_sql_logs(sql_logs):
@@ -147,8 +214,17 @@ def populate_db_from_sql_logs(sql_logs):
 
 if __name__ == "__main__":
     # sql_logs = construct_sql_logs()
-    result = create_db(TYPE2)
-    import pdb
+    # result = create_db(TYPE2)
 
-    pdb.set_trace()
+    # file_add, file_remove = get_transform_operations(
+    #     # "477ea9463b74aa740be85359ed69a1ab90f0b545bcc238d629b6bb76803e700d",
+    #     # "4edd28d87b4223f086c6bb44c838082456eb7b5f97892311e5612aeb84fb9573",
+    #     "44ba89e3f3afa22482b4961b4480371b38d521b8cb1c08c350f763375c915a47",
+    #     "ff7a72be8907be6dc50901db67baf268b1a784d8817a0021dbbaa8ca79cd362c",
+    #     # "11a7936355d055bc5437d9fc7f22926ee91fced3f947491d41655fac041d6e23",
+    #     # "331cc680329fdef08c5b030c651de2b624f864e16744a476078fd02fde820dfa"
+    # )
+    file_add, file_remove = get_state_ops("477ea9463b74aa740be85359ed69a1ab90f0b545bcc238d629b6bb76803e700d")
+    result = construct_sql_logs(file_add, file_remove, TYPE1)
+    import pdb; pdb.set_trace()
     # populate_db_from_sql_logs(sql_logs)
