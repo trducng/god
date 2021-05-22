@@ -34,10 +34,20 @@ TYPE2 = {
     },
 }
 
-
-TYPE_3_4 = {
+TYPE3 = {
     "NAME": "index",
-    "PATTERN": "train/(?P<class>.+?)/(?P<id>.+\d+)(?P<switch_>.pbdata|/geometry.pbdata|/video.MOV)$",
+    "PATTERN": "(?P<id>.+)\.(?P<switch_>.+$)",
+    "COLUMNS": {
+        "id": "INTERGER",
+        "input": {"path": True, "conversion_group": ("switch_", ("png", "jpeg", "jpg"))},
+        "label": {"path": True, "conversion_group": ("switch_", "json")},
+    }
+}
+
+
+TYPE4 = {
+    "NAME": "index",
+    "PATTERN": "(?P<class>.+?)/(?P<id>.+\d+)(?P<switch_>.pbdata|/geometry.pbdata|/video.MOV)$",
     "COLUMNS": {
         "id": "INTERGER",
         "class": "TEXT",
@@ -84,7 +94,11 @@ def get_group_rule(config):
         if 'conversion_group' not in col_rule:
             continue
         group_name, group_val = col_rule['conversion_group']
-        result[group_name][group_val] = col_name
+        if isinstance(group_val, str):
+            result[group_name][group_val] = col_name
+        else:
+            for each_group_val in group_val:
+                result[group_name][each_group_val] = col_name
 
     return result
 
@@ -178,8 +192,15 @@ def construct_sql_logs(file_add, file_remove, config):
         for group, match_key in match_dict.items():
             if group in conversion_groups:
                 match_value = conversion_groups[group][match_key]
-                logic[id_][match_value].append(('+', fn))
-                logic[id_][match_value + '_hash'].append(('+', fh))
+
+                items = logic[id_].get(match_value, [])
+                items.append(('+', fn))
+                logic[id_][match_value] = items
+
+                items = logic[id_].get(match_value + '_hash', [])
+                items.append(('+', fh))
+                logic[id_][match_value + '_hash'] = items
+
             else:
                 if group in path_cols:
                     items = logic[id_].get(group, [])
@@ -224,7 +245,7 @@ if __name__ == "__main__":
     #     # "11a7936355d055bc5437d9fc7f22926ee91fced3f947491d41655fac041d6e23",
     #     # "331cc680329fdef08c5b030c651de2b624f864e16744a476078fd02fde820dfa"
     # )
-    file_add, file_remove = get_state_ops("477ea9463b74aa740be85359ed69a1ab90f0b545bcc238d629b6bb76803e700d")
-    result = construct_sql_logs(file_add, file_remove, TYPE1)
+    file_add, file_remove = get_state_ops("001b32f966fea54404e0370c7f3f28933cb251e5f98463eecfb1e920d8fb7cea")
+    result = construct_sql_logs(file_add, file_remove, TYPE4)
     import pdb; pdb.set_trace()
     # populate_db_from_sql_logs(sql_logs)

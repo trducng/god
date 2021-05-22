@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 import shutil
 
-from constants import BASE_DIR, GOD_DIR, HASH_DIR, MAIN_DIR, DB_DIR, MAIN_DB
+from god.constants import BASE_DIR, GOD_DIR, HASH_DIR, MAIN_DIR, DB_DIR, MAIN_DB
 
 
 def get_nonsymlinks(path, recursive=False):

@@ -1,5 +1,5 @@
 import sqlite3
-from constants import POINTER_FILE, DB_DIR
+from god.constants import POINTER_FILE, DB_DIR
 
 
 def get_current_db():

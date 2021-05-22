@@ -3,10 +3,10 @@
 import sqlite3
 from pathlib import Path
 
-from constants import (BASE_DIR, GOD_DIR, HASH_DIR, MAIN_DIR, LOG_DIR, DB_DIR, MAIN_DB)
+from god.base import (get_base_dir, GOD_DIR, OBJ_DIR, MAIN_DIR, LOG_DIR, DB_DIR)
 
 
-def init():
+def init(path):
     """Initiate the repo
 
     This operation construct the tracking .god directory. The directory contains:
@@ -15,22 +15,16 @@ def init():
             - log histories
             - db knowledge
             - commits
-        - Empty DB
     """
-    Path(GOD_DIR).mkdir(parents=True, exist_ok=True)
-    Path(HASH_DIR).mkdir(parents=True, exist_ok=True)
-    Path(MAIN_DIR).mkdir(parents=True, exist_ok=True)
-    Path(LOG_DIR).mkdir(parents=True, exist_ok=True)
-    Path(DB_DIR).mkdir(parents=True, exist_ok=True)
+    path = Path(path).resolve()
 
-    # create db
-    con = sqlite3.connect(str(Path(DB_DIR, MAIN_DB)))
-    cur = con.cursor()
-    cur.execute("CREATE TABLE dirs(path text, hash text, timestamp float)")
-    con.commit()
-    con.close()
+    Path(path, GOD_DIR).mkdir(parents=True, exist_ok=True)
+    Path(path, OBJ_DIR).mkdir(parents=True, exist_ok=True)
+    Path(path, MAIN_DIR).mkdir(parents=True, exist_ok=True)
+    Path(path, LOG_DIR).mkdir(parents=True, exist_ok=True)
+    Path(path, DB_DIR).mkdir(parents=True, exist_ok=True)
 
 
 if __name__ == '__main__':
-    init()
-
+    path = '.'
+    init(path)

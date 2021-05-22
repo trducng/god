@@ -3,8 +3,8 @@ import os
 from pathlib import Path
 import sqlite3
 
-from constants import BASE_DIR, GOD_DIR, HASH_DIR, MAIN_DIR, DB_DIR
-from history import get_current_db
+from god.base import get_base_dir, DB_DIR
+from god.history import get_current_db
 
 
 def get_connection_cursor(db_name):
@@ -153,7 +153,7 @@ def get_sub_directory(directory, recursive=False, db_name=None):
         recursive <bool>: whether to look for sub-directories recursively
 
     # Returns
-        <[str]>: list of sub-directories (relative to BASE_DIR)
+        <[str]>: list of sub-directories (relative to base_dir)
     """
     directory = str(directory)
     db_name = get_current_db() if db_name is None else db_name
@@ -185,7 +185,7 @@ def get_sub_directory_and_hash(directory, recursive=False, db_name=None):
         recursive <bool>: whether to look for sub-directories recursively
 
     # Returns
-        <[(str, str)]>: list of sub-directories and hashes (relative to BASE_DIR)
+        <[(str, str)]>: list of sub-directories and hashes (relative to base_dir)
     """
     directory = str(directory)
     db_name = get_current_db() if db_name is None else db_name

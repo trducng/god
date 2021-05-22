@@ -2,8 +2,7 @@ import hashlib
 from bisect import bisect_left
 from pathlib import Path
 
-from constants import BASE_DIR, LOG_DIR
-from db import get_sub_directory_and_hash, get_untouched_directories, get_files
+from god.db import get_sub_directory_and_hash, get_untouched_directories, get_files
 
 
 
@@ -120,15 +119,16 @@ def get_state_ops(state):
 
 def get_log_records(files, hashes):
     """Construct log records"""
+    # @TODO: strip the BASE_DIR first
     out_records = [
-        f"+{Path(each_file).relative_to(BASE_DIR)} {each_hash}"
+        f"+{Path(each_file)} {each_hash}"
         for each_file, each_hash in zip(files, hashes)
     ]
 
     return out_records
 
 
-def save_log(add_records, remove_records):
+def save_log(add_records, remove_records, log_dir):
     """Construct the logs based on add_records and remove_records
 
     The log has format:
@@ -151,7 +151,7 @@ def save_log(add_records, remove_records):
     records = "\n".join(add_records + remove_records)
     hash_name = hashlib.sha256(records.encode()).hexdigest()
 
-    with Path(LOG_DIR, hash_name).open("w") as f_out:
+    with Path(log_dir, hash_name).open("w") as f_out:
         f_out.write(records)
 
     return hash_name
