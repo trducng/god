@@ -14,9 +14,11 @@ def get_current_db():
 
     return current_db
 
+
 def change_index(value):
     with POINTER_FILE.open('w') as f_out:
         f_out.write(value)
+
 
 def get_history():
     """Print commit history of the data repo"""

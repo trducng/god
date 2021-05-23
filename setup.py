@@ -14,6 +14,7 @@ setuptools.setup(
     url="https://github.com/johntd54/god/",
     packages=setuptools.find_packages(),
     install_requires=[
+        "pyyaml",
         "fire",
     ],
     scripts=["bin/god"],

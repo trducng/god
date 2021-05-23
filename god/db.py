@@ -3,12 +3,12 @@ import os
 from pathlib import Path
 import sqlite3
 
-from god.base import get_base_dir, DB_DIR
-from god.history import get_current_db
+from god.base import get_base_dir, get_db_dir, get_current_commit_db
 
 
 def get_connection_cursor(db_name):
-    con = sqlite3.connect(str(Path(DB_DIR, db_name)))
+    """Get connection and cursor"""
+    con = sqlite3.connect(get_db_dir(db_name=db_name))
     return con, con.cursor()
 
 
@@ -21,11 +21,13 @@ def create_index_db(directories):
     # Returns
         <str>: the hash name of the index db
     """
+    base_dir = get_base_dir()
+
     directories = sorted(directories, key=lambda obj: obj[0])
     directories_text = [','.join(each) for each in directories]
 
     db_name = hashlib.sha256('\n'.join(directories_text).encode()).hexdigest()
-    db_path = Path(DB_DIR, db_name)
+    db_path = Path(get_db_dir(db_name=db_name))
     if db_path.is_file():
         return db_name
 
@@ -33,13 +35,13 @@ def create_index_db(directories):
     con, cur = get_connection_cursor(db_name)
     cur.execute('CREATE TABLE dirs(path text, hash text, timestamp real)')
     for path, dh in directories:
-        timestamp = Path(BASE_DIR, path).stat().st_mtime
+        timestamp = Path(base_dir, path).stat().st_mtime
         cur.execute(f'INSERT INTO dirs VALUES("{path}", "{dh}", "{timestamp}")')
     cur.execute('CREATE INDEX index_main ON dirs (path)')
 
     # Construct history database
     cur.execute('CREATE TABLE depend_on(hash text)')
-    cur.execute(f'INSERT INTO depend_on VALUES("{get_current_db()}")')
+    cur.execute(f'INSERT INTO depend_on VALUES("{get_current_commit_db()}")')
 
     con.commit()
     con.close()
@@ -68,7 +70,7 @@ def create_directory_db(files):
     files_text = [','.join(each) for each in files]
 
     db_name = hashlib.sha256('\n'.join(files_text).encode()).hexdigest()
-    db_path = Path(DB_DIR, db_name)
+    db_path = Path(get_db_dir(db_name=db_name))
     if db_path.is_file():
         # Likely merely changing folder name
         return db_name
@@ -101,20 +103,25 @@ def get_directory_hash(directory, db_name=None):
     # Returns
         <str>: hash if the directory exist, else ""
     """
-    db_name = get_current_db() if db_name is None else db_name
+    default_return = ""
 
-    con = sqlite3.connect(str(DB_DIR / db_name))
-    cur = con.cursor()
+    db_name = get_current_commit_db() if db_name is None else db_name
+    if not db_name:
+        return default_return
+
+    con, cur = get_connection_cursor(db_name)
 
     result = cur.execute(
             f'SELECT hash FROM dirs '
             f'WHERE path = "{directory}"')
 
     result = result.fetchall()
+    con.close()
+
     if result:
         return result[0][0]
 
-    return ""
+    return default_return
 
 
 def is_directory_maintained(directory, timestamp, db_name=None):
@@ -128,16 +135,19 @@ def is_directory_maintained(directory, timestamp, db_name=None):
     # Returns
         <bool>: True if the directory is the same, else False
     """
-    db_name = get_current_db() if db_name is None else db_name
+    db_name = get_current_commit_db() if db_name is None else db_name
+    if not db_name:
+        raise RuntimeError(f"Cannot retrieve current commit database.")
 
-    con = sqlite3.connect(str(DB_DIR / db_name))
-    cur = con.cursor()
+    con, cur = get_connection_cursor(db_name)
 
     result = cur.execute(
             f'SELECT timestamp FROM dirs '
             f'WHERE path = "{directory}"')
 
     result = result.fetchall()[0][0]
+    con.close()
+
     if timestamp > result:
         return False
 
@@ -156,16 +166,18 @@ def get_sub_directory(directory, recursive=False, db_name=None):
         <[str]>: list of sub-directories (relative to base_dir)
     """
     directory = str(directory)
-    db_name = get_current_db() if db_name is None else db_name
+    db_name = get_current_commit_db() if db_name is None else db_name
+    if not db_name:
+        return []
 
-    con = sqlite3.connect(str(DB_DIR / db_name))
-    cur = con.cursor()
+    con, cur = get_connection_cursor(db_name)
 
     if directory == '.':
         result = cur.execute('SELECT path FROM dirs')
     else:
         result = cur.execute('SELECT path FROM dirs WHERE path LIKE "{directory}%"')
     result = [each[0] for each in result.fetchall()]
+    con.close()
 
     if recursive:
         return result
@@ -188,10 +200,11 @@ def get_sub_directory_and_hash(directory, recursive=False, db_name=None):
         <[(str, str)]>: list of sub-directories and hashes (relative to base_dir)
     """
     directory = str(directory)
-    db_name = get_current_db() if db_name is None else db_name
+    db_name = get_current_commit_db() if db_name is None else db_name
+    if not db_name:
+        raise RuntimeError(f"Cannot retrieve current commit database.")
 
-    con = sqlite3.connect(str(DB_DIR / db_name))
-    cur = con.cursor()
+    con, cur = get_connection_cursor(db_name)
 
     if directory == '.':
         result = cur.execute('SELECT path, hash FROM dirs')
@@ -199,6 +212,7 @@ def get_sub_directory_and_hash(directory, recursive=False, db_name=None):
         result = cur.execute('SELECT path, hash FROM dirs WHERE path LIKE "{directory}%"')
 
     result = result.fetchall()
+    con.close()
 
     if recursive:
         return result
@@ -219,14 +233,16 @@ def get_untouched_directories(directories, db_name=None):
     # Returns
         <[str]>: list of untouched directories
     """
-    db_name = get_current_db() if db_name is None else db_name
+    db_name = get_current_commit_db() if db_name is None else db_name
+    if not db_name:
+        return []
 
-    con = sqlite3.connect(str(DB_DIR / db_name))
-    cur = con.cursor()
+    con, cur = get_connection_cursor(db_name)
 
     sql = 'SELECT path, hash FROM dirs WHERE path NOT IN ({})'.format(
         ','.join(['?'] * len(directories)))
     result = cur.execute(sql, directories)
+    con.close()
 
     return result.fetchall()
 
@@ -252,10 +268,10 @@ def get_file_hash(file_name, cursor):
 
 def get_files(db_name):
     """Get the files from db_name"""
-    con = sqlite3.connect(str(DB_DIR / db_name))
-    cur = con.cursor()
-
+    con, cur = get_connection_cursor(db_name)
     result = cur.execute(f'SELECT * FROM dirs')
+    con.close()
+
     return result.fetchall()
 
 

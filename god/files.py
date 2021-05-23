@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 import shutil
 
-from god.constants import BASE_DIR, GOD_DIR, HASH_DIR, MAIN_DIR, DB_DIR, MAIN_DB
+from god.base import get_base_dir, OBJ_DIR
 
 
 def get_nonsymlinks(path, recursive=False):
@@ -38,6 +38,9 @@ def construct_symlinks(paths):
     # Args
         paths <[str]>: list of relative paths
     """
+    base_dir = get_base_dir()
+    hash_dir = Path(base_dir, OBJ_DIR)
+
     if not isinstance(paths, (list, tuple)):
         paths = [paths]
 
@@ -52,7 +55,7 @@ def construct_symlinks(paths):
         with open(each_file, 'rb') as f_in:
             file_hash = hashlib.sha256(f_in.read()).hexdigest()
             hash_path = f'{file_hash[:2]}/{file_hash[2:4]}/{file_hash[4:]}'
-        hash_path = Path(HASH_DIR, hash_path)
+        hash_path = hash_dir / hash_path
         hash_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.move(each_file, hash_path)
         sympath = Path(each_file)
@@ -95,6 +98,7 @@ def get_hash(files):
 
     return hashes
 
+
 if __name__ == '__main__':
-    directories, non_links = get_dir_detail(BASE_DIR)
+    directories, non_links = get_dir_detail(get_base_dir())
     import pdb; pdb.set_trace()

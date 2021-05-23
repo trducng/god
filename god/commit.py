@@ -8,14 +8,13 @@ from multiprocessing import Process, Pool
 from pathlib import Path
 import shutil
 
-from god.base import get_base_dir, OBJ_DIR
+from god.base import get_base_dir, OBJ_DIR, change_index, settings
 from god.db import (
     get_directory_hash, get_sub_directory, get_file_hash, get_removed_files,
     is_directory_maintained, get_connection_cursor, create_directory_db,
     create_index_db, get_untouched_directories)
 from god.files import get_dir_detail, get_hash, construct_symlinks
 from god.logs import get_log_records, save_log
-from god.history import change_index
 
 
 def check_directory(dir_name):
@@ -185,8 +184,11 @@ def commit(path):
             file_adds, file_removes, file_remains)
 
 
+def play_with_setting():
+    print(settings)
+
 if __name__ == '__main__':
-    path = base_dir
+    path = Path('/home/john/datasets/god-test/type1').resolve()
     (
         directory_add, directory_remove, directory_remain,
         file_add, file_remove, file_remain
