@@ -4,18 +4,7 @@ from pathlib import Path
 
 import yaml
 
-
-GOD_DIR = ".god"
-
-OBJ_DIR = f"{GOD_DIR}/objects"
-MAIN_DIR = f"{GOD_DIR}/main"
-
-LOG_DIR = f"{MAIN_DIR}/logs"
-DB_DIR = f"{MAIN_DIR}/db"
-CACHE_DIR = f"{MAIN_DIR}/cache"
-POINTER_FILE = f"{MAIN_DIR}/pointers"
-
-CONFIG_FILE = ".godconfig.yml"
+import god.constants as c
 
 
 def get_base_dir(path=None):
@@ -31,7 +20,7 @@ def get_base_dir(path=None):
         path = Path.cwd().resolve()
 
     current_path = Path(path).resolve()
-    must_exist = [GOD_DIR, OBJ_DIR, MAIN_DIR]
+    must_exist = [c.DIR_GOD, c.DIR_OBJ, c.DIR_MAIN]
 
     while True:
         fail = False
@@ -53,24 +42,10 @@ def get_base_dir(path=None):
 def change_index(value):
     """Change pointer information"""
     base_path = get_base_dir()
-    pointer_file = Path(base_path, POINTER_FILE)
+    pointer_file = Path(base_path, c.FILE_POINTER)
 
     with pointer_file.open("w") as f_out:
         f_out.write(value)
-
-
-def get_db_dir(base_path=None, db_name=None):
-    """Get DB directory"""
-    if base_path is None:
-        base_path = get_base_dir()
-
-    base_path = Path(base_path).resolve()
-
-    db_dir = base_path / DB_DIR
-    if db_name is not None:
-        db_dir /= db_name
-
-    return str(db_dir)
 
 
 def get_current_commit_db(base_path=None):
@@ -85,7 +60,7 @@ def get_current_commit_db(base_path=None):
             commit database
     """
     base_path = get_base_dir(base_path)
-    pointer_file = Path(base_path, POINTER_FILE)
+    pointer_file = Path(base_path, c.FILE_POINTER)
 
     if not pointer_file.exists():
         return ""
@@ -174,17 +149,17 @@ class Settings(object):
             raise AttributeError("Setting has been initiated, cannot be re-initiated")
 
         # set the system-level settings
-        system_config = Path('/etc', CONFIG_FILE[1:])
+        system_config = Path('/etc', c.FILE_CONFIG[1:])
         if system_config.exists():
             self.set_values_from_yaml(system_config)
 
         # set the user-level settings
-        user_config = Path.home() / CONFIG_FILE
+        user_config = Path.home() / c.FILE_CONFIG
         if user_config.exists():
             self.set_values_from_yaml(user_config)
 
         # set the project-level settings
-        project_config = Path(get_base_dir(), CONFIG_FILE)
+        project_config = Path(get_base_dir(), c.FILE_CONFIG)
         if project_config.exists():
             self.set_values_from_yaml(project_config)
 
@@ -193,8 +168,37 @@ class Settings(object):
             if key.upper() in self._PARAM_ALLOWED_SETTINGS:
                 self.set_values(**{key: value})
 
+        # set directory configs
+        dir_base = get_base_dir()
+        for each_var in dir(c):
+            constants = {"DIR_BASE": dir_base, "DIR_CWD": str(Path.cwd())}
+            if each_var.isupper():
+                constants[each_var] = str(Path(dir_base, getattr(c, each_var)))
+            self.set_values(**constants)
+
         object.__setattr__(self, "_initialized", True)
         object.__setattr__(self, "values", tuple(self.values))
+
+    def items(self):
+        """Iterate key and value config"""
+        for each_item in self.values:
+            yield each_item, getattr(self, each_item)
+
+    def get(self, key, default):
+        """Get config value"""
+        if key not in self.values:
+            return default
+        return getattr(self, key)
+
+    def __getitem__(self, key):
+        """Allow accessing config value through string"""
+        if key not in self.values:
+            raise IndexError(f'{key} does not exist')
+        return getattr(self, key)
+
+    def __len__(self):
+        """Get the amount of configs"""
+        return len(self.values)
 
     def __str__(self):
         """Pretty string representation"""

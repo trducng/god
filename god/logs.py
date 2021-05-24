@@ -57,6 +57,16 @@ def get_transform_operations(state1, state2=None):
     """
     file_add, file_remove = [], []
 
+    if state2 is None:
+        folders = get_untouched_directories([])
+        for folder_name, folder_hash in folders:
+            each_files = [
+                (str(Path(folder_name, name)), h) for (name, h) in get_files(folder_hash)
+            ]
+            file_add += each_files
+
+        return file_add, file_remove
+
     state1_dirs_hashes = sorted(
         get_sub_directory_and_hash(".", db_name=state1), key=lambda obj: obj[0]
     )
@@ -102,19 +112,6 @@ def get_transform_operations(state1, state2=None):
         file_remove += insert_path(get_files(state1_hashes[idx]), state1_dirs[idx])
 
     return file_add, file_remove
-
-
-def get_state_ops(state):
-    """Get the state operations"""
-    result = []
-    folders = get_untouched_directories([])
-    for folder_name, folder_hash in folders:
-        each_files = [
-            (str(Path(folder_name, name)), h) for (name, h) in get_files(folder_hash)
-        ]
-        result += each_files
-
-    return result, []
 
 
 def get_log_records(files, hashes):

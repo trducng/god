@@ -8,12 +8,12 @@ from multiprocessing import Process, Pool
 from pathlib import Path
 import shutil
 
-from god.base import get_base_dir, OBJ_DIR, change_index, settings
+from god.base import change_index, settings
 from god.db import (
     get_directory_hash, get_sub_directory, get_file_hash, get_removed_files,
     is_directory_maintained, get_connection_cursor, create_directory_db,
     create_index_db, get_untouched_directories)
-from god.files import get_dir_detail, get_hash, construct_symlinks
+from god.files import get_dir_detail, get_hash, construct_symlinks, get_nonsymlinks
 from god.logs import get_log_records, save_log
 
 
@@ -39,9 +39,6 @@ def check_directory(dir_name):
         <[]>: files newly removed
         <[]>: files that stay the same
     """
-    base_dir = get_base_dir(dir_name)
-    obj_dir = str(Path(base_dir, OBJ_DIR))
-
     directory_add, directory_remove, directory_remain = [], [], []
     file_add, file_remove, file_remain = [], [], []
     files = []      # aggregate files because they are both symlink + files
@@ -53,8 +50,8 @@ def check_directory(dir_name):
             # get the symlink hash
             file_path = Path(child.path)
             original = file_path.resolve()
-            file_hash = str(Path(original).relative_to(obj_dir)).replace('/', '')
-            rel_path = str(file_path.relative_to(base_dir))
+            file_hash = str(Path(original).relative_to(settings.DIR_OBJ)).replace('/', '')
+            rel_path = str(file_path.relative_to(settings.DIR_BASE))
             files.append((rel_path, file_hash))
             continue
 
@@ -62,7 +59,7 @@ def check_directory(dir_name):
             if child.name == '.god':
                 continue
 
-            rel_path = str(Path(child.path).relative_to(base_dir))
+            rel_path = str(Path(child.path).relative_to(settings.DIR_BASE))
             dhash = get_directory_hash(rel_path)
             if not dhash:
                 directory_add.append(rel_path)
@@ -79,18 +76,18 @@ def check_directory(dir_name):
             file_path = Path(child.path)
             with file_path.open('rb') as f_in:
                 file_hash = hashlib.sha256(f_in.read()).hexdigest()
-            rel_path = str(file_path.relative_to(base_dir))
+            rel_path = str(file_path.relative_to(settings.DIR_BASE))
             files.append((rel_path, file_hash))
 
     # populate directory_remove
-    sub_dir = get_sub_directory(Path(dir_name).relative_to(base_dir), recursive=True)
+    sub_dir = get_sub_directory(Path(dir_name).relative_to(settings.DIR_BASE), recursive=True)
     directory_remove = [
         each for each in sub_dir
         if each not in
-        directory_remain + directory_add + [str(Path(dir_name).relative_to(base_dir))]]
+        directory_remain + directory_add + [str(Path(dir_name).relative_to(settings.DIR_BASE))]]
 
     # populate file_add
-    dhash = get_directory_hash(Path(dir_name).relative_to(base_dir))
+    dhash = get_directory_hash(Path(dir_name).relative_to(settings.DIR_BASE))
     if not dhash:
         file_add = files
         return (
@@ -115,7 +112,7 @@ def check_directory(dir_name):
     exist = [str(Path(fp).name) for (fp, fh) in file_remain]
     file_remove = get_removed_files(exist, cur)
     file_remove = [
-            (str(Path(dir_name, file_name).relative_to(base_dir)), file_hash)
+            (str(Path(dir_name, file_name).relative_to(settings.DIR_BASE)), file_hash)
             for (file_name, file_hash) in file_remove]
 
     con.close()
@@ -132,7 +129,6 @@ def commit(path):
     # @TODO: currently support path as directory. Will need to support file
     """
     path = str(Path(path).resolve())
-    base_dir = get_base_dir(path)
 
     directory_adds, directory_removes, directory_remains = [], [], []
     file_adds, file_removes, file_remains = [], [], []
@@ -156,16 +152,11 @@ def commit(path):
         # create the DB
         db_hashes.append(create_directory_db(file_add + file_remain))
 
-        remainings += [str(Path(base_dir, each)) for each in directory_add]
+        remainings += [str(Path(settings.DIR_BASE, each)) for each in directory_add]
         idx += 1
 
-    # construct logs
-    # hash_name = save_log(file_add, file_remove)
-    # @TODO: this log can be used later by other components (not really necessary
-    # right now)
-
     # construct index table
-    remainings = [str(Path(path).relative_to(base_dir)) for path in remainings]
+    remainings = [str(Path(path).relative_to(settings.DIR_BASE)) for path in remainings]
     temp_ = remainings + directory_removes
     other_remainings = get_untouched_directories(temp_)
     records = list(zip(remainings, db_hashes))
@@ -176,8 +167,8 @@ def commit(path):
     change_index(commit_hash)
 
     # construct symlinks
-    # @TODO: get from database
-    # construct_symlinks(directory_adds + directory_remains)
+    construct_symlinks(directory_adds + directory_remains, recursive=True)
+    construct_symlinks(path, recursive=False)
 
     return (
             directory_adds, directory_removes, directory_remains,

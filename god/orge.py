@@ -3,8 +3,8 @@ import sqlite3
 from pathlib import Path
 from collections import defaultdict
 
-from constants import BASE_DIR, GOD_DIR, HASH_DIR, MAIN_DIR, DB_DIR, ORGE_DIR
-from logs import get_state_ops, get_transform_operations
+from god.base import settings, Settings
+from god.logs import get_transform_operations
 
 
 TYPE1 = {
@@ -70,12 +70,13 @@ def get_path_cols(config):
 
     COLUMNS = config.get('COLUMNS', {})
     for col_name, col_rule in COLUMNS.items():
-        if not isinstance(col_rule, dict):
+        if not isinstance(col_rule, (dict, Settings)):
             continue
         if col_rule.get('path', False):
             result.append(col_name)
 
     return result
+
 
 def get_group_rule(config):
     """Get the group rule
@@ -89,7 +90,7 @@ def get_group_rule(config):
 
     COLUMNS = config.get('COLUMNS', {})
     for col_name, col_rule in COLUMNS.items():
-        if not isinstance(col_rule, dict):
+        if not isinstance(col_rule, (dict, Settings)):
             continue
         if 'conversion_group' not in col_rule:
             continue
@@ -143,17 +144,19 @@ def create_db(config):
     # Args:
         config <dict>: the configuration file
     """
-    con = sqlite3.connect(str(Path(ORGE_DIR, config["NAME"])))
+    con = sqlite3.connect(str(Path(settings.DIR_INDEX, config["NAME"])))
     cur = con.cursor()
 
-    pattern = re.compile(config["PATTERN"])
     cols, col_types = get_columns_and_types(config)
 
     sql = [f"{col} {col_type}" for (col, col_type) in zip(cols, col_types)]
     sql = ", ".join(sql)
     sql = f"CREATE TABLE main({sql})"
-
     cur.execute(sql)
+
+    sql = "CREATE TABLE commit(commit text)"
+    cur.execute(sql)
+
     con.commit()
     con.close()
 
@@ -177,6 +180,44 @@ def construct_sql_logs(file_add, file_remove, config):
     path_cols = get_path_cols(config)
 
     logic = defaultdict(dict)
+    for fn, fh in file_remove:
+        match = pattern.match(fn)
+        if match is None:
+            continue
+
+        match_dict = match.groupdict()
+
+        # get the id
+        if 'id' not in match_dict:
+            continue
+
+        id_ = match_dict.pop('id')
+        for group, match_key in match_dict.items():
+            if group in conversion_groups:
+                match_value = conversion_groups[group][match_key]
+
+                items = logic[id_].get(match_value, [])
+                items.append(('-', fn))
+                logic[id_][match_value] = items
+
+                items = logic[id_].get(match_value + '_hash', [])
+                items.append(('-', fh))
+                logic[id_][match_value + '_hash'] = items
+
+            else:
+                if group in path_cols:
+                    items = logic[id_].get(group, [])
+                    items.append(('-', match_key))
+                    logic[id_][group] = items
+
+                    items = logic[id_].get(group + '_hash', [])
+                    items.append(('-', fh))
+                    logic[id_][group + '_hash'] = items
+                else:
+                    items = logic[id_].get(group, [])
+                    items.append(('-', match_key))
+                    logic[id_][group] = items
+
     for fn, fh in file_add:
         match = pattern.match(fn)
         if match is None:
@@ -220,10 +261,9 @@ def construct_sql_logs(file_add, file_remove, config):
     return logic
 
 
-
 def populate_db_from_sql_logs(sql_logs):
 
-    con = sqlite3.connect(str(Path(ORGE_DIR, NAME)))
+    con = sqlite3.connect(str(Path(settings.DIR_INDEX, NAME)))
     cur = con.cursor()
 
     for each_statement in sql_logs:
@@ -245,7 +285,8 @@ if __name__ == "__main__":
     #     # "11a7936355d055bc5437d9fc7f22926ee91fced3f947491d41655fac041d6e23",
     #     # "331cc680329fdef08c5b030c651de2b624f864e16744a476078fd02fde820dfa"
     # )
-    file_add, file_remove = get_state_ops("001b32f966fea54404e0370c7f3f28933cb251e5f98463eecfb1e920d8fb7cea")
+    file_add, file_remove = get_transform_operations(
+            "001b32f966fea54404e0370c7f3f28933cb251e5f98463eecfb1e920d8fb7cea")
     result = construct_sql_logs(file_add, file_remove, TYPE4)
     import pdb; pdb.set_trace()
     # populate_db_from_sql_logs(sql_logs)

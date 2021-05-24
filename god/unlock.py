@@ -2,8 +2,6 @@ import os
 from pathlib import Path
 import shutil
 
-from constants import BASE_DIR, GOD_DIR, HASH_DIR
-
 
 def get_symlinks(root):
     """Get non-symlink files in folder `root` (recursively)
@@ -12,9 +10,14 @@ def get_symlinks(root):
         root: the path to begin checking for files.
 
     # Returns
-        <[Paths]>: list of paths to non-symlink files
+        <[Path, str]>: fn, fh
     """
     non_links = []
+    root = Path(root)
+
+    if root.is_symlink():
+        return [(root, root.resolve())]
+
     for child in os.scandir(root):
         if child.is_symlink():
             child_path = Path(child.path)
@@ -28,10 +31,20 @@ def get_symlinks(root):
 
     return non_links
 
-def unlock():
 
-    # Collect symlinks
-    symlinks = get_symlinks(BASE_DIR)   # symlink, original
+def unlock(path):
+    """Unlock path from symlinks to files
+
+    # Args
+        path <[str]>: the path to unlock, can be file or directory
+    """
+    symlinks = []
+    if isinstance(path, str):
+        path = [path]
+
+    for each_path in path:
+        # Collect symlinks
+        symlinks += get_symlinks(str(each_path))   # symlink, original
 
     # Copy files
     for symlink, original in symlinks:

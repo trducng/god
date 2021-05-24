@@ -3,7 +3,7 @@
 import sqlite3
 from pathlib import Path
 
-from god.base import (get_base_dir, GOD_DIR, OBJ_DIR, MAIN_DIR, LOG_DIR, DB_DIR)
+from god.constants import DIR_GOD, DIR_OBJ, DIR_MAIN, DIR_LOG, DIR_DB
 
 
 def init(path):
@@ -18,11 +18,11 @@ def init(path):
     """
     path = Path(path).resolve()
 
-    Path(path, GOD_DIR).mkdir(parents=True, exist_ok=True)
-    Path(path, OBJ_DIR).mkdir(parents=True, exist_ok=True)
-    Path(path, MAIN_DIR).mkdir(parents=True, exist_ok=True)
-    Path(path, LOG_DIR).mkdir(parents=True, exist_ok=True)
-    Path(path, DB_DIR).mkdir(parents=True, exist_ok=True)
+    Path(path, DIR_GOD).mkdir(parents=True, exist_ok=True)
+    Path(path, DIR_OBJ).mkdir(parents=True, exist_ok=True)
+    Path(path, DIR_MAIN).mkdir(parents=True, exist_ok=True)
+    Path(path, DIR_LOG).mkdir(parents=True, exist_ok=True)
+    Path(path, DIR_DB).mkdir(parents=True, exist_ok=True)
 
 
 if __name__ == '__main__':

@@ -3,12 +3,12 @@ import os
 from pathlib import Path
 import sqlite3
 
-from god.base import get_base_dir, get_db_dir, get_current_commit_db
+from god.base import get_base_dir, get_current_commit_db, settings
 
 
 def get_connection_cursor(db_name):
     """Get connection and cursor"""
-    con = sqlite3.connect(get_db_dir(db_name=db_name))
+    con = sqlite3.connect(str(Path(settings.DIR_DB, db_name)))
     return con, con.cursor()
 
 
@@ -21,13 +21,11 @@ def create_index_db(directories):
     # Returns
         <str>: the hash name of the index db
     """
-    base_dir = get_base_dir()
-
     directories = sorted(directories, key=lambda obj: obj[0])
     directories_text = [','.join(each) for each in directories]
 
     db_name = hashlib.sha256('\n'.join(directories_text).encode()).hexdigest()
-    db_path = Path(get_db_dir(db_name=db_name))
+    db_path = Path(settings.DIR_DB, db_name)
     if db_path.is_file():
         return db_name
 
@@ -35,7 +33,7 @@ def create_index_db(directories):
     con, cur = get_connection_cursor(db_name)
     cur.execute('CREATE TABLE dirs(path text, hash text, timestamp real)')
     for path, dh in directories:
-        timestamp = Path(base_dir, path).stat().st_mtime
+        timestamp = Path(settings.DIR_BASE, path).stat().st_mtime
         cur.execute(f'INSERT INTO dirs VALUES("{path}", "{dh}", "{timestamp}")')
     cur.execute('CREATE INDEX index_main ON dirs (path)')
 
@@ -70,7 +68,7 @@ def create_directory_db(files):
     files_text = [','.join(each) for each in files]
 
     db_name = hashlib.sha256('\n'.join(files_text).encode()).hexdigest()
-    db_path = Path(get_db_dir(db_name=db_name))
+    db_path = Path(settings.DIR_DB, db_name)
     if db_path.is_file():
         # Likely merely changing folder name
         return db_name
@@ -242,9 +240,10 @@ def get_untouched_directories(directories, db_name=None):
     sql = 'SELECT path, hash FROM dirs WHERE path NOT IN ({})'.format(
         ','.join(['?'] * len(directories)))
     result = cur.execute(sql, directories)
+    result = result.fetchall()
     con.close()
 
-    return result.fetchall()
+    return result
 
 
 def get_file_hash(file_name, cursor):
@@ -270,9 +269,10 @@ def get_files(db_name):
     """Get the files from db_name"""
     con, cur = get_connection_cursor(db_name)
     result = cur.execute(f'SELECT * FROM dirs')
+    result = result.fetchall()
     con.close()
 
-    return result.fetchall()
+    return result
 
 
 def get_removed_files(file_names, cursor):

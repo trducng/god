@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 import shutil
 
-from god.base import get_base_dir, OBJ_DIR
+from god.base import settings
 
 
 def get_nonsymlinks(path, recursive=False):
@@ -32,14 +32,13 @@ def get_nonsymlinks(path, recursive=False):
     return non_links
 
 
-def construct_symlinks(paths):
+def construct_symlinks(paths, recursive=True):
     """Construct symlinks
 
     # Args
         paths <[str]>: list of relative paths
     """
-    base_dir = get_base_dir()
-    hash_dir = Path(base_dir, OBJ_DIR)
+    dir_obj = Path(settings.DIR_OBJ)
 
     if not isinstance(paths, (list, tuple)):
         paths = [paths]
@@ -47,7 +46,7 @@ def construct_symlinks(paths):
     # collect non-symlinks
     files = []
     for each_path in paths:
-        files += get_nonsymlinks(each_path)
+        files += get_nonsymlinks(each_path, recursive=recursive)
 
     # construct hash table
     hash_table = {}
@@ -55,11 +54,12 @@ def construct_symlinks(paths):
         with open(each_file, 'rb') as f_in:
             file_hash = hashlib.sha256(f_in.read()).hexdigest()
             hash_path = f'{file_hash[:2]}/{file_hash[2:4]}/{file_hash[4:]}'
-        hash_path = hash_dir / hash_path
+        hash_path = dir_obj / hash_path
         hash_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.move(each_file, hash_path)
         sympath = Path(each_file)
         sympath.symlink_to(hash_path)
+        hash_path.chmod(0o440)
 
 
 def get_dir_detail(dir_name):
@@ -100,5 +100,5 @@ def get_hash(files):
 
 
 if __name__ == '__main__':
-    directories, non_links = get_dir_detail(get_base_dir())
+    # directories, non_links = get_dir_detail(get_base_dir())
     import pdb; pdb.set_trace()

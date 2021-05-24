@@ -1,36 +1,21 @@
 import sqlite3
-from god.constants import POINTER_FILE, DB_DIR
+from pathlib import Path
 
-
-def get_current_db():
-    if not POINTER_FILE.exists():
-        return 'main.db'
-
-    with POINTER_FILE.open('r') as f_in:
-        current_db = f_in.read().splitlines()[0]
-
-    if not current_db:
-        return 'main.db'
-
-    return current_db
-
-
-def change_index(value):
-    with POINTER_FILE.open('w') as f_out:
-        f_out.write(value)
+from god.base import settings, get_current_commit_db
 
 
 def get_history():
     """Print commit history of the data repo"""
     history = []
-    current_db = get_current_db()
+    current_db = get_current_commit_db()
     while True:
         history.append(current_db)
-        con = sqlite3.connect(str(DB_DIR / current_db))
+        con = sqlite3.connect(str(Path(settings.DIR_DB, current_db)))
         cur = con.cursor()
         current_db = cur.execute('SELECT hash FROM depend_on').fetchall()[0][0]
         con.close()
-        if current_db == 'main.db':
+        if not current_db:
+            # reach the core of history
             break
 
     for each_db in history:
