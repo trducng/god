@@ -72,7 +72,7 @@ def get_path_cols(config):
     for col_name, col_rule in COLUMNS.items():
         if not isinstance(col_rule, (dict, Settings)):
             continue
-        if col_rule.get('path', False):
+        if col_rule.get('path', False) or col_rule.get('PATH', False):
             result.append(col_name)
 
     return result
@@ -138,13 +138,93 @@ def get_columns_and_types(config):
     return cols, col_types
 
 
-def create_db(config):
+def get_primary_cols(config):
+    """Get the primary column in table, if any of these columns is deleted, the entry
+    is deleted.
+
+    # Args
+        config <dict>: orge configuration file
+
+    # Returns
+        <[str]>: list of primary column names
+    """
+    if not config.get("COLUMNS", []):
+        raise RuntimeError('No column specified in "COLUMNS"')
+
+    cols = []
+
+    for key, value in config["COLUMNS"].items():
+
+        if isinstance(value, str):  # col: col_type format
+            continue
+
+        if value.get("primary", False):  # path format
+            cols.append(key)
+            # TODO: raise or ignore if column is ManyToManyType
+            continue
+
+    return cols
+
+
+def get_db_commit(index_db_path):
+    """Get the commit hash that the index database points to
+
+    # Args
+        index_db_path <str>: the path to index database
+
+    # Returns
+        <str>: the commit hash that index database points to. Empty string '' if None
+    """
+    index_db_path = Path(index_db_path).resolve()
+    if index_db_path.exists():
+        con = sqlite3.connect(str(index_db_path))
+        cur = con.cursor()
+        result = cur.execute("SELECT commit_hash FROM depend_on").fetchall()
+        con.close()
+        if result:
+            return result[0][0]
+
+    return ""
+
+
+def load_index_db(index_db_path):
+    """Load index db into dictionary
+
+    # Args
+        index_db_path <str>: the path to index database
+
+    # Returns
+        <{id: {cols: values}}>: the index database
+    """
+    con = sqlite3.connect(str(index_db_path))
+    cur = con.cursor()
+
+    db_result = cur.execute('SELECT * FROM main LIMIT 0')
+    cols = [each[0] for each in db_result.description]
+    id_idx = cols.index('id')
+    cols = [cols[id_idx]] + cols[:id_idx] + cols[id_idx+1:]
+
+    db_result = cur.execute('SELECT * FROM main')
+    db_result = db_result.fetchall()
+    con.close()
+
+    result = {}
+    for each_db_result in db_result:
+        result[each_db_result[0]] = {
+                key: value
+                for key, value in zip(cols[1:], each_db_result[1:])
+        }
+
+    return result
+
+
+def create_index_db(config, name):
     """Create SQL database from config
 
     # Args:
         config <dict>: the configuration file
     """
-    con = sqlite3.connect(str(Path(settings.DIR_INDEX, config["NAME"])))
+    con = sqlite3.connect(str(Path(settings.DIR_INDEX, name)))
     cur = con.cursor()
 
     cols, col_types = get_columns_and_types(config)
@@ -154,7 +234,7 @@ def create_db(config):
     sql = f"CREATE TABLE main({sql})"
     cur.execute(sql)
 
-    sql = "CREATE TABLE commit(commit text)"
+    sql = "CREATE TABLE depend_on(commit_hash text)"
     cur.execute(sql)
 
     con.commit()
@@ -163,7 +243,7 @@ def create_db(config):
     return cols
 
 
-def construct_sql_logs(file_add, file_remove, config):
+def construct_sql_logs(file_add, file_remove, config, name, state):
     """Construct sql logs from the file add and file remove
 
     # Args
@@ -175,9 +255,10 @@ def construct_sql_logs(file_add, file_remove, config):
 
     # @TODO: currently it assumes that the ID exists
     """
-    pattern = re.compile(config['PATTERN'])
-    conversion_groups = get_group_rule(config)
-    path_cols = get_path_cols(config)
+    pattern = re.compile(config[name]['PATTERN'])
+    conversion_groups = get_group_rule(config[name])
+    path_cols = get_path_cols(config[name])
+    primary_cols = get_primary_cols(config[name])
 
     logic = defaultdict(dict)
     for fn, fh in file_remove:
@@ -256,9 +337,67 @@ def construct_sql_logs(file_add, file_remove, config):
                     items.append(('+', match_key))
                     logic[id_][group] = items
 
-    # construct logic
+    # construct db to compare
+    index_db_path = Path(settings.DIR_INDEX, name)
+    if index_db_path.exists():
+        commit = get_db_commit(str(index_db_path))
+        db = load_index_db(str(index_db_path))
+    else:
+        commit = None
+        db = {}
 
-    return logic
+    # sql logic
+    sql_statements = []
+    for fid, cols in logic.items():
+        if fid in db:
+            sql_statement = []
+            drop = False
+            for col_name, changes in cols.items():
+                op, value = changes[-1]
+                if op == '+' and value != db[fid][col_name]:
+                    sql_statement.append(f'{col_name} = "{value}"')
+                elif op == '-' and value != db[fid][col_name]:
+                    sql_statement.append(f'{col_name} = NULL')
+                    drop = True
+            if drop:
+                sql_statements.append(f'DELETE FROM main WHERE ID="{fid}"')
+                continue
+
+            if sql_statement:
+                sql_statements.append(
+                    f"UPDATE main SET {', '.join(sql_statement)} WHERE ID = \"{fid}\"")
+        else:
+            add_col, add_val = [], []
+            for col_name, changes in cols.items():
+                op, value = changes[-1]
+                if op == '+':
+                    add_col.append(col_name)
+                    add_val.append(f'{value}')
+            if add_col:
+                add_col = ["ID"] + add_col
+                add_val = [fid] + add_val
+                sql_statements.append(
+                    f"INSERT INTO main {tuple(add_col)} VALUES {tuple(add_val)}")
+
+    # update the database
+    if not index_db_path.exists():
+        create_index_db(config[name], name)
+
+    commit_hash = get_db_commit(str(index_db_path))
+    con = sqlite3.connect(str(index_db_path))
+    cur = con.cursor()
+    for sql_statement in sql_statements:
+        cur.execute(sql_statement)
+    con.commit()
+    if commit_hash:
+        cur.execute("DELETE FROM depend_on")
+    cur.execute(f'INSERT INTO depend_on (commit_hash) VALUES ("{state}")')
+
+    con.close()
+
+    # save the logs
+
+    return sql_statements
 
 
 def populate_db_from_sql_logs(sql_logs):
@@ -288,5 +427,4 @@ if __name__ == "__main__":
     file_add, file_remove = get_transform_operations(
             "001b32f966fea54404e0370c7f3f28933cb251e5f98463eecfb1e920d8fb7cea")
     result = construct_sql_logs(file_add, file_remove, TYPE4)
-    import pdb; pdb.set_trace()
     # populate_db_from_sql_logs(sql_logs)

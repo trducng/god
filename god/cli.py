@@ -30,8 +30,10 @@ class CLI:
         from god.logs import get_transform_operations
         settings.set_global_settings(**kwargs)
         history = get_history()
+        # file_add, file_remove = get_transform_operations(history[1])
+        # result = construct_sql_logs(file_add, file_remove, settings.INDEX, name='index', state=history[1])
         file_add, file_remove = get_transform_operations(history[1], history[0])
-        result = construct_sql_logs(file_add, file_remove, settings.CONFIG)
+        result = construct_sql_logs(file_add, file_remove, settings.INDEX, name='index', state=history[0])
         import pdb; pdb.set_trace()
 
     def unlock(self, *args, **kwargs):

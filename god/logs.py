@@ -58,7 +58,7 @@ def get_transform_operations(state1, state2=None):
     file_add, file_remove = [], []
 
     if state2 is None:
-        folders = get_untouched_directories([])
+        folders = get_untouched_directories([], db_name=state1)
         for folder_name, folder_hash in folders:
             each_files = [
                 (str(Path(folder_name, name)), h) for (name, h) in get_files(folder_hash)

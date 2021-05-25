@@ -141,6 +141,12 @@ class Settings(object):
 
         with open(path, 'r') as f_in:
             config = yaml.safe_load(f_in)
+
+            # retrieve index db configuration
+            index = config.pop("INDEX", None)
+            object.__setattr__(self, "INDEX", index)
+
+            # set setting for other configs
             self.set_values(**config)
 
     def set_global_settings(self, **kwargs):
