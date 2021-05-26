@@ -80,11 +80,22 @@ def check_directory(dir_name):
             files.append((rel_path, file_hash))
 
     # populate directory_remove
+    sub_remains = []
+    for each in directory_remain:
+        sub_remains += get_sub_directory(each, recursive=True)
+    directory_remain += sub_remains
+
+    sub_adds = []
+    for each in directory_add:
+        # not all sub-directories of directory to add are subject to be removed
+        sub_adds += get_sub_directory(each, recursive=True)
+
     sub_dir = get_sub_directory(Path(dir_name).relative_to(settings.DIR_BASE), recursive=True)
     directory_remove = [
         each for each in sub_dir
         if each not in
-        directory_remain + directory_add + [str(Path(dir_name).relative_to(settings.DIR_BASE))]]
+        directory_remain + directory_add + sub_adds +
+        [str(Path(dir_name).relative_to(settings.DIR_BASE))]]
 
     # populate file_add
     dhash = get_directory_hash(Path(dir_name).relative_to(settings.DIR_BASE))
@@ -167,8 +178,9 @@ def commit(path):
     change_index(commit_hash)
 
     # construct symlinks
-    construct_symlinks(directory_adds + directory_remains, recursive=True)
+    construct_symlinks(directory_adds, recursive=False)
     construct_symlinks(path, recursive=False)
+    construct_symlinks(directory_remains, recursive=True)
 
     return (
             directory_adds, directory_removes, directory_remains,

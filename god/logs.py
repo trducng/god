@@ -68,10 +68,10 @@ def get_transform_operations(state1, state2=None):
         return file_add, file_remove
 
     state1_dirs_hashes = sorted(
-        get_sub_directory_and_hash(".", db_name=state1), key=lambda obj: obj[0]
+        get_sub_directory_and_hash(".", recursive=True, db_name=state1), key=lambda obj: obj[0]
     )
     state2_dirs_hashes = sorted(
-        get_sub_directory_and_hash(".", db_name=state2), key=lambda obj: obj[0]
+        get_sub_directory_and_hash(".", recursive=True, db_name=state2), key=lambda obj: obj[0]
     )
 
     # examine folders

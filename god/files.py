@@ -48,9 +48,16 @@ def construct_symlinks(paths, recursive=True):
     for each_path in paths:
         files += get_nonsymlinks(each_path, recursive=recursive)
 
+    temp = {}
+    for each_file in files:
+        with open(each_file, 'rb') as f_in:
+            file_hash = hashlib.sha256(f_in.read()).hexdigest()
+            temp[str(each_file)] = file_hash
+
     # construct hash table
     hash_table = {}
     for each_file in files:
+        # each_file = str(Path(each_file).resolve())
         with open(each_file, 'rb') as f_in:
             file_hash = hashlib.sha256(f_in.read()).hexdigest()
             hash_path = f'{file_hash[:2]}/{file_hash[2:4]}/{file_hash[4:]}'

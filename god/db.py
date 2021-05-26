@@ -173,7 +173,7 @@ def get_sub_directory(directory, recursive=False, db_name=None):
     if directory == '.':
         result = cur.execute('SELECT path FROM dirs')
     else:
-        result = cur.execute('SELECT path FROM dirs WHERE path LIKE "{directory}%"')
+        result = cur.execute(f'SELECT path FROM dirs WHERE path LIKE "{directory}/%"')
     result = [each[0] for each in result.fetchall()]
     con.close()
 
@@ -207,7 +207,7 @@ def get_sub_directory_and_hash(directory, recursive=False, db_name=None):
     if directory == '.':
         result = cur.execute('SELECT path, hash FROM dirs')
     else:
-        result = cur.execute('SELECT path, hash FROM dirs WHERE path LIKE "{directory}%"')
+        result = cur.execute(f'SELECT path, hash FROM dirs WHERE path LIKE "{directory}/%"')
 
     result = result.fetchall()
     con.close()

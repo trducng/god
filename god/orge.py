@@ -52,7 +52,7 @@ TYPE4 = {
         "id": "INTERGER",
         "class": "TEXT",
         "location": {"path": True, "conversion_group": ("switch_", ".pbdata")},
-        "3d_mask": {"path": True, "conversion_group": ("switch_", "/geometry.pbdata")},
+        "mask_3d": {"path": True, "conversion_group": ("switch_", "/geometry.pbdata")},
         "input": {"path": True, "conversion_group": ("switch_", "/video.MOV")}
     }
 }
@@ -94,8 +94,10 @@ def get_group_rule(config):
             continue
         if 'conversion_group' not in col_rule:
             continue
-        group_name, group_val = col_rule['conversion_group']
-        if isinstance(group_val, str):
+
+        group_name = list(col_rule['conversion_group'].keys())[0]
+        group_val = list(col_rule['conversion_group'].values())[0]
+        if not isinstance(group_val, (list, tuple)):
             result[group_name][group_val] = col_name
         else:
             for each_group_val in group_val:
@@ -262,6 +264,8 @@ def construct_sql_logs(file_add, file_remove, config, name, state):
 
     logic = defaultdict(dict)
     for fn, fh in file_remove:
+        if fn == '.godconfig.yml':
+            continue
         match = pattern.match(fn)
         if match is None:
             continue
@@ -300,6 +304,8 @@ def construct_sql_logs(file_add, file_remove, config, name, state):
                     logic[id_][group] = items
 
     for fn, fh in file_add:
+        if fn == '.godconfig.yml':
+            continue
         match = pattern.match(fn)
         if match is None:
             continue
@@ -356,9 +362,10 @@ def construct_sql_logs(file_add, file_remove, config, name, state):
                 op, value = changes[-1]
                 if op == '+' and value != db[fid][col_name]:
                     sql_statement.append(f'{col_name} = "{value}"')
-                elif op == '-' and value != db[fid][col_name]:
+                elif op == '-':
+                    if col_name in primary_cols:
+                        drop = True
                     sql_statement.append(f'{col_name} = NULL')
-                    drop = True
             if drop:
                 sql_statements.append(f'DELETE FROM main WHERE ID="{fid}"')
                 continue
@@ -392,6 +399,7 @@ def construct_sql_logs(file_add, file_remove, config, name, state):
     if commit_hash:
         cur.execute("DELETE FROM depend_on")
     cur.execute(f'INSERT INTO depend_on (commit_hash) VALUES ("{state}")')
+    con.commit()
 
     con.close()
 
