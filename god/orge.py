@@ -231,13 +231,22 @@ def create_index_db(config, name):
 
     cols, col_types = get_columns_and_types(config)
 
-    sql = [f"{col} {col_type}" for (col, col_type) in zip(cols, col_types)]
+    sql = [
+        f"{col} {col_type}"
+        for (col, col_type) in zip(cols, col_types)
+        if col_types != "MANY"
+    ]
+
     sql = ", ".join(sql)
     sql = f"CREATE TABLE main({sql})"
     cur.execute(sql)
 
     sql = "CREATE TABLE depend_on(commit_hash text)"
     cur.execute(sql)
+
+    for col, col_type in zip(cols, col_types):
+        if col_type == "MANY":
+            cur.execute(f"CREATE TABLE {col}(id TEXT, value TEXT)")
 
     con.commit()
     con.close()

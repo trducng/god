@@ -45,6 +45,16 @@ class CLI:
         result = search(settings.INDEX, index, columns, **kwargs)
         import pdb; pdb.set_trace()
 
+    def update(self, index, operation, target, **kwargs):
+        """Update feature attributes
+
+        god update index add folder --features risk
+        """
+        from god.update import update
+        settings.set_global_settings()
+        result = update(target, operation, settings.INDEX, index, **kwargs)
+        import pdb; pdb.set_trace()
+
     def unlock(self, *args, **kwargs):
         """Unlock file from symlink to normal"""
         cwd = Path.cwd()
