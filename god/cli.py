@@ -36,6 +36,15 @@ class CLI:
         result = construct_sql_logs(file_add, file_remove, settings.INDEX, name='index', state=history[0])
         import pdb; pdb.set_trace()
 
+    def search(self, index=None, columns=None, **kwargs):
+        from god.search import search
+        settings.set_global_settings()
+        if columns is not None:
+            columns = columns.split(',')
+
+        result = search(settings.INDEX, index, columns, **kwargs)
+        import pdb; pdb.set_trace()
+
     def unlock(self, *args, **kwargs):
         """Unlock file from symlink to normal"""
         cwd = Path.cwd()
