@@ -41,12 +41,23 @@ class CLI:
         Example usage:
             god search index --col1 "value1||value2" --col2 "valuea"
         """
+        import time
         from god.search import search
         settings.set_global_settings()
         if columns is not None:
             columns = columns.split(',')
 
         result = search(settings.INDEX, index, columns, **kwargs)
+        with Path(settings.DIR_CWD, 'god.godsnap').open('w') as f_out:
+            query = ','.join(f'{key}:{value}' for key, value in kwargs.items())
+            f_out.write(f'# Time: {time.time()}\n')
+            f_out.write(f'# Index: {index}\n')
+            f_out.write(f'# Query: {query}\n')
+            f_out.write('='*88)
+            for each in result:
+                f_out.write('\n')
+                f_out.write(','.join(each))
+
         import pdb; pdb.set_trace()
 
     def update(self, index, operation, target, **kwargs):
@@ -66,6 +77,16 @@ class CLI:
         cwd = Path.cwd()
         path = [str(cwd / each) for each in args]
         unlock(path)
+
+    # def snap(self, operation, file_path, name):
+    def snap(self, operation):
+        from god.snap import add, list_snap
+        settings.set_global_settings()
+        # file_path = Path(file_path).resolve()
+        if operation == 'add':
+            print(add(file_path, name))
+        elif operation == 'list':
+            print(list_snap())
 
     def check(self, **kwargs):
         from god.base import Settings

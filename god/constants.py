@@ -19,6 +19,7 @@ DIR_GOD = ".god"
 DIR_OBJ = f"{DIR_GOD}/objects"
 DIR_MAIN = f"{DIR_GOD}/main"
 DIR_INDEX = f"{DIR_GOD}/index"
+DIR_SNAP = f"{DIR_GOD}/snap"
 
 DIR_LOG = f"{DIR_MAIN}/logs"
 DIR_DB = f"{DIR_MAIN}/db"
