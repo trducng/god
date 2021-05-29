@@ -26,7 +26,7 @@ def get_files(path, recursive=False):
             if child.name == '.god':
                 continue
             if recursive:
-                files += get_files(child.path)
+                files += get_files(child.path, recursive=recursive)
         else:
             files.append(child.path)
 
@@ -94,7 +94,7 @@ def update(target, operation, config, index=None, **kwargs):
     for fn in files:
         if fn == '.godconfig.yml':
             continue
-        match = pattern.match(fn)
+        match = pattern.match(str(Path(fn).relative_to(settings.DIR_BASE)))
         if match is None:
             continue
         file_ids.append(match.group('id'))

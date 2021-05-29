@@ -86,7 +86,36 @@ def search_raw_query(db_name, query):
     return result
 
 
-def parse_condition_from_kwargs(**kwargs):
+def separate_main_feature_cols(config, **kwargs):
+    """Separate main and feature columns
+
+    # Args
+        config <{}>: the index configuration
+        **kwargs <{}>: the column: query
+
+    # Returns
+        <{}>: the column: query for main
+        <{}>: the column: query for features
+    """
+    feature_cols = []
+    for key, value in config['COLUMNS'].items():
+            if isinstance(value, str):
+                continue
+            if value.get('type', None) == 'MANY':
+                feature_cols.append(key)
+    feature_cols = set(feature_cols)
+
+    main_queries, feature_queries = {}, {}
+    for key, value in kwargs.items():
+        if key in feature_cols:
+            feature_queries[key] = value
+        else:
+            main_queries[key] = value
+
+    return main_queries, feature_queries
+
+
+def parse_main_conditions(**kwargs):
     """Parse the query from user-supplied keyword arguments
 
     Example queryes:
@@ -104,9 +133,9 @@ def parse_condition_from_kwargs(**kwargs):
         queries = []
         for temp_query in temp_queries:
             if '*' in temp_query:
-                queries.append(f"{key} LIKE '{temp_query.replace('*', '%')}'")
+                queries.append(f"main.{key} LIKE '{temp_query.replace('*', '%')}'")
             else:
-                queries.append(f"{key} = '{temp_query}'")
+                queries.append(f"main.{key} = '{temp_query}'")
 
         query = ' OR '.join(queries)
         if len(queries) > 1:
@@ -117,16 +146,46 @@ def parse_condition_from_kwargs(**kwargs):
     return ' AND '.join(query_components)
 
 
+def parse_feature_conditions(**kwargs):
+    """Parse the query from user-supplied keyword arguments
+
+    Example queryes:
+        col="human||bike%"
+
+    # Arg
+        **kwargs <{}>: user-suplied keyword arguments
+
+    # Returns
+        <str>: sql query
+    """
+    query_components = []
+    for key, value in kwargs.items():
+        temp_queries = value.split('||')
+        queries = []
+        for temp_query in temp_queries:
+            if '*' in temp_query:
+                queries.append(f"{key}.value LIKE '{temp_query.replace('*', '%')}'")
+            else:
+                queries.append(f"{key}.value = '{temp_query}'")
+
+        query = ' OR '.join(queries)
+        if len(queries) > 1:
+            query_components.append(f'({query})')
+        else:
+            query_components.append(query)
+
+    return ' AND '.join(query_components)
+
 def search(config, index=None, columns=None, **kwargs):
-    """Provide the search functionality
+    """Retrieve instances in index that match with query in **kwargs {col: query}
 
     # Args
         config <{}>: the index configuration
         index <str>: the index name to search, otherwise the default one in config
         columns <[str]>: the columns to retrieve, otherwise the default one in config
-        **kwargs <{}>: the argument to retrieve file
+        **kwargs <{}>: the argument to retrieve file ("col": "value")
 
-    # Returns:
+    # Returns
         <[[str]]>: the list of result, in list form
     """
     if index is None:
@@ -139,15 +198,32 @@ def search(config, index=None, columns=None, **kwargs):
         temp_columns = []
         path_cols = get_path_cols(config[index])
         for column in columns:
-            temp_columns.append(column)
+            temp_columns.append(f'main.{column}')
             if column in path_cols:
-                temp_columns.append(f'{column}_hash')
+                temp_columns.append(f'main.{column}_hash')
         columns = temp_columns
 
     columns = ', '.join(columns) if columns else '*'
 
-    conditions = parse_condition_from_kwargs(**kwargs)
-    sql_query = f"SELECT {columns} FROM main WHERE {conditions}"
+    # investigate queries
+    main_queries, feature_queries = separate_main_feature_cols(config[index], **kwargs)
+
+    main_conditions = parse_main_conditions(**main_queries)
+    feature_conditions = parse_feature_conditions(**feature_queries)
+
+    if feature_queries:
+        joins = []
+        for key in feature_queries.keys():
+            joins.append(f'INNER JOIN {key} ON main.id = {key}.id')
+        joins = ' '.join(joins)
+        conditions = (
+            ' AND '.join([main_conditions, feature_conditions])
+            if main_conditions
+            else feature_conditions)
+        sql_query = f'SELECT {columns} FROM main {joins} WHERE {conditions}'
+    else:
+        conditions = main_conditions
+        sql_query = f"SELECT {columns} FROM main WHERE {conditions}"
 
     return search_raw_query(index, sql_query)
 

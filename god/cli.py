@@ -37,6 +37,10 @@ class CLI:
         import pdb; pdb.set_trace()
 
     def search(self, index=None, columns=None, **kwargs):
+        """
+        Example usage:
+            god search index --col1 "value1||value2" --col2 "valuea"
+        """
         from god.search import search
         settings.set_global_settings()
         if columns is not None:
@@ -49,10 +53,12 @@ class CLI:
         """Update feature attributes
 
         god update index add folder --features risk
+
+        @TODO: problem because of * expansion in zsh shell
         """
         from god.update import update
         settings.set_global_settings()
-        result = update(target, operation, settings.INDEX, index, **kwargs)
+        result = update(str(target), operation, settings.INDEX, index, **kwargs)
         import pdb; pdb.set_trace()
 
     def unlock(self, *args, **kwargs):
