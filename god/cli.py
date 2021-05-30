@@ -10,7 +10,33 @@ from god.history import get_history
 from god.unlock import unlock
 
 
+class SnapCLI:
+
+    def add(self, file_path, name):
+        from god.snap import add
+        settings.set_global_settings()
+        file_path = Path(file_path).resolve()
+        print(add(file_path, name))
+
+    def ls(self):
+        from god.snap import ls
+        settings.set_global_settings()
+        print(ls())
+
+    def compare(self, name1, name2):
+        from god.snap import compare
+        settings.set_global_settings()
+        add, remove, update = compare(name1, name2)
+        import pdb; pdb.set_trace()
+
+    def refresh(self, name1):
+        pass
+
+
 class CLI:
+
+    def __init__(self):
+        self.snap = SnapCLI()
 
     def init(self, path='.', **kwargs):
         """Initiate the repo"""
@@ -77,16 +103,6 @@ class CLI:
         cwd = Path.cwd()
         path = [str(cwd / each) for each in args]
         unlock(path)
-
-    # def snap(self, operation, file_path, name):
-    def snap(self, operation):
-        from god.snap import add, list_snap
-        settings.set_global_settings()
-        # file_path = Path(file_path).resolve()
-        if operation == 'add':
-            print(add(file_path, name))
-        elif operation == 'list':
-            print(list_snap())
 
     def check(self, **kwargs):
         from god.base import Settings
