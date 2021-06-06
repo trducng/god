@@ -6,6 +6,28 @@ import shutil
 from god.base import settings
 
 
+def get_file_hash(file_):
+    """Calculate file hash"""
+    with open(file_, 'rb') as f_in:
+        file_hash = hashlib.sha256(f_in.read()).hexdigest()
+
+    return file_hash
+
+
+def get_string_hash(string):
+    """Get string hash
+
+    # Args:
+        string <str>: the input string
+
+    # Returns:
+        <str>: hash value of the string
+    """
+    return hashlib.sha256(string.encode()).hexdigest()
+
+"""
+OLD
+"""
 def get_nonsymlinks(path, recursive=False):
     """Get non-symlink files in folder `path` (recursively)
 

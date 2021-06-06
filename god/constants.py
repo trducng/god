@@ -1,29 +1,21 @@
-"""God constants"""
-
-# BASE_DIR = Path("/home/john/datasets/god-test/type4").resolve()
-# # BASE_DIR = "/home/john/datasets/imagenet/object_localization/temp"
-
-# GOD_DIR = Path(BASE_DIR,  ".god")
-# HASH_DIR = Path(GOD_DIR, "objects")
-# MAIN_DIR = Path(GOD_DIR, 'main')
-# LOG_DIR = Path(MAIN_DIR, 'logs')
-# DB_DIR = Path(MAIN_DIR, 'db')
-# POINTER_FILE = Path(MAIN_DIR, 'pointers')
-# MAIN_DB = 'main.db'
-# CACHE_TEMP_DIR = Path(MAIN_DIR, 'cache')
-
-# ORGE_DIR = Path(BASE_DIR, ".godorge")
+"""Default constants used inside gods"""
+from pathlib import Path
 
 DIR_GOD = ".god"
 
-DIR_OBJ = f"{DIR_GOD}/objects"
-DIR_MAIN = f"{DIR_GOD}/main"
-DIR_INDEX = f"{DIR_GOD}/index"
-DIR_SNAP = f"{DIR_GOD}/snap"
+DIR_COMMITS = str(Path(DIR_GOD, "commits"))
+DIR_COMMITS_DIRECTORY = str(Path(DIR_COMMITS, "dirs"))
 
-DIR_LOG = f"{DIR_MAIN}/logs"
-DIR_DB = f"{DIR_MAIN}/db"
-DIR_CACHE = f"{DIR_MAIN}/cache"
-FILE_POINTER = f"{DIR_MAIN}/pointers"
+DIR_RECORDS = str(Path(DIR_GOD, "records"))
+DIR_RECORDS_LOG = str(Path(DIR_RECORDS, "logs"))
+DIR_RECORDS_DB = str(Path(DIR_RECORDS, "db"))
+DIR_RECORDS_CACHE = str(Path(DIR_RECORDS, "cache"))
 
-FILE_CONFIG = ".godconfig.yml"
+DIR_SNAPS = str(Path(DIR_GOD, "snapshots"))
+
+DEFAULT_DIR_OBJECTS = str(Path(DIR_GOD, "objects"))
+
+FILE_HEAD = str(Path(DIR_GOD, "HEAD"))
+FILE_INDEX = str(Path(DIR_GOD, "index"))
+FILE_RECORD = ".godrecord"
+FILE_CONFIG = ".godconfig"

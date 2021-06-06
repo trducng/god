@@ -265,16 +265,6 @@ def get_file_hash(file_name, cursor):
     return result[0][1]
 
 
-def get_files(db_name):
-    """Get the files from db_name"""
-    con, cur = get_connection_cursor(db_name)
-    result = cur.execute(f'SELECT * FROM dirs')
-    result = result.fetchall()
-    con.close()
-
-    return result
-
-
 def get_removed_files(file_names, cursor):
     """Get files in DB that are not in `file_names`
 

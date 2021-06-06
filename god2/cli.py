@@ -3,11 +3,11 @@ from pathlib import Path
 
 import fire
 
-from god2.init import init
-from god2.commit import commit
-from god2.base import settings
-from god2.history import get_history
-from god2.unlock import unlock
+from god.init import init
+from god.commit import commit
+from god.base import settings
+from god.history import get_history
+from god.unlock import unlock
 
 
 class SnapCLI:

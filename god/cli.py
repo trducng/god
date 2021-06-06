@@ -8,6 +8,7 @@ from god.commit import commit
 from god.base import settings
 from god.history import get_history
 from god.unlock import unlock
+from god.porcelain import init_cmd
 
 
 class SnapCLI:
@@ -40,7 +41,7 @@ class CLI:
 
     def init(self, path='.', **kwargs):
         """Initiate the repo"""
-        init(path)
+        init_cmd(path)
 
     def commit(self, path, **kwargs):
         """Run the commit function"""
