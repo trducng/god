@@ -34,11 +34,6 @@ def create_blank_index(path):
     con.close()
 
 
-def create_index(path, commit_id):
-    """Create the index from commit_id"""
-    pass
-
-
 class Index:
     """The index file"""
 
@@ -66,13 +61,15 @@ class Index:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.stop()
 
-    def get_files(self, dir_hash, files=None, get_remove=True):
+    def get_files(self, dir_hash, files=None, get_remove=True, not_in=False):
         """Get files from db with hash
 
         # Args:
             dir_hash <str>: the directory hash
             files <[str]>: list of file names (excluding path)
             get_remove <bool>: whether to retrieve files marked as removed
+            not_in <bool>: only available when `files` is not None, if True,
+                retrieve all filse that are not `files`
 
         # Returns
             <[(str, str, str, float)]>: filename, hash, mhash, timestamp
@@ -81,10 +78,11 @@ class Index:
         if files:
             if isinstance(files, str):
                 files = [files]
-            conditions.append(f"name IN ({','.join(['?'] * len(files))})")
+            exclude = "NOT IN" if not_in else "IN"
+            conditions.append(f"name {exclude} ({','.join(['?'] * len(files))})")
 
         if not get_remove:
-            conditions.append("NOT remove=1")
+            conditions.append("(remove IS NULL OR NOT remove=1)")
 
         conditions = f" WHERE {' AND '.join(conditions)}" if conditions else ""
 
@@ -113,6 +111,50 @@ class Index:
 
         return "", ""
 
+    def get_sub_directories(self, directory, recursive=False, get_remove=True):
+        """Get record sub-directories in `index`
+
+        # Args:
+            directory <str>: the name of the directory (relative to `BASE_DIR`)
+            recursive <bool>: whether to look for sub-directories recursively
+            get_remove <bool>: whether to retrieve sub-directories marked as removed
+
+        # Returns:
+            <[(str, str, str, float, int)]>: directory name, hash, mhash, timestamp,
+                remove
+        """
+        conditions = []
+        if not get_remove:
+            conditions.append("(remove IS NULL OR NOT remove=1)")
+
+        if directory != ".":
+            conditions.append(f"name LIKE '{directory}/%'")
+
+        conditions = f" WHERE {' AND '.join(conditions)}" if conditions else ""
+        result = self.cur.execute(f"SELECT * FROM dirs{conditions}").fetchall()
+
+        if recursive:
+            return result
+
+        return [each for each in result if str(Path(each[0]).parent) == directory]
+
+    def is_table_exist(self, tb_name):
+        """Check if table already exists
+
+        # Args:
+            tb_name <str>: the name of table
+
+        # Returns:
+            <bool>: True if table exists, False otherwise
+        """
+        result = self.cur.execute(
+            f"SELECT name FROM sqlite_master WHERE type='table' AND name='{tb_name}'"
+        ).fetchall()
+
+        if result:
+            return True
+        return False
+
     def create_files_table(self, files, dir_name, dir_tst, modified=False):
         """Create files table
 
@@ -128,6 +170,13 @@ class Index:
         hash_col = "mhash" if modified else "hash"
         tb_name = f"dirs_{dir_hash}"
 
+        if self.is_table_exist(tb_name):
+            # if table already exists, then it contains all good files and 
+            # TODO: might not be the case, 2 folders can have exactly the same set
+            # of files at some point, after that they begin to diverge
+            # The previous logic can apply to commit but cannot apply to `index` table
+            return
+
         self.cur.execute(f"CREATE TABLE {tb_name}({', '.join(INDEX_DIRECTORY_COLS)})")
         self.cur.execute(f"CREATE INDEX index_{dir_hash} ON {tb_name} (name)")
         self.con.commit()
@@ -135,15 +184,17 @@ class Index:
         for fn, fh, tst in files:
             self.cur.execute(
                 f"INSERT INTO {tb_name} (name, {hash_col}, tstamp) VALUES (?, ?, ?)",
-                (fn, fh, tst)
+                (fn, fh, tst),
             )
         self.cur.execute(
             f"INSERT INTO dirs (name, mhash, tstamp) VALUES (?, ?, ?)",
-            (dir_name, dir_hash, dir_tst)
+            (dir_name, dir_hash, dir_tst),
         )
         self.con.commit()
 
-    def update_files_tables(self, add_files, update_files, remove_files, dir_name, dir_tst):
+    def update_files_tables(
+        self, add_files, update_files, remove_files, dir_name, dir_tst
+    ):
         """Update the files tables
 
         # Args:
@@ -160,7 +211,7 @@ class Index:
         for fn, mfh, tst in add_files:
             self.cur.execute(
                 f"INSERT INTO {tb_name} (name, mhash, tstamp) VALUES (?, ?, ?)",
-                (fn, mfh, tst)
+                (fn, mfh, tst),
             )
 
         for fn, mfh, tst in update_files:
@@ -198,9 +249,35 @@ class Index:
         )
         self.cur.execute(f"ALTER TABLE {tb_name}_ RENAME TO dirs_{new_dir_hash}")
         self.cur.execute(f"DROP INDEX index_{dhash}")
-        self.cur.execute(f"CREATE INDEX index_{new_dir_hash} ON dirs_{new_dir_hash} (name)")
+        self.cur.execute(
+            f"CREATE INDEX index_{new_dir_hash} ON dirs_{new_dir_hash} (name)"
+        )
         self.con.commit()
 
-    def _close_context(self):
-        self.con.close()
-        self.con, self.cur = None, None
+    def update_dirs_tables(self, update_dirs=[], remove_dirs=[]):
+        """Update the `dirs` table in `index`
+
+        # Args:
+            update_dirs <[(str, str, float)>: each contain name, hash and tstamp
+            remove_dirs <[str]>: each contain name
+        """
+        for dn, mdh, tst in update_dirs:
+            self.cur.execute(
+                f"UPDATE dirs SET mhash='{mdh}', tstamp={tst} WHERE name='{dn}'"
+            )
+
+        if remove_dirs:
+            self.cur.execute(
+                f"UPDATE dirs SET remove=1 WHERE "
+                f"name IN ({','.join(['?'] * len(remove_dirs))})",
+                remove_dirs,
+            )
+
+        self.con.commit()
+
+if __name__ == "__main__":
+    from pprint import pprint
+
+    with Index("/home/john/temp/add_god/index1") as index:
+        sub_dirs = index.get_sub_directories("folder1/abc/xyz", recursive=False)
+        pprint(sub_dirs)
