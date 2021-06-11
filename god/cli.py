@@ -4,10 +4,10 @@ from pathlib import Path
 import fire
 
 from god.init import init
-from god.commit import commit
-from god.base import settings
-from god.history import get_history
-from god.unlock import unlock
+# from god.commit import commit
+# from god.base import settings
+# from god.history import get_history
+# from god.unlock import unlock
 from god.porcelain import init_cmd
 
 
