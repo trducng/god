@@ -7,6 +7,14 @@ import yaml
 import god.constants as c
 
 
+_MUST_EXIST = [c.DIR_GOD, c.FILE_HEAD]
+_DEFAULT_CONFIG = {
+    'OBJECTS': {
+        'STORAGE': 'local',
+    }
+}
+
+
 def get_base_dir(path=None):
     """Get `god` base dir from `path`
 
@@ -20,11 +28,10 @@ def get_base_dir(path=None):
         path = Path.cwd().resolve()
 
     current_path = Path(path).resolve()
-    must_exist = [c.DIR_GOD, c.DIR_OBJ, c.DIR_MAIN]
 
     while True:
         fail = False
-        for each_must in must_exist:
+        for each_must in _MUST_EXIST:
             if not (current_path / each_must).exists():
                 fail = True
                 break
@@ -69,6 +76,81 @@ def get_current_commit_db(base_path=None):
         current_db = f_in.read().splitlines()[0]
 
     return current_db
+
+
+def read_HEAD(file_head):
+    """Get current refs and snapshots from HEAD
+
+    # Args:
+        file_head <str>: path to file head
+
+    # Returns:
+        <str>: branch reference
+        <str>: snapshot name
+    """
+    with open(file_head, 'r') as f_in:
+        config = yaml.safe_load(f_in)
+
+    return config.get("REFS", "main"), config.get("SNAPSHOTS", "")
+
+
+def parse_dot_notation_to_dict(notation, value, upper=True):
+    """Parse dot notation to dictionary
+
+    Example:
+        >> parse_dot_notation_to_dict('abc.xyz': 10)
+        { "ABC": { "XYZ", 10 }}
+
+    # Args:
+        notation <str>: the dot notation
+        value <Any>: value
+        upper <bool>: whether to uppercase the key
+
+    # Returns:
+        <{}>: the parsed dictionary
+    """
+    components = notation.split('.')
+    components = list(reversed(components))
+    if upper:
+        components = [_.upper() for _ in components]
+
+    result = {components[0]: value}
+    for item in components[1:]:
+        result = {item: result}
+
+    return result
+
+
+def update_local_config(config_path, config_dict):
+    """Write the config out to YAML file
+
+    # Args:
+        config_path <str|Path>: the path to config file
+        config_dict <{}>: the configuration
+    """
+    settings = read_local_config(config_path)
+    for key, value in config_dict.items():
+        parsed_value = parse_dot_notation_to_dict(key, value)
+        settings.set_values(**parsed_value)
+
+    settings = settings.as_dict()
+    with open(config_path, 'w') as f_out:
+        yaml.dump(settings, f_out)
+
+
+def read_local_config(config_path):
+    """Read values from local config into dictionary
+
+    # Args:
+        config_path <str>: path to config path
+
+    # Returns:
+        <Settings>: the setting object
+    """
+    settings = Settings()
+    if Path(config_path).is_file():
+        settings.set_values_from_yaml(config_path)
+    return settings
 
 
 @dataclass(frozen=True)
@@ -143,16 +225,17 @@ class Settings(object):
             config = yaml.safe_load(f_in)
 
             # retrieve index db configuration
-            index = config.pop("INDEX", None)
-            object.__setattr__(self, "INDEX", index)
+            index = config.pop("RECORDS", None)
+            object.__setattr__(self, "RECORDS", index)
 
             # set setting for other configs
             self.set_values(**config)
 
-    def set_global_settings(self, **kwargs):
+    def set_global_settings(self, dir_base=None, **kwargs):
         """Set global settings"""
         if self._initialized:
             raise AttributeError("Setting has been initiated, cannot be re-initiated")
+        dir_base = get_base_dir() if dir_base is None else dir_base
 
         # set the system-level settings
         system_config = Path('/etc', c.FILE_CONFIG[1:])
@@ -164,8 +247,13 @@ class Settings(object):
         if user_config.exists():
             self.set_values_from_yaml(user_config)
 
-        # set the project-level settings
-        project_config = Path(get_base_dir(), c.FILE_CONFIG)
+        # set the project-shared-remote-level settings
+        project_config = Path(dir_base, c.FILE_CONFIG)
+        if project_config.exists():
+            self.set_values_from_yaml(project_config)
+
+        # set the project-local-level settings
+        project_config = Path(dir_base, c.FILE_LOCAL_CONFIG)
         if project_config.exists():
             self.set_values_from_yaml(project_config)
 
@@ -174,8 +262,12 @@ class Settings(object):
             if key.upper() in self._PARAM_ALLOWED_SETTINGS:
                 self.set_values(**{key: value})
 
+        # set the HEAD settings
+        head_file = Path(dir_base, c.FILE_LOCAL_CONFIG)
+        if head_file.exists():
+            self.set_values_from_yaml(head_file)
+
         # set directory configs
-        dir_base = get_base_dir()
         for each_var in dir(c):
             constants = {"DIR_BASE": dir_base, "DIR_CWD": str(Path.cwd())}
             if each_var.isupper():
@@ -189,6 +281,29 @@ class Settings(object):
         """Iterate key and value config"""
         for each_item in self.values:
             yield each_item, getattr(self, each_item)
+
+    def as_list(self, list_):
+        result = []
+        for each_item in list_:
+            if isinstance(each_item, Settings):
+                result.append(each_item.as_dict())
+            elif isinstance(each, (list, tuple)):
+                result.append(self.as_list(each_item))
+            else:
+                result.append(each_item)
+        return result
+
+    def as_dict(self):
+        """Return a dictionary representation of the setting"""
+        result = {}
+        for each_item in self.values:
+            value = self.__getattribute__(each_item)
+            if isinstance(value, Settings):
+                value = value.as_dict()
+            elif isinstance(value, (list, tuple)):
+                value = self.as_list(value)
+            result[each_item] = value
+        return result
 
     def get(self, key, default):
         """Get config value"""
@@ -244,5 +359,6 @@ class Settings(object):
         settings.set_values(**result)
 
         return settings
+
 
 settings = Settings()

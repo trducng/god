@@ -5,10 +5,10 @@ import fire
 
 from god.init import init
 # from god.commit import commit
-# from god.base import settings
+from god.base import settings
 # from god.history import get_history
 # from god.unlock import unlock
-from god.porcelain import init_cmd
+from god.porcelain import init_cmd, add_cmd, commit_cmd, config_cmd
 
 
 class SnapCLI:
@@ -43,10 +43,31 @@ class CLI:
         """Initiate the repo"""
         init_cmd(path)
 
-    def commit(self, path, **kwargs):
+    def config(self, op, **kwargs):
+        """View, update the config
+
+        # Args
+            op <str>: can be 'list', 'list-local', 'add'
+            **kwargs <{}>: config value to be updated
+        """
+        settings.set_global_settings()
+        result = config_cmd(op, **kwargs)
+        if op != 'add':
+            print(result)
+
+    def add(self, *paths, **kwargs):
+        """Add files and directories to staging area
+
+        # Args
+            *paths <[str]>: list of paths
+        """
+        settings.set_global_settings()
+        add_cmd(paths)
+
+    def commit(self, message, **kwargs):
         """Run the commit function"""
         settings.set_global_settings()
-        commit(path)
+        commit_cmd(message)
 
     def logs(self, **kwargs):
         settings.set_global_settings(**kwargs)
@@ -106,15 +127,8 @@ class CLI:
         unlock(path)
 
     def check(self, **kwargs):
-        from god.base import Settings
-        from god.commit import play_with_setting
-        # settings1 = Settings()
-        # settings1.set_values_from_yaml('/home/john/temp/god/config4.yml')
-        # settings2 = Settings()
-        # settings2.set_values_from_yaml('/home/john/temp/god/config3.yml')
-        # print(settings1 + settings2)
-        settings.set_global_settings(debug=True)
-        print(settings)
+        from pprint import pprint
+        pprint(kwargs)
         import pdb; pdb.set_trace()
 
     def debug(self, command, *args, **kwargs):

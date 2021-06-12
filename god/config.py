@@ -25,3 +25,7 @@ def write_config(path, config_dict):
     """
     with open(path, 'w') as f_out:
         yaml.dump(config_dict, f_out)
+
+
+def list_config(path):
+    pass

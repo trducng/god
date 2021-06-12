@@ -358,6 +358,28 @@ class Index:
 
         return result
 
+    def get_files_info(self, remove=True):
+        """Get files inside an index
+
+        # Args
+            remove <bool>: whether to retrieve file marked as removed
+
+        # Returns
+            <[(str, str, str, int, str, str, float)]>: name, hash, mhash, remove,
+                shash, smash, sremove, timestamp
+        """
+        conditions = []
+        if not remove:
+            conditions.append("NOT remove=1 OR remove IS NULL")
+
+        conditions = " AND ".join(conditions)
+        conditions = f" WHERE {conditions}" if conditions else ""
+
+        sql = f"SELECT * FROM dirs{conditions}"
+        result = self.cur.execute(sql).fetchall()
+
+        return result
+
     def update(self, add=[], update=[], remove=[], reset_tst=[], unset_mhash=[]):
         """Update the `index`
 
@@ -398,6 +420,23 @@ class Index:
 
         self.con.commit()
 
+    def construct_index_from_files_hashes_tsts(self, files):
+        """Construct the index based
+
+        # Args:
+            files <[str, str, float]>: relative filepath, hash, timestamp
+        """
+        # reset the table
+        self.cur.execute("DELETE FROM dirs")
+        self.con.commit()
+
+        # add new records
+        for fn, fh, tst in files:
+            self.cur.execute(
+                f"INSERT INTO dirs (name, hash, tstamp) VALUES (?, ?, ?)",
+                (fn, fh, tst),
+            )
+        self.con.commit()
 
 if __name__ == "__main__":
     from pprint import pprint

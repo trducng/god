@@ -6,6 +6,7 @@ from god.constants import (
     DIR_GOD,
     DIR_COMMITS, DIR_COMMITS_DIRECTORY,
     DIR_RECORDS, DIR_RECORDS_LOG, DIR_RECORDS_DB, DIR_RECORDS_CACHE,
+    DIR_REFS, DIR_REFS_HEADS,
     DIR_SNAPS,
     DEFAULT_DIR_OBJECTS,
     FILE_HEAD, FILE_CONFIG, FILE_INDEX
@@ -13,6 +14,7 @@ from god.constants import (
 from god.exceptions import RepoExisted
 from god.config import write_config, DEFAULT_CONFIG
 from god.index import create_blank_index
+from god.refs import update_ref
 
 
 def repo_exists(path):
@@ -65,12 +67,16 @@ def init(path):
     Path(path, DIR_RECORDS_DB).mkdir(parents=True, exist_ok=True)
     Path(path, DIR_RECORDS_CACHE).mkdir(parents=True, exist_ok=True)
 
+    Path(path, DIR_REFS).mkdir(parents=True, exist_ok=True)
+    Path(path, DIR_REFS_HEADS).mkdir(parents=True, exist_ok=True)
+
     Path(path, DIR_SNAPS).mkdir(parents=True, exist_ok=True)
 
     Path(path, DEFAULT_DIR_OBJECTS).mkdir(parents=True, exist_ok=True)
 
     # Create file
-    Path(path, FILE_HEAD).touch()
+    with Path(path, FILE_HEAD).open('w') as f_out:
+        f_out.write({"REFS": "main"})
     write_config(Path(path, FILE_CONFIG), DEFAULT_CONFIG)
     create_blank_index(Path(path, FILE_INDEX))
 

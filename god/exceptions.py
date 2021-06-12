@@ -5,3 +5,7 @@ class RepoExisted(Exception):
 class FileExisted(Exception):
     """Operations that cannot create file if file already exists"""
     pass
+
+class InvalidUserParams(Exception):
+    """Invalid supplied params"""
+    pass

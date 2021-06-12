@@ -3,7 +3,7 @@ import uuid
 from collections import defaultdict
 from pathlib import Path
 
-from god.files import get_file_hash
+from god.files import get_file_hash, copy_objects_with_hashes
 from god.index import Index
 from god.paths import (
     organize_files_by_prefix_with_tstamp,
@@ -141,7 +141,7 @@ def add_dirs(dirs, index_path, base_dir):
     add_files_from_files_dirs(files_dirs, index_path, base_dir)
 
 
-def add(fds, index_path, base_dir):
+def add(fds, index_path, dir_obj, base_dir):
     """Add the files and directories to staging area
 
     This function handles add, update and removal of existing files
@@ -159,6 +159,7 @@ def add(fds, index_path, base_dir):
     # Args:
         fds <str>: the directory to add (absolute path)
         index_path <str>: path to index file
+        dir_ob <str>: the path to object directory
         base_dir <str>: project base directory
     """
     base_dir = Path(base_dir).resolve()
@@ -244,6 +245,18 @@ def add(fds, index_path, base_dir):
                     continue
 
                 update.append((str(Path(each_dir, fn)), fh, path_files[fn]))
+
+        # copy files to objects directory
+        copy_objects_with_hashes(
+            [(each[0], each[1]) for each in add],
+            dir_obj,
+            base_dir
+        )
+        copy_objects_with_hashes(
+            [(each[0], each[1]) for each in update],
+            dir_obj,
+            base_dir
+        )
 
         index.update(add, update, remove, reset_tst, unset_mhash)
 

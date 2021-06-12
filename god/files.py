@@ -128,6 +128,31 @@ def get_hash(files):
     return hashes
 
 
+def copy_objects_with_hashes(files, dir_obj, base_dir):
+    """Construct symlinks
+
+    # Args
+        files <[(str, str)]>: list of relative paths and hash value
+        dir_obj <str>: the path to object directory
+        base_dir <str>: the path to base directory
+    """
+    dir_obj = Path(dir_obj).resolve()
+    base_dir = Path(base_dir).resolve()
+
+    if not isinstance(files, (list, tuple)):
+        files = [files]
+
+    # construct hash table
+    for fn, fh in files:
+        fn = Path(base_dir, fn)
+        hash_path = f'{fh[:2]}/{fh[2:4]}/{fh[4:]}'
+        hash_path = dir_obj / hash_path
+        hash_path.parent.mkdir(parents=True, exist_ok=True)
+        if hash_path.is_file():
+            continue
+        shutil.copy(fn, hash_path)
+        hash_path.chmod(0o440)
+
 if __name__ == '__main__':
     # directories, non_links = get_dir_detail(get_base_dir())
     import pdb; pdb.set_trace()
