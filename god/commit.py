@@ -45,6 +45,23 @@ def calculate_commit_hash(commit_obj):
     return get_string_hash("\n".join(items))
 
 
+def read_commit(commit_id, commit_dir):
+    """Read commit information
+
+    # Args:
+        commit_id <str>: commit id
+        commit_dir <str|Path>: the path to commit
+
+    # Returns:
+        <{}>: commit information
+    """
+    path = Path(commit_dir, commit_id)
+    with path.open('r') as f_in:
+        commit_obj = yaml.safe_load(f_in)
+
+    return commit_obj
+
+
 def commit(user, email, message, prev_commit, index_path, commit_dir, commit_dirs_dir):
     """Commit from staging area
 

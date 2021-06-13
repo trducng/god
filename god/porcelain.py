@@ -6,7 +6,7 @@ from rich import print
 
 from god.add import add, status
 from god.base import settings, read_local_config, update_local_config, read_HEAD
-from god.commit import commit
+from god.commit import commit, read_commit
 from god.exceptions import InvalidUserParams
 from god.init import repo_exists, init
 from god.refs import get_ref, update_ref
@@ -128,3 +128,18 @@ def commit_cmd(message):
     )
 
     update_ref(refs, current_commit, settings.DIR_REFS_HEADS)
+
+
+def log_cmd():
+    """Print out repository history"""
+    refs, _ = read_HEAD(settings.FILE_HEAD)
+    commit_id = get_ref(refs, settings.DIR_REFS_HEADS)
+
+    while commit_id:
+        commit_obj = read_commit(commit_id, settings.DIR_COMMITS)
+        print(f"[yellow]commit {commit_id}[/]")
+        print(f"Author: {commit_obj['user']} <{commit_obj['email']}>")
+        print()
+        print(f"\t{commit_obj['message']}")
+        print()
+        commit_id = commit_obj["prev"]
