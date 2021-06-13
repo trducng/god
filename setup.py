@@ -16,6 +16,7 @@ setuptools.setup(
     install_requires=[
         "pyyaml",
         "fire",
+        "rich"
     ],
     scripts=["bin/god"],
     python_requires=">=3",

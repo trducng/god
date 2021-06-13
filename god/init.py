@@ -12,7 +12,6 @@ from god.constants import (
     FILE_HEAD, FILE_CONFIG, FILE_INDEX
 )
 from god.exceptions import RepoExisted
-from god.config import write_config, DEFAULT_CONFIG
 from god.index import create_blank_index
 from god.refs import update_ref
 
@@ -77,7 +76,6 @@ def init(path):
     # Create file
     with Path(path, FILE_HEAD).open('w') as f_out:
         f_out.write({"REFS": "main"})
-    write_config(Path(path, FILE_CONFIG), DEFAULT_CONFIG)
     create_blank_index(Path(path, FILE_INDEX))
 
 

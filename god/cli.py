@@ -8,7 +8,7 @@ from god.init import init
 from god.base import settings
 # from god.history import get_history
 # from god.unlock import unlock
-from god.porcelain import init_cmd, add_cmd, commit_cmd, config_cmd
+from god.porcelain import init_cmd, add_cmd, commit_cmd, config_cmd, status_cmd
 
 
 class SnapCLI:
@@ -54,6 +54,13 @@ class CLI:
         result = config_cmd(op, **kwargs)
         if op != 'add':
             print(result)
+
+    def status(self, *paths, **kwargs):
+        """View repo status"""
+        settings.set_global_settings()
+        if not paths:
+            paths = ['.']
+        status_cmd(paths)
 
     def add(self, *paths, **kwargs):
         """Add files and directories to staging area
