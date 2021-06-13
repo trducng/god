@@ -162,14 +162,14 @@ def track_working_changes(fds, index_path, base_dir, get_remove=True):
                     continue
 
                 fh = get_file_hash(Path(base_dir, each_dir, fn))
-                if fh == index_files[fn][2]:
+                if fh == index_files[fn][1]:
                     # equal modified file hash
                     reset_tst.append((str(Path(each_dir, fn)), path_files[fn]))
                     continue
 
-                if fh == index_files[fn][1]:
+                if fh == index_files[fn][0]:
                     reset_tst.append((str(Path(each_dir, fn)), path_files[fn]))
-                    if index_files[fn][2]:
+                    if index_files[fn][1]:
                         # reset to commit, update the timestamp
                         unset_mhash.append(str(Path(each_dir, fn)))
                     continue

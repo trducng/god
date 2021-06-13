@@ -70,6 +70,7 @@ def copy_hashed_objects_to_files(files, dir_obj, base_dir):
         hash_path = dir_obj / hash_path
 
         shutil.copy(hash_path, fn)
+        fn.chmod(0o664)
 
 def get_objects_tst(objects, dir_obj):
     """Get objects timestamp
