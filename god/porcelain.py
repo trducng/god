@@ -4,7 +4,7 @@ from pathlib import Path
 
 from rich import print
 
-from god.add import add, status
+from god.add import add, status, restore_staged
 from god.base import settings, read_local_config, update_local_config, read_HEAD
 from god.commit import commit, read_commit
 from god.exceptions import InvalidUserParams
@@ -143,3 +143,16 @@ def log_cmd():
         print(f"\t{commit_obj['message']}")
         print()
         commit_id = commit_obj["prev"]
+
+
+def restore_staged_cmd(paths):
+    """Restore files from the staging area to the working area
+
+    # Args:
+        paths <[str]>: list of paths
+    """
+    if not paths:
+        raise InvalidUserParams("Must supply paths to files or directories")
+
+    paths = [str(Path(_).resolve()) for _ in paths]
+    restore_staged(paths, settings.FILE_INDEX, settings.DEFAULT_DIR_OBJECTS, settings.DIR_BASE)

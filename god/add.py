@@ -3,7 +3,7 @@ import uuid
 from collections import defaultdict
 from pathlib import Path
 
-from god.files import get_file_hash, copy_objects_with_hashes
+from god.files import get_file_hash, copy_objects_with_hashes, get_objects_tst
 from god.index import Index
 from god.paths import (
     separate_paths_to_files_dirs,
@@ -49,8 +49,7 @@ def track_staging_changes(fds, index_path, base_dir):
                 elif entry[2]:
                     if entry[1] is None:
                         add.append(entry[0])
-                elif entry[2]:
-                    if entry[2] != entry[1]:
+                    elif entry[2] != entry[1]:
                         update.append(entry[0])
 
     return add, update, remove
@@ -192,7 +191,13 @@ def add(fds, index_path, dir_obj, base_dir):
     copy_objects_with_hashes([(each[0], each[1]) for each in update], dir_obj, base_dir)
 
     with Index(index_path) as index:
-        index.update(add, update, remove, reset_tst, unset_mhash)
+        index.update(
+            add=add,
+            update=update,
+            remove=remove,
+            reset_tst=reset_tst,
+            unset_mhash=unset_mhash,
+        )
 
 
 def status(fds, index_path, base_dir):
@@ -220,3 +225,39 @@ def status(fds, index_path, base_dir):
         reset_tst,
         unset_mhash,
     )
+
+
+def restore_staged(fds, index_path, dir_obj, base_dir):
+    """Restore files from the staging area to the working area
+
+    This operation will:
+        - Delete index entries that are newly added
+        - Remove `mhash` in index for entries that are updated
+        - Revert `timestamp` to ones in the index
+        - Unmark `remove` to NULL for entries that are marked removed
+
+    # Args:
+        fds <str>: the directory to add (absolute path)
+        index_path <str>: path to index file
+        dir_obj <str>: the path to object directory
+        base_dir <str>: project base directory
+    """
+    stage_add, stage_update, stage_remove = track_staging_changes(
+        fds, index_path, base_dir
+    )
+
+    with Index(index_path) as index:
+
+        # get original time of files in staging areas
+        stage_hashes = [
+            _[1] for _ in index.get_files_info(files=stage_update)
+        ]
+        tsts = get_objects_tst(stage_hashes, dir_obj)
+        reset_tst = list(zip(stage_update, tsts))
+
+        index.update(
+            reset_tst=reset_tst,
+            unset_mhash=stage_update,
+            unset_remove=stage_remove,
+            delete=stage_add
+        )

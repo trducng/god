@@ -10,7 +10,15 @@ from god.base import settings
 
 # from god.history import get_history
 # from god.unlock import unlock
-from god.porcelain import init_cmd, add_cmd, commit_cmd, config_cmd, status_cmd, log_cmd
+from god.porcelain import (
+    init_cmd,
+    add_cmd,
+    commit_cmd,
+    config_cmd,
+    status_cmd,
+    log_cmd,
+    restore_staged_cmd,
+)
 
 
 class SnapCLI:
@@ -85,6 +93,13 @@ class CLI:
         """Print out history of the god repository"""
         settings.set_global_settings(**kwargs)
         log_cmd()
+
+    def restore(self, *paths, **kwargs):
+        """Restore files state"""
+        settings.set_global_settings(**kwargs)
+        staged = kwargs.pop('staged', False)
+        if staged:
+            restore_staged_cmd(paths)
 
     def index(self, **kwargs):
         from god.orge import construct_sql_logs

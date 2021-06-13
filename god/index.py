@@ -79,40 +79,59 @@ class Index:
         if not get_remove:
             conditions.append("(NOT remove=1 OR remove IS NULL)")
 
-        if name != '.':
-            conditions.append(f"(name='name' OR name LIKE '{name}/%')")
+        if name != ".":
+            conditions.append(f"(name='{name}' OR name LIKE '{name}/%')")
 
         conditions = " AND ".join(conditions)
-        conditions = f" WHERE {conditions}"  if conditions else ""
+        conditions = f" WHERE {conditions}" if conditions else ""
 
         sql = f"SELECT * FROM dirs{conditions}"
 
         return self.cur.execute(sql).fetchall()
 
-
-    def get_files_info(self, remove=True):
+    def get_files_info(self, files=None, get_remove=True, not_in=False):
         """Get files inside an index
 
         # Args
-            remove <bool>: whether to retrieve file marked as removed
+            files <[str]>: list of file names (excluding path)
+            get_remove <bool>: whether to retrieve files marked as removed
+            not_in <bool>: only available when `files` is not None, if True,
+                retrieve all filse that are not `files`
 
         # Returns
             <[(str, str, str, int, str, str, int, float)]>: name, hash, mhash, remove,
                 shash, smash, sremove, timestamp
         """
         conditions = []
-        if not remove:
-            conditions.append("NOT remove=1 OR remove IS NULL")
+        if files is not None:
+            if isinstance(files, str):
+                files = [files]
+            exclude = "NOT IN" if not_in else "IN"
+            conditions.append(f"name {exclude} ({','.join(['?'] * len(files))})")
 
-        conditions = " AND ".join(conditions)
-        conditions = f" WHERE {conditions}" if conditions else ""
+        if not get_remove:
+            conditions.append("(remove IS NULL OR NOT remove=1)")
+
+        conditions = f" WHERE {' AND '.join(conditions)}" if conditions else ""
 
         sql = f"SELECT * FROM dirs{conditions}"
-        result = self.cur.execute(sql).fetchall()
+        if files is not None:
+            result = self.cur.execute(sql, files)
+        else:
+            result = self.cur.execute(sql)
 
-        return result
+        return result.fetchall()
 
-    def update(self, add=[], update=[], remove=[], reset_tst=[], unset_mhash=[]):
+    def update(
+        self,
+        add=[],
+        update=[],
+        remove=[],
+        reset_tst=[],
+        unset_mhash=[],
+        unset_remove=[],
+        delete=[]
+    ):
         """Update the `index`
 
         # Args:
@@ -121,12 +140,14 @@ class Index:
             remove <[str]>: name
             reset_tst <[str, float]>: name, tstamp
             unset_mhash <[str]>: name
+            unset_remove <[str]>: name
+            delete <[str]>: name of entries to delete
         """
         if unset_mhash:
             self.cur.execute(
                 f"UPDATE dirs SET mhash=NULL WHERE "
                 f"name IN ({','.join(['?'] * len(unset_mhash))})",
-                unset_mhash
+                unset_mhash,
             )
 
         if remove:
@@ -134,6 +155,13 @@ class Index:
                 f"UPDATE dirs SET remove=1 WHERE "
                 f"name IN ({','.join(['?'] * len(remove))})",
                 remove,
+            )
+
+        if unset_remove:
+            self.cur.execute(
+                f"UPDATE dirs SET remove=NULL WHERE "
+                f"name IN ({','.join(['?'] * len(unset_remove))})",
+                unset_remove,
             )
 
         for fn, tst in reset_tst:
@@ -148,6 +176,13 @@ class Index:
             self.cur.execute(
                 f"INSERT INTO dirs (name, mhash, tstamp) VALUES (?, ?, ?)",
                 (fn, mfh, tst),
+            )
+
+        if delete:
+            self.cur.execute(
+                f"DELETE FROM dirs WHERE "
+                f"name in ({','.join(['?'] * len(delete))})",
+                delete
             )
 
         self.con.commit()
@@ -169,4 +204,3 @@ class Index:
                 (fn, fh, tst),
             )
         self.con.commit()
-
