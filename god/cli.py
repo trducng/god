@@ -18,6 +18,7 @@ from god.porcelain import (
     status_cmd,
     log_cmd,
     restore_staged_cmd,
+    restore_working_cmd
 )
 
 
@@ -100,6 +101,8 @@ class CLI:
         staged = kwargs.pop('staged', False)
         if staged:
             restore_staged_cmd(paths)
+        else:
+            restore_working_cmd(paths)
 
     def index(self, **kwargs):
         from god.orge import construct_sql_logs

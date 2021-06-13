@@ -3,7 +3,13 @@ import uuid
 from collections import defaultdict
 from pathlib import Path
 
-from god.files import get_file_hash, copy_objects_with_hashes, get_objects_tst
+from god.files import (
+    get_file_hash,
+    copy_objects_with_hashes,
+    get_objects_tst,
+    copy_hashed_objects_to_files,
+    get_files_tst,
+)
 from god.index import Index
 from god.paths import (
     separate_paths_to_files_dirs,
@@ -249,9 +255,7 @@ def restore_staged(fds, index_path, dir_obj, base_dir):
     with Index(index_path) as index:
 
         # get original time of files in staging areas
-        stage_hashes = [
-            _[1] for _ in index.get_files_info(files=stage_update)
-        ]
+        stage_hashes = [_[1] for _ in index.get_files_info(files=stage_update)]
         tsts = get_objects_tst(stage_hashes, dir_obj)
         reset_tst = list(zip(stage_update, tsts))
 
@@ -259,5 +263,36 @@ def restore_staged(fds, index_path, dir_obj, base_dir):
             reset_tst=reset_tst,
             unset_mhash=stage_update,
             unset_remove=stage_remove,
-            delete=stage_add
+            delete=stage_add,
         )
+
+
+def restore_working(fds, index_path, dir_object, base_dir):
+    """Revert modified and deleted files from working area to last commit
+
+    This operation only applies to unstaged changes.
+    This operation will:
+        - In case file is modified, use the version from commit, and modify index
+        timestamp
+        - In case file is deleted, use the version from commit, and modify index
+        timestamp
+        - In case file is added, leave it untouched
+
+    # Args:
+        fds <str>: the directory to add (absolute path)
+        index_path <str>: path to index file
+        dir_obj <str>: the path to object directory
+        base_dir <str>: project base directory
+    """
+    _, update, remove, _, _ = track_working_changes(
+        fds, index_path, base_dir, get_remove=False
+    )
+
+    restore = [_[0] for _ in update] + remove
+    with Index(index_path) as index:
+        restore_hashes = [_[1] for _ in index.get_files_info(files=restore)]
+        copy_hashed_objects_to_files(
+            list(zip(restore, restore_hashes)), dir_object, base_dir
+        )
+        tsts = get_files_tst(restore, base_dir)
+        index.update(reset_tst=list(zip(restore, tsts)))

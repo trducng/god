@@ -51,6 +51,26 @@ def copy_objects_with_hashes(files, dir_obj, base_dir):
         shutil.copy(fn, hash_path)
         hash_path.chmod(0o440)
 
+
+def copy_hashed_objects_to_files(files, dir_obj, base_dir):
+    """Copy hashed objects to files
+
+    # Args
+        files <[(str, str)]>: list of relative paths and hash value
+        dir_obj <str>: the path to object directory
+        base_dir <str>: the path to base directory
+    """
+    dir_obj = Path(dir_obj).resolve()
+    base_dir = Path(base_dir).resolve()
+
+    for fn, fh in files:
+        fn = Path(base_dir, fn)
+        fn.parent.mkdir(parents=True, exist_ok=True)
+        hash_path = f'{fh[:2]}/{fh[2:4]}/{fh[4:]}'
+        hash_path = dir_obj / hash_path
+
+        shutil.copy(hash_path, fn)
+
 def get_objects_tst(objects, dir_obj):
     """Get objects timestamp
 
@@ -64,6 +84,22 @@ def get_objects_tst(objects, dir_obj):
         tsts.append(path.stat().st_mtime)
     return tsts
 
+
+def get_files_tst(files, base_dir):
+    """Get files timestamps
+
+    # Args:
+        files <[str|Path>: list of file paths relative to `base_dir`
+        base_dir <str|Path>: project base directory
+
+    # Returns:
+        <[float]>: list of timestamps
+    """
+    tsts = []
+    for f in files:
+        path = Path(base_dir, f)
+        tsts.append(path.stat().st_mtime)
+    return tsts
 
 """
 OLD
