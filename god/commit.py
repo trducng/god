@@ -62,6 +62,94 @@ def read_commit(commit_id, commit_dir):
     return commit_obj
 
 
+def get_files_hashes_in_commit_dir(dir_id, commit_dirs_dir, prefix=None):
+    """Get files and hashes in a commit
+
+    # Args:
+        dir_id <str>: commit id
+        commit_dirs_dir <str|Path>: the path to dirs directory
+        prefix <str>: the prefix to file
+
+    # Returns:
+        <{str: str}> fn and hashes
+    """
+    with Path(commit_dirs_dir, dir_id).open('r') as f_in:
+        lines = f_in.read().splitlines()
+
+    prefix = Path('.') if prefix is None else Path(prefix)
+    result = {}
+    for each_line in lines:
+        components = each_line.split(',')
+        fn = ','.join(components[:-1])
+        result[str(Path(prefix, fn))] = components[-1]
+
+    return result
+
+
+def get_files_hashes_in_commit(commit_id, commit_dir, commit_dirs_dir):
+    """Get files and hashes in a commit
+
+    # Args:
+        commit_id <str>: commit id
+        commit_dir <str|Path>: the path to commit directory
+        commit_dirs_dir <str|Path>: the path to dirs directory
+
+    # Returns:
+        <{str: str}>: fn and hashes
+    """
+    commit_obj = read_commit(commit_id, commit_dir)
+    result = {}
+    for prefix, dir_id in commit_obj['objects'].items():
+        result.update(
+            get_files_hashes_in_commit_dir(dir_id, commit_dirs_dir, prefix=prefix)
+        )
+
+    return result
+
+
+def get_transform_operation(commit1, commit2, commit_dir, commit_dirs_dir):
+    """Get add and remove operations to transform from state1 to state2
+
+    The files from state1 to state2 are as follow:
+        - Same path - Same hash -> Ignore
+        - Same path - Different hash -> commit2 is added, commit1 is removed
+        - Commit1 doesn't have - commit2 has -> Files are added
+        - Commit1 has - Commit2 doesn't have -> Files are moved
+
+    The output of this function serves:
+        - file_add: add these files to the table in the new commit
+        - file_remove: remove these files from the table in the new commit
+
+    # Args
+        commit1 <str>: the hash of commit 1
+        commit2 <str>: the hash of commit 2. If None, this is the first time.
+        commit_dir <str|Path>: the path to commit directory
+        commit_dirs_dir <str|Path>: the path to dirs directory
+
+    # Returns
+        <[]>: files newly added (recursively)
+        <[]>: files newly removed (recursively)
+    """
+    files_hashes1 = get_files_hashes_in_commit(commit1, commit_dir, commit_dirs_dir)
+    files_hashes2 = get_files_hashes_in_commit(commit2, commit_dir, commit_dirs_dir)
+    fns1 = set(files_hashes1.keys())
+    fns2 = set(files_hashes2.keys())
+
+    add = {each: files_hashes2[each] for each in list(fns2.difference(fns1))}
+    remove = {each: files_hashes1[each] for each in list(fns1.difference(fns2))}
+
+    remain = list(fns2.intersection(fns1))
+    for fn in remain:
+        h1 = files_hashes1[fn]
+        h2 = files_hashes2[fn]
+        if h1 != h2:
+            add[fn] = h2
+            remove[fn] = h1
+
+    return add, remove
+
+
+
 def commit(user, email, message, prev_commit, index_path, commit_dir, commit_dirs_dir):
     """Commit from staging area
 
@@ -131,12 +219,21 @@ def commit(user, email, message, prev_commit, index_path, commit_dir, commit_dir
 
 
 if __name__ == '__main__':
-    commit(
-        user="johntd54",
-        email="trungduc1992@gmail.com",
-        message="Initial commit",
-        prev_commit="",
-        index_path='/home/john/datasets/dogs-cats/.god/index',
-        commit_dir='/data/datasets/dogs-cats/.god/commits',
-        commit_dirs_dir='/data/datasets/dogs-cats/.god/commits/dirs'
+    # commit(
+    #     user="johntd54",
+    #     email="trungduc1992@gmail.com",
+    #     message="Initial commit",
+    #     prev_commit="",
+    #     index_path='/home/john/datasets/dogs-cats/.god/index',
+    #     commit_dir='/data/datasets/dogs-cats/.god/commits',
+    #     commit_dirs_dir='/data/datasets/dogs-cats/.god/commits/dirs'
+    # )
+    add, remove = get_transform_operation(
+        'e349dbd65901205e92c1fee824f04dba676cdd14a12fd23fc38b06b5090ab6bb',
+        '9414caec8e5bdb681939ea1b380a16ab29bb8739af275fcdc4802f3ae424e7f2',
+        '/data/datasets/dogs-cats/.god/commits',
+        '/data/datasets/dogs-cats/.god/commits/dirs'
     )
+    import pdb; pdb.set_trace()
+    print(len(add))
+    print(len(remove))
