@@ -92,7 +92,7 @@ def read_HEAD(file_head):
         config = yaml.safe_load(f_in)
 
     return (
-        config.get("REFS", "main"),
+        config.get("REFS", None),
         config.get("SNAPSHOTS", None),
         config.get("COMMITS", None),
     )

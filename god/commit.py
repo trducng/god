@@ -12,6 +12,7 @@ import shutil
 import yaml
 
 from god.base import change_index, settings
+from god.exceptions import InvalidUserParams
 from god.files import get_string_hash
 from god.index import Index
 
@@ -216,6 +217,28 @@ def commit(user, email, message, prev_commit, index_path, commit_dir, commit_dir
         index.construct_index_from_files_hashes_tsts(files)
 
     return commit_hash
+
+
+def is_commit(start, commit_dir):
+    """Check if there any commit starts with `start`
+
+    # Args:
+        start <str>: the starting pattern
+        commit_dir <str|Path>: directory that stores commits
+
+    # Returns:
+        <str>: matched commit, else None, or raise if there are more than 1 match
+    """
+    result = []
+    commits = [each.stem for each in Path(commit_dir).glob("*") if each.stem != 'dirs']
+    for each in commits:
+        if each.startswith(start):
+            result.append(each)
+
+    if len(result) > 1:
+        raise InvalidUserParams(f"Ambiguous commits: {', '.join(result)}")
+    elif len(result) == 1:
+        return result[0]
 
 
 if __name__ == '__main__':

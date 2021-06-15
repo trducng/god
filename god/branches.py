@@ -5,14 +5,14 @@ import shutil
 import uuid
 
 from god.base import read_HEAD, update_HEAD
-from god.commit import get_transform_operations
+from god.commit import get_transform_operations, read_commit
 from god.exceptions import OperationNotPermitted
 from god.files import (
     get_file_hash,
     copy_objects_with_hashes,
-    get_objects_tst,
     copy_hashed_objects_to_files,
     get_files_tst,
+    get_objects_tst,
     separate_paths_to_files_dirs,
     retrieve_files_info,
     filter_common_parents,
@@ -20,6 +20,8 @@ from god.files import (
 )
 from god.index import Index
 from god.refs import get_ref, update_ref
+
+
 
 
 def track_staging_changes(fds, index_path, base_dir):
@@ -309,6 +311,7 @@ def _checkout_between_commits(
     index_path,
     obj_dir,
     base_dir,
+    move_files=True
 ):
     """Perform checkout from commit1 to commit2
 
@@ -332,6 +335,7 @@ def _checkout_between_commits(
         index_path <str>: path to index file
         obj_dir <str>: the path to object directory
         base_dir <str>: project base directory
+        move_files <bool>: if true, move files in working directory to match index
     """
     # get staged and unstaged information
     stage_add, stage_update, stage_remove, add, update, remove, _, _ = status(
@@ -349,23 +353,29 @@ def _checkout_between_commits(
     # ignore operations involving unstaged files
     skips = set([_[0] for _ in add] + [_[0] for _ in update] + remove)
 
-    # remove files
-    for fp in remove_ops.keys():
-        if fp in skips:
-            continue
-        Path(base_dir, fp).unlink()
+    if move_files:
+        # remove files
+        for fp in remove_ops.keys():
+            if fp in skips:
+                continue
+            Path(base_dir, fp).unlink()
 
-    # add files
-    add = [(fp, fh) for fp, fh in add_ops.items() if fp not in skips]
-    copy_hashed_objects_to_files(add, obj_dir, base_dir)
+        # add files
+        add = [(fp, fh) for fp, fh in add_ops.items() if fp not in skips]
+        copy_hashed_objects_to_files(add, obj_dir, base_dir)
 
     # construct index
-    add_fps = add_ops.keys()
-    add_fhs = add_ops.values()
-    tsts = get_files_tst(add_fps, base_dir)
+    add_fps = list(add_ops.keys())
+    add_fhs = list(add_ops.values())
+    if move_files:
+        tsts = get_files_tst(add_fps, base_dir)
+    else:
+        tsts = get_objects_tst(add_fhs, obj_dir)
+
     with Index(index_path) as index:
         index.update(
-            new_entries=list(zip(add_fps, add_fhs, tsts)), delete=list(remove_ops.keys())
+            new_entries=list(zip(add_fps, add_fhs, tsts)),
+            delete=list(remove_ops.keys()),
         )
 
 
@@ -380,7 +390,8 @@ def checkout(
     commit1=None,
     commit2=None,
     branch1=None,
-    branch2=None):
+    branch2=None,
+):
     """Perform checkout from commit1/branch1 to commit2/branch2
 
     # Args
@@ -416,6 +427,7 @@ def checkout(
         index_path,
         obj_dir,
         base_dir,
+        move_files=True
     )
 
     if branch2:
@@ -438,3 +450,52 @@ def checkout_new_branch(branch, commit_id, ref_dir, head_file):
 
     update_ref(branch, commit_id, ref_dir)
     update_HEAD(head_file, REFS=branch, COMMITS=None)
+
+
+def reset(
+    head_past,
+    hard,
+    commit_dir,
+    commit_dirs_dir,
+    index_path,
+    obj_dir,
+    ref_dir,
+    base_dir,
+    head_file,
+):
+    """Reset branch to previous commit
+
+    # Args
+        head_past <int>: the upper history to reset to
+        hard <bool> if true, complete convert to history, else changed files to unstaged
+        commit_dir <str|Path>: the path to commit directory
+        commit_dirs_dir <str|Path>: the path to dirs directory
+        index_path <str>: path to index file
+        obj_dir <str>: the path to object directory
+        ref_dir <str>: the path to refs directory
+        base_dir <str>: project base directory
+        head_file <str>: path to HEAD file
+    """
+    refs, _, _ = read_HEAD(head_file)
+
+    # collect the commit
+    commit1 = get_ref(refs, ref_dir)
+    commit2 = commit1
+    for idx in range(head_past):
+        commit_obj = read_commit(commit2, commit_dir)
+        commit2 = commit_obj["prev"]
+
+    # construct index and optionally revert files
+    _checkout_between_commits(
+        commit1,
+        commit2,
+        commit_dir,
+        commit_dirs_dir,
+        index_path,
+        obj_dir,
+        base_dir,
+        move_files=False
+    )
+
+    # update branch ref
+    update_ref(refs, commit2, ref_dir)

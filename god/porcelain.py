@@ -11,12 +11,13 @@ from god.branches import (
     restore_working,
     checkout,
     checkout_new_branch,
+    reset,
 )
 from god.base import settings, read_local_config, update_local_config, read_HEAD
-from god.commit import commit, read_commit
+from god.commit import commit, read_commit, is_commit
 from god.exceptions import InvalidUserParams
 from god.init import repo_exists, init
-from god.refs import get_ref, update_ref
+from god.refs import get_ref, update_ref, is_ref
 
 
 def init_cmd(path):
@@ -62,7 +63,11 @@ def status_cmd(paths):
     ) = status(paths, settings.FILE_INDEX, settings.DIR_BASE)
 
     refs, snapshot, commits = read_HEAD(settings.FILE_HEAD)
-    print(f"On branch {refs}")
+
+    if refs:
+        print(f"On branch {refs}")
+    if commits:
+        print(f"On detached commit {commits}")
     if snapshot:
         print(f"\tUsing snapshot {snapshot}")
 
@@ -196,7 +201,16 @@ def checkout_cmd(branch, new=False):
             branch, commit_id, settings.DIR_REFS_HEADS, settings.FILE_HEAD
         )
     else:
-        refs, _, _ = read_HEAD(settings.FILE_HEAD)
+        refs, _, commit1 = read_HEAD(settings.FILE_HEAD)  # start
+
+        branch2 = branch if is_ref(branch, settings.DIR_REFS_HEADS) else None
+        commit2 = is_commit(branch, settings.DIR_COMMITS)
+
+        if commit2 is None and branch2 is None:
+            raise InvalidUserParams(
+                f"Cannot find branch or commit that match '{branch}'"
+            )
+
         checkout(
             settings.DIR_COMMITS,
             settings.DIR_COMMITS_DIRECTORY,
@@ -205,5 +219,29 @@ def checkout_cmd(branch, new=False):
             settings.DIR_REFS_HEADS,
             settings.DIR_BASE,
             settings.FILE_HEAD,
+            commit1=commit1,
+            commit2=commit2,
             branch1=refs,
-            branch2=branch)
+            branch2=branch2,
+        )
+
+
+def reset_cmd(head_past, hard=False):
+    """Reset branch to previous commit
+
+    # Args:
+        head_past <str>: the head past, of format HEAD^x, where x is an integer
+        hard <bool>: if true, complete convert to commit_id
+    """
+    head_past = int(head_past.split("^")[-1])
+    reset(
+        head_past,
+        hard,
+        settings.DIR_COMMITS,
+        settings.DIR_COMMITS_DIRECTORY,
+        settings.FILE_INDEX,
+        settings.DEFAULT_DIR_OBJECTS,
+        settings.DIR_REFS_HEADS,
+        settings.DIR_BASE,
+        settings.FILE_HEAD,
+    )

@@ -19,11 +19,13 @@ from god.porcelain import (
     log_cmd,
     restore_staged_cmd,
     restore_working_cmd,
-    checkout_cmd
+    checkout_cmd,
+    reset_cmd
 )
 
 
 class SnapCLI:
+
     def add(self, file_path, name):
         from god.snap import add
 
@@ -51,6 +53,8 @@ class SnapCLI:
 
 
 class CLI:
+    """Command line interface for `god`"""
+
     def __init__(self):
         self.snap = SnapCLI()
 
@@ -115,6 +119,17 @@ class CLI:
         settings.set_global_settings()
         new = kwargs.pop('new', False)
         checkout_cmd(branch, new)
+
+    def reset(self, head_past, *arg, **kwargs):
+        """Reset the repository to `commit_id`
+
+        # Args:
+            head_past <str>: the head past, of format HEAD^x, where x is an integer
+            hard <bool>: if true, complete convert to commit_id
+        """
+        settings.set_global_settings()
+        hard = kwargs.pop('hard', False)
+        reset_cmd(head_past, hard)
 
 
     def index(self, **kwargs):
