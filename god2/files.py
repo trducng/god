@@ -109,3 +109,22 @@ def get_hash(files):
 if __name__ == '__main__':
     # directories, non_links = get_dir_detail(get_base_dir())
     import pdb; pdb.set_trace()
+
+    # simplify some add and op operations with move
+    # reverse_add_ops, reverse_remove_ops can dup since hashes are not unique
+    reverse_add_ops = {value: key for key, value in add_ops.items()}
+    reverse_remove_ops = {value: key for key, value in remove_ops.items()}
+    add_hashes = set(add_ops.values())
+    remove_hashes = set(remove_ops.values())
+    move_hashes = list(add_hashes.intersection(remove_hashes))
+    move = {}   # from: to
+    for mh in move_hashes:
+        fr = reverse_remove_ops[mh]
+        to = reverse_add_ops[mh]
+        remove_ops.pop(fr)
+        add_ops.pop(to)
+        move[fr] = to
+
+    # move files
+    for fr, to in move.items():
+        shutil.move(Path(base_dir, fr), Path(base_dir, to))

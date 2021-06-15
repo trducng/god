@@ -9,8 +9,8 @@ import god.constants as c
 
 _MUST_EXIST = [c.DIR_GOD, c.FILE_HEAD]
 _DEFAULT_CONFIG = {
-    'OBJECTS': {
-        'STORAGE': 'local',
+    "OBJECTS": {
+        "STORAGE": "local",
     }
 }
 
@@ -88,10 +88,37 @@ def read_HEAD(file_head):
         <str>: branch reference
         <str>: snapshot name
     """
-    with open(file_head, 'r') as f_in:
+    with open(file_head, "r") as f_in:
         config = yaml.safe_load(f_in)
 
-    return config.get("REFS", "main"), config.get("SNAPSHOTS", "")
+    return (
+        config.get("REFS", "main"),
+        config.get("SNAPSHOTS", None),
+        config.get("COMMITS", None),
+    )
+
+
+def update_HEAD(file_head, **kwargs):
+    """Update HEAD reference
+
+    # Args:
+        file_head <str>: path to file head
+        ref <str>: reference name
+    """
+    with open(file_head, "r") as f_in:
+        config = yaml.safe_load(f_in)
+
+    config.update(kwargs)
+
+    # remove unnecessary entries
+    keys = list(config.keys())
+    for k in keys:
+        if config[k] is None:
+            config.pop(k)
+
+    # write HEAD
+    with open(file_head, "w") as f_out:
+        yaml.safe_dump(config, f_out)
 
 
 def parse_dot_notation_to_dict(notation, value, upper=True):
@@ -109,7 +136,7 @@ def parse_dot_notation_to_dict(notation, value, upper=True):
     # Returns:
         <{}>: the parsed dictionary
     """
-    components = notation.split('.')
+    components = notation.split(".")
     components = list(reversed(components))
     if upper:
         components = [_.upper() for _ in components]
@@ -134,7 +161,7 @@ def update_local_config(config_path, config_dict):
         settings.set_values(**parsed_value)
 
     settings = settings.as_dict()
-    with open(config_path, 'w') as f_out:
+    with open(config_path, "w") as f_out:
         yaml.dump(settings, f_out)
 
 
@@ -182,7 +209,7 @@ class Settings(object):
         result = item
 
         if isinstance(item, dict):
-            result = Settings(level=self._level+1)
+            result = Settings(level=self._level + 1)
             result.set_values(**item)
         elif isinstance(item, (list, tuple)):
             result = []
@@ -203,8 +230,9 @@ class Settings(object):
 
             if key in self.values:
                 original_value = self.__getattribute__(key)
-                if (isinstance(parsed_value, Settings)
-                        and isinstance(original_value, Settings)):
+                if isinstance(parsed_value, Settings) and isinstance(
+                    original_value, Settings
+                ):
                     object.__setattr__(self, key, original_value + parsed_value)
                 else:
                     object.__setattr__(self, key, parsed_value)
@@ -221,7 +249,7 @@ class Settings(object):
         if self._initialized:
             raise AttributeError("Setting has been initiated, cannot be re-iniated")
 
-        with open(path, 'r') as f_in:
+        with open(path, "r") as f_in:
             config = yaml.safe_load(f_in)
 
             # retrieve index db configuration
@@ -238,7 +266,7 @@ class Settings(object):
         dir_base = get_base_dir() if dir_base is None else dir_base
 
         # set the system-level settings
-        system_config = Path('/etc', c.FILE_CONFIG[1:])
+        system_config = Path("/etc", c.FILE_CONFIG[1:])
         if system_config.exists():
             self.set_values_from_yaml(system_config)
 
@@ -314,7 +342,7 @@ class Settings(object):
     def __getitem__(self, key):
         """Allow accessing config value through string"""
         if key not in self.values:
-            raise IndexError(f'{key} does not exist')
+            raise IndexError(f"{key} does not exist")
         return getattr(self, key)
 
     def __len__(self):
@@ -332,11 +360,11 @@ class Settings(object):
             elif isinstance(value, (list, tuple)):
                 str_repr.append("  " * self._level + f"{each_item}:")
                 for each_config in value:
-                    str_repr.append("  " * (self._level+1) + f"- {each_config}")
+                    str_repr.append("  " * (self._level + 1) + f"- {each_config}")
             else:
                 str_repr.append("  " * self._level + f"{each_item}: {value}")
 
-        return '\n'.join(str_repr)
+        return "\n".join(str_repr)
 
     def __add__(self, other):
         """Perform addition"""

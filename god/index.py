@@ -130,7 +130,8 @@ class Index:
         reset_tst=[],
         unset_mhash=[],
         unset_remove=[],
-        delete=[]
+        delete=[],
+        new_entries=[]
     ):
         """Update the `index`
 
@@ -142,6 +143,7 @@ class Index:
             unset_mhash <[str]>: name
             unset_remove <[str]>: name
             delete <[str]>: name of entries to delete
+            new_entries <[str, str, float]>: name, hash, tstamp
         """
         if unset_mhash:
             self.cur.execute(
@@ -155,6 +157,13 @@ class Index:
                 f"UPDATE dirs SET remove=1 WHERE "
                 f"name IN ({','.join(['?'] * len(remove))})",
                 remove,
+            )
+
+        if delete:
+            self.cur.execute(
+                f"DELETE FROM dirs WHERE "
+                f"name in ({','.join(['?'] * len(delete))})",
+                delete
             )
 
         if unset_remove:
@@ -178,12 +187,12 @@ class Index:
                 (fn, mfh, tst),
             )
 
-        if delete:
+        for fn, fh, tst in new_entries:
             self.cur.execute(
-                f"DELETE FROM dirs WHERE "
-                f"name in ({','.join(['?'] * len(delete))})",
-                delete
+                f"INSERT INTO dirs (name, hash, tstamp) VALUES (?, ?, ?)",
+                (fn, fh, tst),
             )
+
 
         self.con.commit()
 

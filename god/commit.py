@@ -107,7 +107,7 @@ def get_files_hashes_in_commit(commit_id, commit_dir, commit_dirs_dir):
     return result
 
 
-def get_transform_operation(commit1, commit2, commit_dir, commit_dirs_dir):
+def get_transform_operations(commit1, commit2, commit_dir, commit_dirs_dir):
     """Get add and remove operations to transform from state1 to state2
 
     The files from state1 to state2 are as follow:
@@ -166,7 +166,7 @@ def commit(user, email, message, prev_commit, index_path, commit_dir, commit_dir
         <str>: the commit hash
     """
     with Index(index_path) as index:
-        files_info = index.get_files_info(remove=False)
+        files_info = index.get_files_info(get_remove=False)
 
     index_files_dirs = defaultdict(list)
     for f in files_info:
@@ -228,7 +228,7 @@ if __name__ == '__main__':
     #     commit_dir='/data/datasets/dogs-cats/.god/commits',
     #     commit_dirs_dir='/data/datasets/dogs-cats/.god/commits/dirs'
     # )
-    add, remove = get_transform_operation(
+    add, remove = get_transform_operations(
         'e349dbd65901205e92c1fee824f04dba676cdd14a12fd23fc38b06b5090ab6bb',
         '9414caec8e5bdb681939ea1b380a16ab29bb8739af275fcdc4802f3ae424e7f2',
         '/data/datasets/dogs-cats/.god/commits',

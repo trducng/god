@@ -9,3 +9,7 @@ class FileExisted(Exception):
 class InvalidUserParams(Exception):
     """Invalid supplied params"""
     pass
+
+class OperationNotPermitted(Exception):
+    """Operation not permitted in the repo"""
+    pass

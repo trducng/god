@@ -4,7 +4,14 @@ from pathlib import Path
 
 from rich import print
 
-from god.add import add, status, restore_staged, restore_working
+from god.branches import (
+    add,
+    status,
+    restore_staged,
+    restore_working,
+    checkout,
+    checkout_new_branch,
+)
 from god.base import settings, read_local_config, update_local_config, read_HEAD
 from god.commit import commit, read_commit
 from god.exceptions import InvalidUserParams
@@ -54,7 +61,7 @@ def status_cmd(paths):
         unset_mhash,
     ) = status(paths, settings.FILE_INDEX, settings.DIR_BASE)
 
-    refs, snapshot = read_HEAD(settings.FILE_HEAD)
+    refs, snapshot, commits = read_HEAD(settings.FILE_HEAD)
     print(f"On branch {refs}")
     if snapshot:
         print(f"\tUsing snapshot {snapshot}")
@@ -114,7 +121,7 @@ def commit_cmd(message):
         print("Please config user.email")
         return
 
-    refs, _ = read_HEAD(settings.FILE_HEAD)
+    refs, _, _ = read_HEAD(settings.FILE_HEAD)
     prev_commit = get_ref(refs, settings.DIR_REFS_HEADS)
 
     current_commit = commit(
@@ -132,7 +139,7 @@ def commit_cmd(message):
 
 def log_cmd():
     """Print out repository history"""
-    refs, _ = read_HEAD(settings.FILE_HEAD)
+    refs, _, _ = read_HEAD(settings.FILE_HEAD)
     commit_id = get_ref(refs, settings.DIR_REFS_HEADS)
 
     while commit_id:
@@ -173,3 +180,30 @@ def restore_working_cmd(paths):
     restore_working(
         paths, settings.FILE_INDEX, settings.DEFAULT_DIR_OBJECTS, settings.DIR_BASE
     )
+
+
+def checkout_cmd(branch, new=False):
+    """Checkout to a new branch
+
+    # Args
+        branch <str>: name of the branch
+        new <bool>: whether to create new branch
+    """
+    if new:
+        refs, _, _ = read_HEAD(settings.FILE_HEAD)
+        commit_id = get_ref(refs, settings.DIR_REFS_HEADS)
+        checkout_new_branch(
+            branch, commit_id, settings.DIR_REFS_HEADS, settings.FILE_HEAD
+        )
+    else:
+        refs, _, _ = read_HEAD(settings.FILE_HEAD)
+        checkout(
+            settings.DIR_COMMITS,
+            settings.DIR_COMMITS_DIRECTORY,
+            settings.FILE_INDEX,
+            settings.DEFAULT_DIR_OBJECTS,
+            settings.DIR_REFS_HEADS,
+            settings.DIR_BASE,
+            settings.FILE_HEAD,
+            branch1=refs,
+            branch2=branch)

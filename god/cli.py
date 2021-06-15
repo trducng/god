@@ -18,7 +18,8 @@ from god.porcelain import (
     status_cmd,
     log_cmd,
     restore_staged_cmd,
-    restore_working_cmd
+    restore_working_cmd,
+    checkout_cmd
 )
 
 
@@ -103,6 +104,18 @@ class CLI:
             restore_staged_cmd(paths)
         else:
             restore_working_cmd(paths)
+
+    def checkout(self, branch, **kwargs):
+        """Checkout
+
+        # Args:
+            branch <str>: name of the branch
+            new <bool>: whether to create new branch
+        """
+        settings.set_global_settings()
+        new = kwargs.pop('new', False)
+        checkout_cmd(branch, new)
+
 
     def index(self, **kwargs):
         from god.orge import construct_sql_logs
