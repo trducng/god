@@ -154,7 +154,8 @@ def log_cmd():
         print()
         print(f"\t{commit_obj['message']}")
         print()
-        commit_id = commit_obj["prev"]
+        prev = commit_obj["prev"]
+        commit_id = prev[0] if isinstance(prev, (list, int)) else prev
 
 
 def restore_staged_cmd(paths):

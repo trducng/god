@@ -5,7 +5,7 @@ import shutil
 import uuid
 
 from god.base import read_HEAD, update_HEAD
-from god.commit import get_transform_operations, read_commit
+from god.commit import get_transform_operations, read_commit, get_latest_parent_commit, commit
 from god.exceptions import OperationNotPermitted
 from god.files import (
     get_file_hash,
@@ -20,8 +20,6 @@ from god.files import (
 )
 from god.index import Index
 from god.refs import get_ref, update_ref
-
-
 
 
 def track_staging_changes(fds, index_path, base_dir):
@@ -311,7 +309,7 @@ def _checkout_between_commits(
     index_path,
     obj_dir,
     base_dir,
-    move_files=True
+    move_files=True,
 ):
     """Perform checkout from commit1 to commit2
 
@@ -427,7 +425,7 @@ def checkout(
         index_path,
         obj_dir,
         base_dir,
-        move_files=True
+        move_files=True,
     )
 
     if branch2:
@@ -483,7 +481,8 @@ def reset(
     commit2 = commit1
     for idx in range(head_past):
         commit_obj = read_commit(commit2, commit_dir)
-        commit2 = commit_obj["prev"]
+        prev = commit_obj["prev"]
+        commit2 = prev[0] if isinstance(prev, (list, tuple)) else prev
 
     # construct index and optionally revert files
     _checkout_between_commits(
@@ -494,8 +493,114 @@ def reset(
         index_path,
         obj_dir,
         base_dir,
-        move_files=False
+        move_files=False,
     )
 
     # update branch ref
     update_ref(refs, commit2, ref_dir)
+
+
+def merge(
+    branch1,
+    branch2,
+    ref_dir,
+    commit_dir,
+    commit_dirs_dir,
+    index_path,
+    obj_dir,
+    base_dir,
+    user,
+    email
+):
+    """Pull changes from `branch2` to `branch1`
+
+    # Args:
+        branch1 <str>: the name of source branch
+        branch2 <str>: the name of target branch to pull from
+        ref_dir <str>: the path to refs directory
+        commit_dir <str|Path>: the path to commit directory
+        commit_dirs_dir <str|Path>: the path to dirs directory
+    """
+    # get commit information
+    commit1 = get_ref(branch1, ref_dir)
+    commit2 = get_ref(branch2, ref_dir)
+    parent_commit = get_latest_parent_commit(commit1, commit2, commit_dir)
+
+    # get operations
+    add_ops1, remove_ops1 = get_transform_operations(
+        parent_commit, commit1, commit_dir, commit_dirs_dir
+    )
+    add_ops2, remove_ops2 = get_transform_operations(
+        parent_commit, commit2, commit_dir, commit_dirs_dir
+    )
+
+    # check for conflicts
+    fp_add_ops1, fp_remove_ops1 = set(add_ops1.keys()), set(remove_ops1.keys())
+    fp_add_ops2, fp_remove_ops2 = set(add_ops2.keys()), set(remove_ops2.keys())
+    conflicts = []
+
+    for fp in list(fp_add_ops1.intersection(fp_add_ops2)):
+        conflicts.append((fp, "+", add_ops1[fp], "+", add_ops2[fp]))
+    for fp in list(fp_add_ops1.intersection(fp_remove_ops2)):
+        conflicts.append((fp, "+", add_ops1[fp], "-", remove_ops2[fp]))
+    for fp in list(fp_remove_ops1.intersection(fp_add_ops2)):
+        conflicts.append((fp, "-", remove_ops1[fp], "+", add_ops2[fp]))
+
+    if conflicts:
+        print(conflicts)
+        import pdb; pdb.set_trace()
+        print("ABORT. CONFLICT")
+        return
+
+    # without conflict, apply the change of `branch2` to `branch1`
+    # remove files
+    for fp in remove_ops2.keys():
+        # if fp in skips:
+        #     continue
+        Path(base_dir, fp).unlink()
+
+    # add files
+    # add = [(fp, fh) for fp, fh in add_ops2.items() if fp not in skips]
+    add = [(fp, fh) for fp, fh in add_ops2.items()]
+    copy_hashed_objects_to_files(add, obj_dir, base_dir)
+
+    # construct index
+    add_fps = list(add_ops2.keys())
+    add_fhs = list(add_ops2.values())
+    tsts = get_files_tst(add_fps, base_dir)
+    # if move_files:
+    #     tsts = get_files_tst(add_fps, base_dir)
+    # else:
+    #     tsts = get_objects_tst(add_fhs, obj_dir)
+
+    with Index(index_path) as index:
+        index.update(
+            new_entries=list(zip(add_fps, add_fhs, tsts)),
+            delete=list(remove_ops2.keys()),
+        )
+
+    current_commit = commit(
+        user=user,
+        email=email,
+        message=f"Merge from {branch2} to {branch1}",
+        prev_commit=[commit1, commit2],
+        index_path=index_path,
+        commit_dir=commit_dir,
+        commit_dirs_dir=commit_dirs_dir,
+    )
+
+    update_ref(branch1, current_commit, ref_dir)
+
+if __name__ == "__main__":
+    merge(
+        "main",
+        "feature",
+        "/home/john/datasets/dogs-cats/.god/refs/heads",
+        "/home/john/datasets/dogs-cats/.god/commits",
+        "/home/john/datasets/dogs-cats/.god/commits/dirs",
+        "/home/john/datasets/dogs-cats/.god/index",
+        "/home/john/datasets/dogs-cats/.god/objects",
+        "/home/john/datasets/dogs-cats",
+        "johntd54",
+        "trungduc1992@gmail.com"
+    )

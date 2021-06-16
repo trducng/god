@@ -7,6 +7,7 @@ import os
 import sqlite3
 from multiprocessing import Process, Pool
 from pathlib import Path
+import queue
 import shutil
 
 import yaml
@@ -35,10 +36,10 @@ def calculate_commit_hash(commit_obj):
 
     items = []
     for key in keys:
-        if key == 'objects':
+        if key == "objects":
             dir_hashes = commit_obj[key]
             dirs = sorted(list(commit_obj[key].keys()))
-            obj_hash = get_string_hash('\n'.join(f"{d},{dir_hashes[d]}" for d in dirs))
+            obj_hash = get_string_hash("\n".join(f"{d},{dir_hashes[d]}" for d in dirs))
             items.append(f"{key},{obj_hash}")
         else:
             items.append(f"{key},{commit_obj[key]}")
@@ -57,7 +58,7 @@ def read_commit(commit_id, commit_dir):
         <{}>: commit information
     """
     path = Path(commit_dir, commit_id)
-    with path.open('r') as f_in:
+    with path.open("r") as f_in:
         commit_obj = yaml.safe_load(f_in)
 
     return commit_obj
@@ -74,14 +75,14 @@ def get_files_hashes_in_commit_dir(dir_id, commit_dirs_dir, prefix=None):
     # Returns:
         <{str: str}> fn and hashes
     """
-    with Path(commit_dirs_dir, dir_id).open('r') as f_in:
+    with Path(commit_dirs_dir, dir_id).open("r") as f_in:
         lines = f_in.read().splitlines()
 
-    prefix = Path('.') if prefix is None else Path(prefix)
+    prefix = Path(".") if prefix is None else Path(prefix)
     result = {}
     for each_line in lines:
-        components = each_line.split(',')
-        fn = ','.join(components[:-1])
+        components = each_line.split(",")
+        fn = ",".join(components[:-1])
         result[str(Path(prefix, fn))] = components[-1]
 
     return result
@@ -100,7 +101,7 @@ def get_files_hashes_in_commit(commit_id, commit_dir, commit_dirs_dir):
     """
     commit_obj = read_commit(commit_id, commit_dir)
     result = {}
-    for prefix, dir_id in commit_obj['objects'].items():
+    for prefix, dir_id in commit_obj["objects"].items():
         result.update(
             get_files_hashes_in_commit_dir(dir_id, commit_dirs_dir, prefix=prefix)
         )
@@ -150,6 +151,39 @@ def get_transform_operations(commit1, commit2, commit_dir, commit_dirs_dir):
     return add, remove
 
 
+def get_latest_parent_commit(commit1, commit2, commit_dir):
+    """Get parrent commit of both commit1 and commit2
+
+    # Args:
+        commit1 <str>: the hash of commit 1
+        commit2 <str>: the hash of commit 2
+        commit_dir <str|Path>: the path to commit directory
+
+    # Returns:
+        <str>: commit id of parent, or None
+    """
+    to_check = queue.Queue()
+    to_check.put(commit1)
+    to_check.put(commit2)
+    checked = set([])
+
+    while not to_check.empty():
+        commit_id = to_check.get()
+
+        if commit_id is None:
+            return
+
+        if commit_id in checked:
+            return commit_id
+
+        checked.add(commit_id)
+        commit_obj = read_commit(commit_id, commit_dir)
+        if isinstance(commit_obj["prev"], (list, tuple)):
+            for _ in commit_obj["prev"]:
+                to_check.put(_)
+        else:
+            to_check.put(commit_obj["prev"])
+
 
 def commit(user, email, message, prev_commit, index_path, commit_dir, commit_dirs_dir):
     """Commit from staging area
@@ -188,7 +222,7 @@ def commit(user, email, message, prev_commit, index_path, commit_dir, commit_dir
         commit_dir_file = Path(commit_dirs_dir, dir_hash)
         if commit_dir_file.is_file():
             continue
-        with commit_dir_file.open('w') as f_out:
+        with commit_dir_file.open("w") as f_out:
             f_out.write(fs)
         commit_dir_file.chmod(0o440)
 
@@ -198,15 +232,15 @@ def commit(user, email, message, prev_commit, index_path, commit_dir, commit_dir
         "email": email,
         "message": message,
         "prev": prev_commit,
-        "objects": dir_hashes
+        "objects": dir_hashes,
     }
     commit_hash = calculate_commit_hash(commit_obj)
     commit_file = Path(commit_dir, commit_hash)
     if commit_file.is_file():
-        print('Nothing changed, exit')
+        print("Nothing changed, exit")
         return
 
-    with commit_file.open('w') as f_out:
+    with commit_file.open("w") as f_out:
         yaml.dump(commit_obj, f_out)
 
     commit_file.chmod(0o440)
@@ -230,7 +264,7 @@ def is_commit(start, commit_dir):
         <str>: matched commit, else None, or raise if there are more than 1 match
     """
     result = []
-    commits = [each.stem for each in Path(commit_dir).glob("*") if each.stem != 'dirs']
+    commits = [each.stem for each in Path(commit_dir).glob("*") if each.stem != "dirs"]
     for each in commits:
         if each.startswith(start):
             result.append(each)
@@ -241,22 +275,11 @@ def is_commit(start, commit_dir):
         return result[0]
 
 
-if __name__ == '__main__':
-    # commit(
-    #     user="johntd54",
-    #     email="trungduc1992@gmail.com",
-    #     message="Initial commit",
-    #     prev_commit="",
-    #     index_path='/home/john/datasets/dogs-cats/.god/index',
-    #     commit_dir='/data/datasets/dogs-cats/.god/commits',
-    #     commit_dirs_dir='/data/datasets/dogs-cats/.god/commits/dirs'
-    # )
-    add, remove = get_transform_operations(
-        'e349dbd65901205e92c1fee824f04dba676cdd14a12fd23fc38b06b5090ab6bb',
-        '9414caec8e5bdb681939ea1b380a16ab29bb8739af275fcdc4802f3ae424e7f2',
-        '/data/datasets/dogs-cats/.god/commits',
-        '/data/datasets/dogs-cats/.god/commits/dirs'
+if __name__ == "__main__":
+    print(
+        get_latest_parent_commit(
+            "8f26aba954f7ae9b5dd0a417b8b41dd0bc5d6c6cd17c80c45f5c670c7b2f3ca6",
+            "8f26aba954f7ae9b5dd0a417b8b41dd0bc5d6c6cd17c80c45f5c670c7b2f3ca6",
+            "/home/john/datasets/dogs-cats/.god/commits",
+        )
     )
-    import pdb; pdb.set_trace()
-    print(len(add))
-    print(len(remove))
