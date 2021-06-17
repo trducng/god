@@ -540,16 +540,53 @@ def merge(
     conflicts = []
 
     for fp in list(fp_add_ops1.intersection(fp_add_ops2)):
+        # both commit add/edit the same file
         conflicts.append((fp, "+", add_ops1[fp], "+", add_ops2[fp]))
-    for fp in list(fp_add_ops1.intersection(fp_remove_ops2)):
+    for fp in list(fp_add_ops1.intersection(fp_remove_ops2.difference(fp_add_ops2))):
+        # our commit adds, while the other removes
         conflicts.append((fp, "+", add_ops1[fp], "-", remove_ops2[fp]))
-    for fp in list(fp_remove_ops1.intersection(fp_add_ops2)):
+    for fp in list(fp_add_ops2.intersection(fp_remove_ops1.difference(fp_add_ops1))):
+        # our commit removes, while the other adds
         conflicts.append((fp, "-", remove_ops1[fp], "+", add_ops2[fp]))
 
     if conflicts:
         print(conflicts)
         import pdb; pdb.set_trace()
         print("ABORT. CONFLICT")
+        # Possible representation: construct a stand-alone, reserved folder
+        # Each conflict is represented as a text file (e.g. 1 - fn)
+        # . orihash - name
+        # +/- our hash (or empty if -)
+        # name1 (if change name)
+        # +/- their hash (or empty if -)
+        # name2 (if change name)
+
+        # The conflict resolution should be written in an extensible manner
+        # because of the large amount of filetypes, and you want to present
+        # these conflicts in a way that users can tell the difference.
+        # and then, they can pick the ones on the left, or on the right, or both, and
+        # if both, how to change the filename appropriately.
+
+        # Conflict resolution is an independent process. When there is a conflict,
+        # layout the `.god` in a way that independent script can support resolution.
+        # After that, when the conflict is resolved, the `commit` can pick up
+        # and finish
+
+        # Also, the conflict resolution should be extensible because there can be
+        # conflicted text file, which is natural to support vim-like conflict
+        # resolution mechanism
+
+        # The solution should be file-type independent, there can be numpy, npz...
+        # conflict files
+
+        # Autocomplete, local WebUI, or interactive terminal is a good option for this
+
+        # Good source:
+        # https://docs.github.com/en/github/managing-files-in-a-repository/working-with-non-code-files
+        # https://github.com/ewanmellor/git-diff-image/blob/master/diff-image
+        # think about it, vimdiff is just something that takes a git conflict
+        # output, render it, and organize by itself in a way that allow for conflict
+        # resolution
         return
 
     # without conflict, apply the change of `branch2` to `branch1`
