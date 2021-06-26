@@ -18,6 +18,7 @@ from god.files import get_string_hash
 from god.index import Index
 
 
+
 def calculate_commit_hash(commit_obj):
     """Calculate hash commit from supplied information
 
@@ -151,6 +152,31 @@ def get_transform_operations(commit1, commit2, commit_dir, commit_dirs_dir):
     return add, remove
 
 
+def exists_in_commit(files, commit_id, commit_dir, commit_dirs_dir):
+    """Check whether files exist in commit
+
+    # Args:
+        files <[str]>: list of relative path
+        commit_id <str>: commit id
+        commit_dir <str>: path to commit directory
+        commit_dirs_dir <str>: path to commit dirs directory
+    """
+    if not files:
+        return []
+
+    commit_dirs = read_commit(commit_id, commit_dir)['objects']
+    files_hashes = get_files_hashes_in_commit(commit_id, commit_dir, commit_dirs_dir)
+
+    exists = []
+    for filepath in files:
+        if filepath in files_hashes:
+            exists.append(True)
+        else:
+            exists.append(False)
+
+    return exists
+
+
 def get_latest_parent_commit(commit1, commit2, commit_dir):
     """Get parrent commit of both commit1 and commit2
 
@@ -237,8 +263,8 @@ def commit(user, email, message, prev_commit, index_path, commit_dir, commit_dir
     commit_hash = calculate_commit_hash(commit_obj)
     commit_file = Path(commit_dir, commit_hash)
     if commit_file.is_file():
-        print("Nothing changed, exit")
-        return
+        print("Commit already exists.")
+        return commit_hash
 
     with commit_file.open("w") as f_out:
         yaml.dump(commit_obj, f_out)

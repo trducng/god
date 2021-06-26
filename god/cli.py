@@ -20,7 +20,8 @@ from god.porcelain import (
     restore_staged_cmd,
     restore_working_cmd,
     checkout_cmd,
-    reset_cmd
+    reset_cmd,
+    merge_cmd,
 )
 
 
@@ -131,6 +132,14 @@ class CLI:
         hard = kwargs.pop('hard', False)
         reset_cmd(head_past, hard)
 
+    def merge(self, branch, **kwargs):
+        """Merge to target branch `branch`
+
+        # Args:
+            branch <str>: name of the branch
+        """
+        settings.set_global_settings()
+        merge_cmd(branch)
 
     def index(self, **kwargs):
         from god.orge import construct_sql_logs

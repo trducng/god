@@ -12,6 +12,7 @@ from god.branches import (
     checkout,
     checkout_new_branch,
     reset,
+    merge
 )
 from god.base import settings, read_local_config, update_local_config, read_HEAD
 from god.commit import commit, read_commit, is_commit
@@ -246,3 +247,26 @@ def reset_cmd(head_past, hard=False):
         settings.DIR_BASE,
         settings.FILE_HEAD,
     )
+
+
+def merge_cmd(branch):
+    """Perform a merge operation
+
+    # Args:
+        branch <str>: name of the branch
+    """
+    refs, _, commit1 = read_HEAD(settings.FILE_HEAD)
+    config = read_local_config(settings.FILE_LOCAL_CONFIG)
+    merge(
+        refs,
+        branch,
+        settings.DIR_REFS_HEADS,
+        settings.DIR_COMMITS,
+        settings.DIR_COMMITS_DIRECTORY,
+        settings.FILE_INDEX,
+        settings.DEFAULT_DIR_OBJECTS,
+        settings.DIR_BASE,
+        user=config.USER.NAME,
+        email=config.USER.EMAIL,
+    )
+
