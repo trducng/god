@@ -597,12 +597,7 @@ def create_conflict_dir(conflicts, conflict_dir, obj_dir, base_dir):
         )
 
     conflicts_content = {
-        _[0]: {
-            "type": f"{_[1]}{_[3]}",
-            "ours": _[2],
-            "theirs": _[4]
-        }
-        for _ in conflicts
+        _[0]: {"type": f"{_[1]}{_[3]}", "ours": _[2], "theirs": _[4]} for _ in conflicts
     }
 
     conflict_path.mkdir(exist_ok=False)
@@ -617,43 +612,68 @@ def create_conflict_dir(conflicts, conflict_dir, obj_dir, base_dir):
         copy_hashed_objects_to_files(to_copy, obj_dir, base_dir)
 
 
-def verify_conflict_resolution(conflict_resolution, conflicts, commit1, commit2, commit_dir, commit_dirs_dir, add_ops2, remove_ops2):
-    """Verify that conflict resolution is valid"""
+def verify_conflict_resolution(
+    conflict_resolution,
+    conflicts,
+    commit1,
+    commit2,
+    commit_dir,
+    commit_dirs_dir,
+    add_ops2,
+    remove_ops2,
+):
+    """Verify that conflict resolution is valid
+
+    # Args:
+        conflict_resolution <{str: {}}>: conflict resolution entries from conflicts.yml
+        conflicts <[]>: conflict entries from comparing commit
+        commit1 <str>: the commit id of `ours`
+        commit2 <str>: the commit id of `theirs`
+        commit_dir <str|Path>: the path to commit directory
+        commit_dirs_dir <str|Path>: the path to dirs directory
+        add_ops2 <{str: str}>: the filename and hash to add
+        remove_ops2 <{str: str}>: the filename and hash to remove
+
+    # Returns:
+        <{str: str}>: the filename and hash to add
+        <{str: str}>: the filename and hash to remove
+    """
     conflicts_content = {
-        _[0]: {
-            "type": f"{_[1]}{_[3]}",
-            "ours": _[2],
-            "theirs": _[4]
-        }
-        for _ in conflicts
+        _[0]: {"type": f"{_[1]}{_[3]}", "ours": _[2], "theirs": _[4]} for _ in conflicts
     }
 
-    type_errors = []        # document all errors in 1 pass to save time
+    type_errors = []  # document all errors in 1 pass to save time
     hash_errors = []
     filepath_errors = []
     decision_errors = []
     move_errors = []
 
-    possible_decisions = set(['ours', 'theirs'])
+    possible_decisions = set(["ours", "theirs"])
 
     # check moves
-    all_moves = sorted([_['move'] for _ in conflict_resolution if 'move' in _])
+    all_moves = sorted([_["move"] for _ in conflict_resolution if "move" in _])
     exists1 = exists_in_commit(all_moves, commit1, commit_dir, commit_dirs_dir)
     for move, exist in zip(all_moves, exists1):
         if exist:
-            move_errors.append(f'move path {move} exists in our branch')
+            move_errors.append(f"move path {move} exists in our branch")
 
     exists2 = exists_in_commit(all_moves, commit2, commit_dir, commit_dirs_dir)
     for move, exist in zip(all_moves, exists2):
         if exist:
-            move_errors.append(f'move path {move} exists in taret branch')
+            move_errors.append(f"move path {move} exists in taret branch")
 
     counter = Counter(all_moves)
     for move, count in counter.items():
         if count > 1:
             move_errors.append(
-                f'move path {move} appears multiple time in conflict resolution'
+                f"move path {move} appears multiple time in conflict resolution"
             )
+
+    # check missing entries
+    for filepath in list(
+        set(conflicts_content.keys()).difference(conflict_resolution.keys())
+    ):
+        filepath_errors.append(f"missing file path {filepath}")
 
     for filepath, reso in conflict_resolution.items():
 
@@ -663,48 +683,48 @@ def verify_conflict_resolution(conflict_resolution, conflicts, commit1, commit2,
             filepath_errors.append(filepath)
             has_error = True
 
-        if 'decision' not in reso:
+        if "decision" not in reso:
             # if there is no decision
-            decision_errors.append(f'missing decision for {filepath}')
+            decision_errors.append(f"missing decision for {filepath}")
             has_error = True
 
-        decision = reso.get('decision', None)
-        if decision is not None and decision not in ['ours', 'theirs']:
+        decision = reso.get("decision", None)
+        if decision is not None and decision not in ["ours", "theirs"]:
             decision_errors.append(
                 f'unknown decision "{decision}" in {filepath}, '
-                f'should be {possible_decisions}'
+                f"should be {possible_decisions}"
             )
             has_error = True
 
-        type_ = reso.get('type', '')
-        if type_ != conflicts_content[filepath]['type']:
+        type_ = reso.get("type", "")
+        if type_ != conflicts_content[filepath]["type"]:
             # if there is mismatch in 'type'
             type_errors.append(
-                f'mismatch type in {filepath}, should be '
+                f"mismatch type in {filepath}, should be "
                 f'"{conflicts_content[filepath]["type"]}" but "{type_}"'
             )
             has_error = True
 
-        if 'move' in reso and '-' in type_:
+        if "move" in reso and "-" in type_:
             # 'move' does not work with '+-' and '-+' type
             move_errors.append(
-                f'`move` is not applicable for type {type_} in {filepath}, '
-                f'please remove'
+                f"`move` is not applicable for type {type_} in {filepath}, "
+                f"please remove"
             )
             has_error = True
 
-        hash_ours = reso.get('ours', '')
-        if hash_ours != conflicts_content[filepath]['ours']:
+        hash_ours = reso.get("ours", "")
+        if hash_ours != conflicts_content[filepath]["ours"]:
             hash_errors.append(
-                f'unknown from for {filepath}, should be '
+                f"unknown from for {filepath}, should be "
                 f'{conflicts_content[filepath]["ours"]} but {hash_ours}'
             )
             has_error = True
 
-        hash_theirs = reso.get('theirs', '')
-        if hash_theirs != conflicts_content[filepath]['theirs']:
+        hash_theirs = reso.get("theirs", "")
+        if hash_theirs != conflicts_content[filepath]["theirs"]:
             hash_errors.append(
-                f'unknown from for {filepath}, should be '
+                f"unknown from for {filepath}, should be "
                 f'{conflicts_content[filepath]["theirs"]} but {hash_theirs}'
             )
             has_error = True
@@ -712,41 +732,40 @@ def verify_conflict_resolution(conflict_resolution, conflicts, commit1, commit2,
         if has_error:
             continue
 
-        if type_ == '++':
-            if reso['decision'] == 'ours':
-                if 'move' in reso:
-                    add_ops2[reso['move']] = add_ops2.pop(filepath)
+        if type_ == "++":
+            if reso["decision"] == "ours":
+                if "move" in reso:
+                    add_ops2[reso["move"]] = add_ops2.pop(filepath)
                     remove_ops2.pop(filepath, None)
                 else:
                     add_ops2.pop(filepath, None)
                     remove_ops2.pop(filepath, None)
             else:
                 remove_ops2[filepath] = hash_ours
-                if 'move' in reso:
-                    add_ops2[reso['move']] = hash_ours
+                if "move" in reso:
+                    add_ops2[reso["move"]] = hash_ours
             continue
 
-        if type_ == '+-':
+        if type_ == "+-":
             add_ops2.pop(filepath, None)
-            if reso['decision'] == 'ours':
+            if reso["decision"] == "ours":
                 remove_ops2.pop(filepath, None)
             else:
                 remove_ops2[filepath] = hash_ours
             continue
 
-        if type_ == '-+':
-            if reso['decision'] == 'ours':
+        if type_ == "-+":
+            if reso["decision"] == "ours":
                 add_ops2.pop(filepath, None)
                 remove_ops2.pop(filepath, None)
             else:
                 remove_ops2.pop(filepath, None)
 
-
     errors = type_errors + hash_errors + filepath_errors + decision_errors + move_errors
     if errors:
         for _ in errors:
             print(_)
-        raise OperationNotPermitted('Conflict not resolved')
+        raise OperationNotPermitted("Conflict not resolved")
 
     return add_ops2, remove_ops2
 
@@ -771,6 +790,11 @@ def merge(
         ref_dir <str>: the path to refs directory
         commit_dir <str|Path>: the path to commit directory
         commit_dirs_dir <str|Path>: the path to dirs directory
+        index_path <str>: the path to index file
+        obj_dir <str>: the path to directory containing object hashes
+        base_dir <str>: the repository directory
+        user <str>: the commiter username
+        email <str>: the committer email
     """
     # get commit information
     commit1 = get_ref(branch1, ref_dir)
@@ -813,11 +837,20 @@ def merge(
             return
 
         # read conflict reso folder
-        with (conflict_path / 'conflicts.yml').open('r') as f_in:
+        with (conflict_path / "conflicts.yml").open("r") as f_in:
             conflict_resolution = yaml.safe_load(f_in)
 
         # verify if it satisfy
-        add_ops2, remove_ops2 = verify_conflict_resolution(conflict_resolution, conflicts, commit1, commit2, commit_dir, commit_dirs_dir, add_ops2, remove_ops2)
+        add_ops2, remove_ops2 = verify_conflict_resolution(
+            conflict_resolution,
+            conflicts,
+            commit1,
+            commit2,
+            commit_dir,
+            commit_dirs_dir,
+            add_ops2,
+            remove_ops2,
+        )
 
         # Possible representation: construct a stand-alone, reserved folder
         # Each conflict is represented as a text file (e.g. 1 - fn)
@@ -896,17 +929,3 @@ def merge(
     if conflicts:
         shutil.rmtree(conflict_path)
 
-
-if __name__ == "__main__":
-    merge(
-        "feature",
-        "main",
-        "/home/john/datasets/dogs-cats/.god/refs/heads",
-        "/home/john/datasets/dogs-cats/.god/commits",
-        "/home/john/datasets/dogs-cats/.god/commits/dirs",
-        "/home/john/datasets/dogs-cats/.god/index",
-        "/home/john/datasets/dogs-cats/.god/objects",
-        "/home/john/datasets/dogs-cats",
-        "johntd54",
-        "trungduc1992@gmail.com",
-    )
