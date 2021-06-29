@@ -225,7 +225,7 @@ class Settings(object):
             raise AttributeError("Setting has been initiated, cannot be re-iniated")
 
         for key, value in kwargs.items():
-            key = key.upper()
+            # key = key.upper()
             parsed_value = self.parse(value)
 
             if key in self.values:
@@ -251,10 +251,6 @@ class Settings(object):
 
         with open(path, "r") as f_in:
             config = yaml.safe_load(f_in)
-
-            # retrieve index db configuration
-            index = config.pop("RECORDS", None)
-            object.__setattr__(self, "RECORDS", index)
 
             # set setting for other configs
             self.set_values(**config)
@@ -287,13 +283,8 @@ class Settings(object):
 
         # set the params settings
         for key, value in kwargs.items():
-            if key.upper() in self._PARAM_ALLOWED_SETTINGS:
+            if key in self._PARAM_ALLOWED_SETTINGS:
                 self.set_values(**{key: value})
-
-        # set the HEAD settings
-        head_file = Path(dir_base, c.FILE_LOCAL_CONFIG)
-        if head_file.exists():
-            self.set_values_from_yaml(head_file)
 
         # set directory configs
         for each_var in dir(c):
@@ -365,6 +356,10 @@ class Settings(object):
                 str_repr.append("  " * self._level + f"{each_item}: {value}")
 
         return "\n".join(str_repr)
+
+    def __repr__(self):
+        """Pretty string representation"""
+        return self.__str__()
 
     def __add__(self, other):
         """Perform addition"""

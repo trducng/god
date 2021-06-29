@@ -2,7 +2,7 @@
 import sqlite3
 from pathlib import Path
 
-from rich import print
+from rich import print as rprint
 
 from god.branches import (
     add,
@@ -19,6 +19,7 @@ from god.commit import commit, read_commit, is_commit
 from god.exceptions import InvalidUserParams
 from god.init import repo_exists, init
 from god.refs import get_ref, update_ref, is_ref
+from god.records import record_add
 
 
 def init_cmd(path):
@@ -66,37 +67,37 @@ def status_cmd(paths):
     refs, snapshot, commits = read_HEAD(settings.FILE_HEAD)
 
     if refs:
-        print(f"On branch {refs}")
+        rprint(f"On branch {refs}")
     if commits:
-        print(f"On detached commit {commits}")
+        rprint(f"On detached commit {commits}")
     if snapshot:
-        print(f"\tUsing snapshot {snapshot}")
+        rprint(f"\tUsing snapshot {snapshot}")
 
     if stage_add or stage_update or stage_remove:
-        print("Changes to be commited:")
+        rprint("Changes to be commited:")
         for each in stage_add:
-            print(f"\t[green]new file:\t{each}[/]")
+            rprint(f"\t[green]new file:\t{each}[/]")
         for each in stage_update:
-            print(f"\t[green]updated:\t{each}[/]")
+            rprint(f"\t[green]updated:\t{each}[/]")
         for each in stage_remove:
-            print(f"\t[green]deleted:\t{each}[/]")
-        print()
+            rprint(f"\t[green]deleted:\t{each}[/]")
+        rprint()
 
     if update or remove or unset_mhash:
-        print("Changes not staged for commit:")
+        rprint("Changes not staged for commit:")
         for each, _, _ in update:
-            print(f"\t[red]updated:\t{each}[/]")
+            rprint(f"\t[red]updated:\t{each}[/]")
         for each in unset_mhash:
-            print(f"\t[red]updated:\t{each}[/]")
+            rprint(f"\t[red]updated:\t{each}[/]")
         for each in remove:
-            print(f"\t[red]deleted:\t{each}[/]")
-        print()
+            rprint(f"\t[red]deleted:\t{each}[/]")
+        rprint()
 
     if add:
-        print("Untracked files:")
+        rprint("Untracked files:")
         for each, _, _ in add:
-            print(f"\t[red]{each}[/]")
-        print()
+            rprint(f"\t[red]{each}[/]")
+        rprint()
 
 
 def add_cmd(paths):
@@ -150,11 +151,11 @@ def log_cmd():
 
     while commit_id:
         commit_obj = read_commit(commit_id, settings.DIR_COMMITS)
-        print(f"[yellow]commit {commit_id}[/]")
-        print(f"Author: {commit_obj['user']} <{commit_obj['email']}>")
-        print()
-        print(f"\t{commit_obj['message']}")
-        print()
+        rprint(f"[yellow]commit {commit_id}[/]")
+        rprint(f"Author: {commit_obj['user']} <{commit_obj['email']}>")
+        rprint()
+        rprint(f"\t{commit_obj['message']}")
+        rprint()
         prev = commit_obj["prev"]
         commit_id = prev[0] if isinstance(prev, (list, int)) else prev
 
@@ -268,5 +269,19 @@ def merge_cmd(branch):
         settings.DIR_BASE,
         user=config.USER.NAME,
         email=config.USER.EMAIL,
+    )
+
+
+def record_add_cmd(name):
+    """Construct sql logs"""
+    refs, _, _ = read_HEAD(settings.FILE_HEAD)
+    commit_id = get_ref(refs, settings.DIR_REFS_HEADS)
+
+    record_add(
+        record_path=str(Path(settings.DIR_RECORDS_DB, name)),
+        config=settings.RECORDS[name],
+        commit=commit_id,
+        commit_dir=settings.DIR_COMMITS,
+        commit_dirs_dir=settings.DIR_COMMITS_DIRECTORY
     )
 

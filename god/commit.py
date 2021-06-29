@@ -18,7 +18,6 @@ from god.files import get_string_hash
 from god.index import Index
 
 
-
 def calculate_commit_hash(commit_obj):
     """Calculate hash commit from supplied information
 
@@ -124,16 +123,20 @@ def get_transform_operations(commit1, commit2, commit_dir, commit_dirs_dir):
         - file_remove: remove these files from the table in the new commit
 
     # Args
-        commit1 <str>: the hash of commit 1
-        commit2 <str>: the hash of commit 2. If None, this is the first time.
+        commit1 <str>: the hash of commit 1. If None, this is the first time.
+        commit2 <str>: the hash of commit 2.
         commit_dir <str|Path>: the path to commit directory
         commit_dirs_dir <str|Path>: the path to dirs directory
 
     # Returns
-        <[]>: files newly added (recursively)
-        <[]>: files newly removed (recursively)
+        <{}>: files newly added (recursively)
+        <{}>: files newly removed (recursively)
     """
-    files_hashes1 = get_files_hashes_in_commit(commit1, commit_dir, commit_dirs_dir)
+    files_hashes1 = (
+        {}
+        if commit1 is None
+        else get_files_hashes_in_commit(commit1, commit_dir, commit_dirs_dir)
+    )
     files_hashes2 = get_files_hashes_in_commit(commit2, commit_dir, commit_dirs_dir)
     fns1 = set(files_hashes1.keys())
     fns2 = set(files_hashes2.keys())
@@ -164,7 +167,7 @@ def exists_in_commit(files, commit_id, commit_dir, commit_dirs_dir):
     if not files:
         return []
 
-    commit_dirs = read_commit(commit_id, commit_dir)['objects']
+    commit_dirs = read_commit(commit_id, commit_dir)["objects"]
     files_hashes = get_files_hashes_in_commit(commit_id, commit_dir, commit_dirs_dir)
 
     exists = []
@@ -301,11 +304,3 @@ def is_commit(start, commit_dir):
         return result[0]
 
 
-if __name__ == "__main__":
-    print(
-        get_latest_parent_commit(
-            "8f26aba954f7ae9b5dd0a417b8b41dd0bc5d6c6cd17c80c45f5c670c7b2f3ca6",
-            "8f26aba954f7ae9b5dd0a417b8b41dd0bc5d6c6cd17c80c45f5c670c7b2f3ca6",
-            "/home/john/datasets/dogs-cats/.god/commits",
-        )
-    )

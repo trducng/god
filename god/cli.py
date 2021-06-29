@@ -6,7 +6,6 @@ import fire
 from god.init import init
 
 # from god.commit import commit
-from god.base import settings
 
 # from god.history import get_history
 # from god.unlock import unlock
@@ -22,10 +21,13 @@ from god.porcelain import (
     checkout_cmd,
     reset_cmd,
     merge_cmd,
+    record_add_cmd,
 )
+from god.base import settings
 
 
 class SnapCLI:
+    """Snapshot functionality"""
 
     def add(self, file_path, name):
         from god.snap import add
@@ -53,11 +55,33 @@ class SnapCLI:
         pass
 
 
+class RecordCLI:
+    """Record CLI"""
+
+    def add(self, name, **kwargs):
+        """Construct the records logs from commit"""
+        settings.set_global_settings(**kwargs)
+        record_add_cmd(name)
+
+    def execute(self, **kwargs):
+        """Execute the records logs into database, and hold the record logs"""
+        pass
+
+    def execute(self, **kwargs):
+        """Execute the records logs into database, and hold the record logs"""
+        pass
+
+    def execute(self, **kwargs):
+        """Execute the records logs into database, and hold the record logs"""
+        pass
+
+
 class CLI:
     """Command line interface for `god`"""
 
     def __init__(self):
         self.snap = SnapCLI()
+        self.record = RecordCLI()
 
     def init(self, path=".", **kwargs):
         """Initiate the repo"""
@@ -104,7 +128,7 @@ class CLI:
     def restore(self, *paths, **kwargs):
         """Restore files state"""
         settings.set_global_settings(**kwargs)
-        staged = kwargs.pop('staged', False)
+        staged = kwargs.pop("staged", False)
         if staged:
             restore_staged_cmd(paths)
         else:
@@ -118,7 +142,7 @@ class CLI:
             new <bool>: whether to create new branch
         """
         settings.set_global_settings()
-        new = kwargs.pop('new', False)
+        new = kwargs.pop("new", False)
         checkout_cmd(branch, new)
 
     def reset(self, head_past, *arg, **kwargs):
@@ -129,7 +153,7 @@ class CLI:
             hard <bool>: if true, complete convert to commit_id
         """
         settings.set_global_settings()
-        hard = kwargs.pop('hard', False)
+        hard = kwargs.pop("hard", False)
         reset_cmd(head_past, hard)
 
     def merge(self, branch, **kwargs):
@@ -148,10 +172,10 @@ class CLI:
         settings.set_global_settings(**kwargs)
         history = get_history()
         # file_add, file_remove = get_transform_operations(history[1])
-        # result = construct_sql_logs(file_add, file_remove, settings.INDEX, name='index', state=history[1])
+        # result = construct_sql_logs(file_add, file_remove, settings.RECORDS, name='index', state=history[1])
         file_add, file_remove = get_transform_operations(history[1], history[0])
         result = construct_sql_logs(
-            file_add, file_remove, settings.INDEX, name="index", state=history[0]
+            file_add, file_remove, settings.RECORDS, name="index", state=history[0]
         )
         import pdb
 
