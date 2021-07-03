@@ -150,6 +150,8 @@ Comparision to some other popular tools
 - **clearml-data**: shares the same spirit as `god`, but it has to work with the
   clearml MLOps platform, while we want to provide a general solution. Also, it
   does not support funcionalities like records and snapshots.
+- **dolt/norm**: `god` shares the same spirit to provide a version-control to
+  organize file paths into meaningful dataset.
 
 
 Roadmap

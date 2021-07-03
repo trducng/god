@@ -12,8 +12,8 @@ from pathlib import Path
 from collections import defaultdict
 
 from god.commit import get_transform_operations
-from god.sqlrecords.logs import construct_transformation_logs
-from god.sqlrecords.records import Records
+from god.records.logs import construct_transformation_logs
+from god.records.records import Records
 
 
 def record_add(record_path, config, commit, commit_dir, commit_dirs_dir):

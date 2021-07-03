@@ -1,7 +1,7 @@
 import sqlite3
 from pathlib import Path
 
-from god.sqlrecords.configs import get_columns_and_types
+from god.records.configs import get_columns_and_types
 
 
 class Records(object):
