@@ -1,25 +1,24 @@
 """Porcelain commands to be used with CLI"""
-import sqlite3
 from pathlib import Path
 
 from rich import print as rprint
 
+from god.base import read_HEAD, read_local_config, settings, update_local_config
 from god.branches import (
     add,
-    status,
-    restore_staged,
-    restore_working,
     checkout,
     checkout_new_branch,
+    merge,
     reset,
-    merge
+    restore_staged,
+    restore_working,
+    status,
 )
-from god.base import settings, read_local_config, update_local_config, read_HEAD
-from god.commit import commit, read_commit, is_commit
+from god.commit import commit, is_commit, read_commit
 from god.exceptions import InvalidUserParams
-from god.init import repo_exists, init
-from god.refs import get_ref, update_ref, is_ref
+from god.init import init, repo_exists
 from god.records import record_add
+from god.refs import get_ref, is_ref, update_ref
 
 
 def init_cmd(path):
@@ -282,6 +281,5 @@ def record_add_cmd(name):
         config=settings.RECORDS[name],
         commit=commit_id,
         commit_dir=settings.DIR_COMMITS,
-        commit_dirs_dir=settings.DIR_COMMITS_DIRECTORY
+        commit_dirs_dir=settings.DIR_COMMITS_DIRECTORY,
     )
-

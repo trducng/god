@@ -3,7 +3,7 @@ import re
 import sqlite3
 from pathlib import Path
 
-from god.base import settings, Settings
+from god.base import Settings, settings
 
 
 def get_files(path, recursive=False):
@@ -23,7 +23,7 @@ def get_files(path, recursive=False):
             continue
 
         if child.is_dir():
-            if child.name == '.god':
+            if child.name == ".god":
                 continue
             if recursive:
                 files += get_files(child.path, recursive=recursive)
@@ -45,7 +45,7 @@ def get_standard_index(config):
         return list(config.keys())[0]
 
     for key, value in config.items():
-        if value.get('STANDARD', None):
+        if value.get("STANDARD", None):
             return key
 
     # else return the first index in config
@@ -72,7 +72,7 @@ def update(target, operation, config, index=None, **kwargs):
     files = []
     for each in target:
         # expand to files only
-        if '*' in each:
+        if "*" in each:
             files += list(Path(settings.DIR_CWD).glob(each))
             continue
 
@@ -89,24 +89,25 @@ def update(target, operation, config, index=None, **kwargs):
             files += get_files(each, recursive=True)
 
     # get id of files
-    pattern = re.compile(config[index]['PATTERN'])
+    pattern = re.compile(config[index]["PATTERN"])
     file_ids = []
     for fn in files:
-        if fn == '.godconfig.yml':
+        if fn == ".godconfig.yml":
             continue
         match = pattern.match(str(Path(fn).relative_to(settings.DIR_BASE)))
         if match is None:
             continue
-        file_ids.append(match.group('id'))
+        file_ids.append(match.group("id"))
     file_ids = tuple(file_ids)
 
     # construct remove statement
     sql_statements = []
-    if operation == 'remove':
+    if operation == "remove":
         for key, value in kwargs.items():
             for file_id in file_ids:
                 sql_statements.append(
-                    f'DELETE FROM {key} WHERE id = "{file_id}" AND value = "{value}"')
+                    f'DELETE FROM {key} WHERE id = "{file_id}" AND value = "{value}"'
+                )
         con = sqlite3.connect(str(Path(settings.DIR_INDEX, index)))
         cur = con.cursor()
 
@@ -124,17 +125,21 @@ def update(target, operation, config, index=None, **kwargs):
     dup_check = {}
     for key, value in kwargs.items():
         file_vals = cur.execute(
-            f'SELECT id FROM {key} '
-                f'WHERE value = "{value}" '
-                f'AND id IN ({", ".join("?" for _ in file_ids)})',
-            file_ids)
-        dup_check[(key, value)] = set(file_ids).difference(set(each[0] for each in file_vals))
+            f"SELECT id FROM {key} "
+            f'WHERE value = "{value}" '
+            f'AND id IN ({", ".join("?" for _ in file_ids)})',
+            file_ids,
+        )
+        dup_check[(key, value)] = set(file_ids).difference(
+            set(each[0] for each in file_vals)
+        )
 
     sql_statements = []
     for (column, value), file_ids in dup_check.items():
         for file_id in file_ids:
             sql_statements.append(
-                f'INSERT INTO {column} (id, value) VALUES ("{file_id}", "{value}")')
+                f'INSERT INTO {column} (id, value) VALUES ("{file_id}", "{value}")'
+            )
 
     # execute statement
     for sql_statement in sql_statements:
@@ -143,5 +148,3 @@ def update(target, operation, config, index=None, **kwargs):
     con.close()
 
     return sql_statements
-
-

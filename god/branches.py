@@ -1,30 +1,29 @@
 """Add operation"""
+import shutil
 from collections import Counter, defaultdict
 from pathlib import Path
-import shutil
-import uuid
 
 import yaml
 
 from god.base import read_HEAD, update_HEAD
 from god.commit import (
+    commit,
     exists_in_commit,
+    get_latest_parent_commit,
     get_transform_operations,
     read_commit,
-    get_latest_parent_commit,
-    commit,
 )
-from god.exceptions import OperationNotPermitted, FileExisted
+from god.exceptions import FileExisted, OperationNotPermitted
 from god.files import (
-    get_file_hash,
-    copy_objects_with_hashes,
     copy_hashed_objects_to_files,
+    copy_objects_with_hashes,
+    filter_common_parents,
+    get_file_hash,
     get_files_tst,
     get_objects_tst,
-    separate_paths_to_files_dirs,
-    retrieve_files_info,
-    filter_common_parents,
     resolve_paths,
+    retrieve_files_info,
+    separate_paths_to_files_dirs,
 )
 from god.index import Index
 from god.refs import get_ref, update_ref
@@ -51,9 +50,7 @@ def track_staging_changes(fds, index_path, base_dir):
     fds = filter_common_parents(fds)  # list of relative paths to `base_dir`
 
     files, dirs, unknowns = separate_paths_to_files_dirs(fds, base_dir)
-    files_dirs = retrieve_files_info(files, dirs, base_dir)
 
-    index_files_dirs, index_unknowns = defaultdict(list), []
     add, update, remove = [], [], []
 
     with Index(index_path) as index:
@@ -928,4 +925,3 @@ def merge(
 
     if conflicts:
         shutil.rmtree(conflict_path)
-

@@ -1,22 +1,15 @@
 import re
 import sqlite3
-from pathlib import Path
 from collections import defaultdict
+from pathlib import Path
 
-from god.base import settings, Settings
+from god.base import Settings, settings
 from god.logs import get_transform_operations
-
 
 TYPE1 = {
     "NAME": "index",
     "PATTERN": "(?P<input>train1/(?P<id>(?P<label>cat|dog)\.\d+)\..+$)",
-    "COLUMNS": {
-        "id": "INTEGER",
-        "label": "TEXT",
-        "input": {
-            "path": True
-        }
-    },
+    "COLUMNS": {"id": "INTEGER", "label": "TEXT", "input": {"path": True}},
 }
 
 TYPE2 = {
@@ -39,9 +32,12 @@ TYPE3 = {
     "PATTERN": "(?P<id>.+)\.(?P<switch_>.+$)",
     "COLUMNS": {
         "id": "INTERGER",
-        "input": {"path": True, "conversion_group": ("switch_", ("png", "jpeg", "jpg"))},
+        "input": {
+            "path": True,
+            "conversion_group": ("switch_", ("png", "jpeg", "jpg")),
+        },
         "label": {"path": True, "conversion_group": ("switch_", "json")},
-    }
+    },
 }
 
 
@@ -53,8 +49,8 @@ TYPE4 = {
         "class": "TEXT",
         "location": {"path": True, "conversion_group": ("switch_", ".pbdata")},
         "mask_3d": {"path": True, "conversion_group": ("switch_", "/geometry.pbdata")},
-        "input": {"path": True, "conversion_group": ("switch_", "/video.MOV")}
-    }
+        "input": {"path": True, "conversion_group": ("switch_", "/video.MOV")},
+    },
 }
 
 
@@ -68,11 +64,11 @@ def get_path_cols(config):
     """
     result = []
 
-    COLUMNS = config.get('COLUMNS', {})
+    COLUMNS = config.get("COLUMNS", {})
     for col_name, col_rule in COLUMNS.items():
         if not isinstance(col_rule, (dict, Settings)):
             continue
-        if col_rule.get('path', False) or col_rule.get('PATH', False):
+        if col_rule.get("path", False) or col_rule.get("PATH", False):
             result.append(col_name)
 
     return result
@@ -88,15 +84,15 @@ def get_group_rule(config):
     """
     result = defaultdict(dict)
 
-    COLUMNS = config.get('COLUMNS', {})
+    COLUMNS = config.get("COLUMNS", {})
     for col_name, col_rule in COLUMNS.items():
         if not isinstance(col_rule, (dict, Settings)):
             continue
-        if 'conversion_group' not in col_rule:
+        if "conversion_group" not in col_rule:
             continue
 
-        group_name = list(col_rule['conversion_group'].keys())[0]
-        group_val = list(col_rule['conversion_group'].values())[0]
+        group_name = list(col_rule["conversion_group"].keys())[0]
+        group_val = list(col_rule["conversion_group"].values())[0]
         if not isinstance(group_val, (list, tuple)):
             result[group_name][group_val] = col_name
         else:
@@ -201,20 +197,19 @@ def load_index_db(index_db_path):
     con = sqlite3.connect(str(index_db_path))
     cur = con.cursor()
 
-    db_result = cur.execute('SELECT * FROM main LIMIT 0')
+    db_result = cur.execute("SELECT * FROM main LIMIT 0")
     cols = [each[0] for each in db_result.description]
-    id_idx = cols.index('id')
-    cols = [cols[id_idx]] + cols[:id_idx] + cols[id_idx+1:]
+    id_idx = cols.index("id")
+    cols = [cols[id_idx]] + cols[:id_idx] + cols[id_idx + 1 :]
 
-    db_result = cur.execute('SELECT * FROM main')
+    db_result = cur.execute("SELECT * FROM main")
     db_result = db_result.fetchall()
     con.close()
 
     result = {}
     for each_db_result in db_result:
         result[each_db_result[0]] = {
-                key: value
-                for key, value in zip(cols[1:], each_db_result[1:])
+            key: value for key, value in zip(cols[1:], each_db_result[1:])
         }
 
     return result
@@ -266,14 +261,14 @@ def construct_sql_logs(file_add, file_remove, config, name, state):
 
     # @TODO: currently it assumes that the ID exists
     """
-    pattern = re.compile(config[name]['PATTERN'])
+    pattern = re.compile(config[name]["PATTERN"])
     conversion_groups = get_group_rule(config[name])
     path_cols = get_path_cols(config[name])
     primary_cols = get_primary_cols(config[name])
 
     logic = defaultdict(dict)
     for fn, fh in file_remove:
-        if fn == '.godconfig.yml':
+        if fn == ".godconfig.yml":
             continue
         match = pattern.match(fn)
         if match is None:
@@ -282,38 +277,38 @@ def construct_sql_logs(file_add, file_remove, config, name, state):
         match_dict = match.groupdict()
 
         # get the id
-        if 'id' not in match_dict:
+        if "id" not in match_dict:
             continue
 
-        id_ = match_dict.pop('id')
+        id_ = match_dict.pop("id")
         for group, match_key in match_dict.items():
             if group in conversion_groups:
                 match_value = conversion_groups[group][match_key]
 
                 items = logic[id_].get(match_value, [])
-                items.append(('-', fn))
+                items.append(("-", fn))
                 logic[id_][match_value] = items
 
-                items = logic[id_].get(match_value + '_hash', [])
-                items.append(('-', fh))
-                logic[id_][match_value + '_hash'] = items
+                items = logic[id_].get(match_value + "_hash", [])
+                items.append(("-", fh))
+                logic[id_][match_value + "_hash"] = items
 
             else:
                 if group in path_cols:
                     items = logic[id_].get(group, [])
-                    items.append(('-', match_key))
+                    items.append(("-", match_key))
                     logic[id_][group] = items
 
-                    items = logic[id_].get(group + '_hash', [])
-                    items.append(('-', fh))
-                    logic[id_][group + '_hash'] = items
+                    items = logic[id_].get(group + "_hash", [])
+                    items.append(("-", fh))
+                    logic[id_][group + "_hash"] = items
                 else:
                     items = logic[id_].get(group, [])
-                    items.append(('-', match_key))
+                    items.append(("-", match_key))
                     logic[id_][group] = items
 
     for fn, fh in file_add:
-        if fn == '.godconfig.yml':
+        if fn == ".godconfig.yml":
             continue
         match = pattern.match(fn)
         if match is None:
@@ -322,34 +317,34 @@ def construct_sql_logs(file_add, file_remove, config, name, state):
         match_dict = match.groupdict()
 
         # get the id
-        if 'id' not in match_dict:
+        if "id" not in match_dict:
             continue
 
-        id_ = match_dict.pop('id')
+        id_ = match_dict.pop("id")
         for group, match_key in match_dict.items():
             if group in conversion_groups:
                 match_value = conversion_groups[group][match_key]
 
                 items = logic[id_].get(match_value, [])
-                items.append(('+', fn))
+                items.append(("+", fn))
                 logic[id_][match_value] = items
 
-                items = logic[id_].get(match_value + '_hash', [])
-                items.append(('+', fh))
-                logic[id_][match_value + '_hash'] = items
+                items = logic[id_].get(match_value + "_hash", [])
+                items.append(("+", fh))
+                logic[id_][match_value + "_hash"] = items
 
             else:
                 if group in path_cols:
                     items = logic[id_].get(group, [])
-                    items.append(('+', match_key))
+                    items.append(("+", match_key))
                     logic[id_][group] = items
 
-                    items = logic[id_].get(group + '_hash', [])
-                    items.append(('+', fh))
-                    logic[id_][group + '_hash'] = items
+                    items = logic[id_].get(group + "_hash", [])
+                    items.append(("+", fh))
+                    logic[id_][group + "_hash"] = items
                 else:
                     items = logic[id_].get(group, [])
-                    items.append(('+', match_key))
+                    items.append(("+", match_key))
                     logic[id_][group] = items
 
     # construct db to compare
@@ -369,31 +364,33 @@ def construct_sql_logs(file_add, file_remove, config, name, state):
             drop = False
             for col_name, changes in cols.items():
                 op, value = changes[-1]
-                if op == '+' and value != db[fid][col_name]:
+                if op == "+" and value != db[fid][col_name]:
                     sql_statement.append(f'{col_name} = "{value}"')
-                elif op == '-':
+                elif op == "-":
                     if col_name in primary_cols:
                         drop = True
-                    sql_statement.append(f'{col_name} = NULL')
+                    sql_statement.append(f"{col_name} = NULL")
             if drop:
                 sql_statements.append(f'DELETE FROM main WHERE ID="{fid}"')
                 continue
 
             if sql_statement:
                 sql_statements.append(
-                    f"UPDATE main SET {', '.join(sql_statement)} WHERE ID = \"{fid}\"")
+                    f"UPDATE main SET {', '.join(sql_statement)} WHERE ID = \"{fid}\""
+                )
         else:
             add_col, add_val = [], []
             for col_name, changes in cols.items():
                 op, value = changes[-1]
-                if op == '+':
+                if op == "+":
                     add_col.append(col_name)
-                    add_val.append(f'{value}')
+                    add_val.append(f"{value}")
             if add_col:
                 add_col = ["ID"] + add_col
                 add_val = [fid] + add_val
                 sql_statements.append(
-                    f"INSERT INTO main {tuple(add_col)} VALUES {tuple(add_val)}")
+                    f"INSERT INTO main {tuple(add_col)} VALUES {tuple(add_val)}"
+                )
 
     # update the database
     if not index_db_path.exists():
@@ -442,6 +439,7 @@ if __name__ == "__main__":
     #     # "331cc680329fdef08c5b030c651de2b624f864e16744a476078fd02fde820dfa"
     # )
     file_add, file_remove = get_transform_operations(
-            "001b32f966fea54404e0370c7f3f28933cb251e5f98463eecfb1e920d8fb7cea")
+        "001b32f966fea54404e0370c7f3f28933cb251e5f98463eecfb1e920d8fb7cea"
+    )
     result = construct_sql_logs(file_add, file_remove, TYPE4)
     # populate_db_from_sql_logs(sql_logs)

@@ -163,7 +163,7 @@ class IndexOld:
         tb_name = f"dirs_{dir_hash}"
 
         if self.is_table_exist(tb_name):
-            # if table already exists, then it contains all good files and 
+            # if table already exists, then it contains all good files and
             # TODO: might not be the case, 2 folders can have exactly the same set
             # of files at some point, after that they begin to diverge
             # The previous logic can apply to commit but cannot apply to `index` table
@@ -266,4 +266,3 @@ class IndexOld:
             )
 
         self.con.commit()
-

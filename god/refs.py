@@ -1,7 +1,5 @@
 from pathlib import Path
 
-import yaml
-
 
 def get_ref(ref, ref_dir):
     """Get current commit

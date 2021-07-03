@@ -3,27 +3,26 @@ from pathlib import Path
 
 import fire
 
-from god.init import init
-
-# from god.commit import commit
+from god.base import settings
 
 # from god.history import get_history
 # from god.unlock import unlock
 from god.porcelain import (
-    init_cmd,
     add_cmd,
+    checkout_cmd,
     commit_cmd,
     config_cmd,
-    status_cmd,
+    init_cmd,
     log_cmd,
-    restore_staged_cmd,
-    restore_working_cmd,
-    checkout_cmd,
-    reset_cmd,
     merge_cmd,
     record_add_cmd,
+    reset_cmd,
+    restore_staged_cmd,
+    restore_working_cmd,
+    status_cmd,
 )
-from god.base import settings
+
+# from god.commit import commit
 
 
 class SnapCLI:
@@ -47,9 +46,6 @@ class SnapCLI:
 
         settings.set_global_settings()
         add, remove, update = compare(name1, name2)
-        import pdb
-
-        pdb.set_trace()
 
     def refresh(self, name1):
         pass
@@ -62,14 +58,6 @@ class RecordCLI:
         """Construct the records logs from commit"""
         settings.set_global_settings(**kwargs)
         record_add_cmd(name)
-
-    def execute(self, **kwargs):
-        """Execute the records logs into database, and hold the record logs"""
-        pass
-
-    def execute(self, **kwargs):
-        """Execute the records logs into database, and hold the record logs"""
-        pass
 
     def execute(self, **kwargs):
         """Execute the records logs into database, and hold the record logs"""
@@ -165,28 +153,13 @@ class CLI:
         settings.set_global_settings()
         merge_cmd(branch)
 
-    def index(self, **kwargs):
-        from god.orge import construct_sql_logs
-        from god.logs import get_transform_operations
-
-        settings.set_global_settings(**kwargs)
-        history = get_history()
-        # file_add, file_remove = get_transform_operations(history[1])
-        # result = construct_sql_logs(file_add, file_remove, settings.RECORDS, name='index', state=history[1])
-        file_add, file_remove = get_transform_operations(history[1], history[0])
-        result = construct_sql_logs(
-            file_add, file_remove, settings.RECORDS, name="index", state=history[0]
-        )
-        import pdb
-
-        pdb.set_trace()
-
     def search(self, index=None, columns=None, **kwargs):
         """
         Example usage:
             god search index --col1 "value1||value2" --col2 "valuea"
         """
         import time
+
         from god.search import search
 
         settings.set_global_settings()
@@ -204,10 +177,6 @@ class CLI:
                 f_out.write("\n")
                 f_out.write(",".join(each))
 
-        import pdb
-
-        pdb.set_trace()
-
     def update(self, index, operation, target, **kwargs):
         """Update feature attributes
 
@@ -218,37 +187,24 @@ class CLI:
         from god.update import update
 
         settings.set_global_settings()
-        result = update(str(target), operation, settings.INDEX, index, **kwargs)
-        import pdb
-
-        pdb.set_trace()
-
-    def unlock(self, *args, **kwargs):
-        """Unlock file from symlink to normal"""
-        cwd = Path.cwd()
-        path = [str(cwd / each) for each in args]
-        unlock(path)
+        update(str(target), operation, settings.INDEX, index, **kwargs)
 
     def check(self, **kwargs):
         from pprint import pprint
 
         pprint(kwargs)
-        import pdb
-
-        pdb.set_trace()
 
     def debug(self, command, *args, **kwargs):
         """Run in debug mode"""
-
-        from pdb import Pdb
         import sys
         import traceback
+        from pdb import Pdb
 
         pdb = Pdb()
 
         try:
             self.__getattribute__(command)(*args, **kwargs)
-        except:
+        except Exception:
             traceback.print_exc()
             print("Uncaught exception. Entering post mortem debugging")
             t = sys.exc_info()[2]

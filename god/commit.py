@@ -1,18 +1,12 @@
 """
 Commit the data for hashing
 """
-from collections import defaultdict
-import hashlib
-import os
-import sqlite3
-from multiprocessing import Process, Pool
-from pathlib import Path
 import queue
-import shutil
+from collections import defaultdict
+from pathlib import Path
 
 import yaml
 
-from god.base import change_index, settings
 from god.exceptions import InvalidUserParams
 from god.files import get_string_hash
 from god.index import Index
@@ -167,7 +161,6 @@ def exists_in_commit(files, commit_id, commit_dir, commit_dirs_dir):
     if not files:
         return []
 
-    commit_dirs = read_commit(commit_id, commit_dir)["objects"]
     files_hashes = get_files_hashes_in_commit(commit_id, commit_dir, commit_dirs_dir)
 
     exists = []
@@ -302,5 +295,3 @@ def is_commit(start, commit_dir):
         raise InvalidUserParams(f"Ambiguous commits: {', '.join(result)}")
     elif len(result) == 1:
         return result[0]
-
-

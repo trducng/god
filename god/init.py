@@ -1,19 +1,24 @@
 """Inititate the repo"""
-import sqlite3
 from pathlib import Path
 
 from god.constants import (
-    DIR_GOD,
-    DIR_COMMITS, DIR_COMMITS_DIRECTORY,
-    DIR_RECORDS, DIR_RECORDS_LOG, DIR_RECORDS_DB, DIR_RECORDS_CACHE,
-    DIR_REFS, DIR_REFS_HEADS,
-    DIR_SNAPS,
     DEFAULT_DIR_OBJECTS,
-    FILE_HEAD, FILE_CONFIG, FILE_INDEX
+    DIR_COMMITS,
+    DIR_COMMITS_DIRECTORY,
+    DIR_GOD,
+    DIR_RECORDS,
+    DIR_RECORDS_CACHE,
+    DIR_RECORDS_DB,
+    DIR_RECORDS_LOG,
+    DIR_REFS,
+    DIR_REFS_HEADS,
+    DIR_SNAPS,
+    FILE_CONFIG,
+    FILE_HEAD,
+    FILE_INDEX,
 )
 from god.exceptions import RepoExisted
 from god.index import create_blank_index
-from god.refs import update_ref
 
 
 def repo_exists(path):
@@ -26,10 +31,10 @@ def repo_exists(path):
         RepoExisted: if any of the main file and folder already exist
     """
     if Path(path, DIR_GOD).is_dir():
-        raise RepoExisted(f'`{DIR_GOD}` directory already exists')
+        raise RepoExisted(f"`{DIR_GOD}` directory already exists")
 
     if Path(path, FILE_CONFIG).is_file():
-        raise RepoExisted(f'`{FILE_CONFIG}` file already exists')
+        raise RepoExisted(f"`{FILE_CONFIG}` file already exists")
 
 
 def init(path):
@@ -74,12 +79,11 @@ def init(path):
     Path(path, DEFAULT_DIR_OBJECTS).mkdir(parents=True, exist_ok=True)
 
     # Create file
-    with Path(path, FILE_HEAD).open('w') as f_out:
+    with Path(path, FILE_HEAD).open("w") as f_out:
         f_out.write({"REFS": "main"})
     create_blank_index(Path(path, FILE_INDEX))
 
 
-
-if __name__ == '__main__':
-    path = '.'
+if __name__ == "__main__":
+    path = "."
     init(path)

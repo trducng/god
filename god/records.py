@@ -6,11 +6,6 @@ These operations handle:
 - Maintaining sql logs
 - Update sql logs
 """
-import re
-import sqlite3
-from pathlib import Path
-from collections import defaultdict
-
 from god.commit import get_transform_operations
 from god.records.logs import construct_transformation_logs
 from god.records.records import Records

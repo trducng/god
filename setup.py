@@ -13,11 +13,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/johntd54/god/",
     packages=setuptools.find_packages(),
-    install_requires=[
-        "pyyaml",
-        "fire",
-        "rich"
-    ],
+    install_requires=["pyyaml", "fire", "rich"],
     scripts=["bin/god"],
     python_requires=">=3",
     classifiers=[

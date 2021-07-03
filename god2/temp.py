@@ -16,7 +16,7 @@ def get_columns_and_types_old(config):
         if not each_group:  # unnamed group
             continue
 
-        if each_group[-1] == '_':   # group ends with '_'
+        if each_group[-1] == "_":  # group ends with '_'
             continue
 
         cols.append(each_group)

@@ -3,8 +3,6 @@ import sqlite3
 from pathlib import Path
 
 from god.exceptions import FileExisted
-from god.files import get_string_hash
-
 
 INDEX_DIRECTORY_COLS = [
     "name text",  # directory name
@@ -131,7 +129,7 @@ class Index:
         unset_mhash=[],
         unset_remove=[],
         delete=[],
-        new_entries=[]
+        new_entries=[],
     ):
         """Update the `index`
 
@@ -161,9 +159,8 @@ class Index:
 
         if delete:
             self.cur.execute(
-                f"DELETE FROM dirs WHERE "
-                f"name in ({','.join(['?'] * len(delete))})",
-                delete
+                f"DELETE FROM dirs WHERE " f"name in ({','.join(['?'] * len(delete))})",
+                delete,
             )
 
         if unset_remove:
@@ -183,16 +180,15 @@ class Index:
 
         for fn, mfh, tst in add:
             self.cur.execute(
-                f"INSERT INTO dirs (name, mhash, tstamp) VALUES (?, ?, ?)",
+                "INSERT INTO dirs (name, mhash, tstamp) VALUES (?, ?, ?)",
                 (fn, mfh, tst),
             )
 
         for fn, fh, tst in new_entries:
             self.cur.execute(
-                f"INSERT INTO dirs (name, hash, tstamp) VALUES (?, ?, ?)",
+                "INSERT INTO dirs (name, hash, tstamp) VALUES (?, ?, ?)",
                 (fn, fh, tst),
             )
-
 
         self.con.commit()
 
@@ -209,7 +205,7 @@ class Index:
         # add new records
         for fn, fh, tst in files:
             self.cur.execute(
-                f"INSERT INTO dirs (name, hash, tstamp) VALUES (?, ?, ?)",
+                "INSERT INTO dirs (name, hash, tstamp) VALUES (?, ?, ?)",
                 (fn, fh, tst),
             )
         self.con.commit()

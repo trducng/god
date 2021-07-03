@@ -6,7 +6,6 @@ import yaml
 
 import god.constants as c
 
-
 _MUST_EXIST = [c.DIR_GOD, c.FILE_HEAD]
 _DEFAULT_CONFIG = {
     "OBJECTS": {
@@ -306,7 +305,7 @@ class Settings(object):
         for each_item in list_:
             if isinstance(each_item, Settings):
                 result.append(each_item.as_dict())
-            elif isinstance(each, (list, tuple)):
+            elif isinstance(each_item, (list, tuple)):
                 result.append(self.as_list(each_item))
             else:
                 result.append(each_item)

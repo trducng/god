@@ -1,10 +1,7 @@
 import re
 from collections import defaultdict
 
-from god.records.configs import (
-    get_path_cols,
-    get_group_rule,
-)
+from god.records.configs import get_group_rule, get_path_cols
 
 
 class RecordLogs:

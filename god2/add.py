@@ -5,6 +5,7 @@ Commands:
     --- This is just to mark what files to be calculated hash
 """
 
+
 def add_files_from_files_dirs(files_dirs, index_path, base_dir):
     """Add the files to staging area
 
@@ -128,5 +129,3 @@ def add_dirs(dirs, index_path, base_dir):
 
     # make changes
     add_files_from_files_dirs(files_dirs, index_path, base_dir)
-
-

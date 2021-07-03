@@ -1,6 +1,6 @@
 import os
-from pathlib import Path
 import shutil
+from pathlib import Path
 
 
 def get_symlinks(root):
@@ -25,7 +25,7 @@ def get_symlinks(root):
             continue
 
         if child.is_dir():
-            if child.name == '.god':
+            if child.name == ".god":
                 continue
             non_links += get_symlinks(child)
 
@@ -44,7 +44,7 @@ def unlock(path):
 
     for each_path in path:
         # Collect symlinks
-        symlinks += get_symlinks(str(each_path))   # symlink, original
+        symlinks += get_symlinks(str(each_path))  # symlink, original
 
     # Copy files
     for symlink, original in symlinks:
@@ -52,5 +52,5 @@ def unlock(path):
         shutil.copyfile(original, symlink)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unlock()

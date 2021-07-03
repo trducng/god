@@ -1,22 +1,15 @@
 import re
 import sqlite3
-from pathlib import Path
 from collections import defaultdict
+from pathlib import Path
 
-from god.base import settings, Settings
+from god.base import Settings, settings
 from god.logs import get_transform_operations
-
 
 TYPE1 = {
     "NAME": "index",
     "PATTERN": "(?P<input>train1/(?P<id>(?P<label>cat|dog)\.\d+)\..+$)",
-    "COLUMNS": {
-        "id": "INTEGER",
-        "label": "TEXT",
-        "input": {
-            "path": True
-        }
-    },
+    "COLUMNS": {"id": "INTEGER", "label": "TEXT", "input": {"path": True}},
 }
 
 TYPE2 = {
@@ -39,9 +32,12 @@ TYPE3 = {
     "PATTERN": "(?P<id>.+)\.(?P<switch_>.+$)",
     "COLUMNS": {
         "id": "INTERGER",
-        "input": {"path": True, "conversion_group": ("switch_", ("png", "jpeg", "jpg"))},
+        "input": {
+            "path": True,
+            "conversion_group": ("switch_", ("png", "jpeg", "jpg")),
+        },
         "label": {"path": True, "conversion_group": ("switch_", "json")},
-    }
+    },
 }
 
 
@@ -53,10 +49,9 @@ TYPE4 = {
         "class": "TEXT",
         "location": {"path": True, "conversion_group": ("switch_", ".pbdata")},
         "mask_3d": {"path": True, "conversion_group": ("switch_", "/geometry.pbdata")},
-        "input": {"path": True, "conversion_group": ("switch_", "/video.MOV")}
-    }
+        "input": {"path": True, "conversion_group": ("switch_", "/video.MOV")},
+    },
 }
-
 
 
 def construct_sql_logs(file_add, file_remove, config, name, state):
@@ -80,7 +75,6 @@ def construct_sql_logs(file_add, file_remove, config, name, state):
         commit = None
         db = {}
 
-
     # update the database
     if not index_db_path.exists():
         create_index_db(config[name], name)
@@ -103,7 +97,7 @@ def construct_sql_logs(file_add, file_remove, config, name, state):
     return sql_statements
 
 
-def populate_db_from_sql_logs(sql_logs):
+def populate_db_from_sql_logs(sql_logs, NAME):
 
     con = sqlite3.connect(str(Path(settings.DIR_INDEX, NAME)))
     cur = con.cursor()
@@ -128,6 +122,7 @@ if __name__ == "__main__":
     #     # "331cc680329fdef08c5b030c651de2b624f864e16744a476078fd02fde820dfa"
     # )
     file_add, file_remove = get_transform_operations(
-            "001b32f966fea54404e0370c7f3f28933cb251e5f98463eecfb1e920d8fb7cea")
+        "001b32f966fea54404e0370c7f3f28933cb251e5f98463eecfb1e920d8fb7cea"
+    )
     result = construct_sql_logs(file_add, file_remove, TYPE4)
     # populate_db_from_sql_logs(sql_logs)

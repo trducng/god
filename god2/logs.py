@@ -2,8 +2,7 @@ import hashlib
 from bisect import bisect_left
 from pathlib import Path
 
-from god.db import get_sub_directory_and_hash, get_untouched_directories, get_files
-
+from god.db import get_files, get_sub_directory_and_hash, get_untouched_directories
 
 
 def index(l, element):
@@ -61,17 +60,20 @@ def get_transform_operations(state1, state2=None):
         folders = get_untouched_directories([], db_name=state1)
         for folder_name, folder_hash in folders:
             each_files = [
-                (str(Path(folder_name, name)), h) for (name, h) in get_files(folder_hash)
+                (str(Path(folder_name, name)), h)
+                for (name, h) in get_files(folder_hash)
             ]
             file_add += each_files
 
         return file_add, file_remove
 
     state1_dirs_hashes = sorted(
-        get_sub_directory_and_hash(".", recursive=True, db_name=state1), key=lambda obj: obj[0]
+        get_sub_directory_and_hash(".", recursive=True, db_name=state1),
+        key=lambda obj: obj[0],
     )
     state2_dirs_hashes = sorted(
-        get_sub_directory_and_hash(".", recursive=True, db_name=state2), key=lambda obj: obj[0]
+        get_sub_directory_and_hash(".", recursive=True, db_name=state2),
+        key=lambda obj: obj[0],
     )
 
     # examine folders
@@ -106,8 +108,9 @@ def get_transform_operations(state1, state2=None):
         visited_state1_indices.append(idx)
 
     # add remove files:
-    unvisited_state1_indices = list(set(
-        range(len(state1_dirs))).difference(visited_state1_indices))
+    unvisited_state1_indices = list(
+        set(range(len(state1_dirs))).difference(visited_state1_indices)
+    )
     for idx in unvisited_state1_indices:
         file_remove += insert_path(get_files(state1_hashes[idx]), state1_dirs[idx])
 
@@ -118,8 +121,7 @@ def get_log_records(files, hashes):
     """Construct log records"""
     # @TODO: strip the BASE_DIR first
     out_records = [
-        f"+{Path(each_file)} {each_hash}"
-        for each_file, each_hash in zip(files, hashes)
+        f"+{Path(each_file)} {each_hash}" for each_file, each_hash in zip(files, hashes)
     ]
 
     return out_records
@@ -161,6 +163,8 @@ if __name__ == "__main__":
         # "4edd28d87b4223f086c6bb44c838082456eb7b5f97892311e5612aeb84fb9573",
         # "44ba89e3f3afa22482b4961b4480371b38d521b8cb1c08c350f763375c915a47",
         "ff7a72be8907be6dc50901db67baf268b1a784d8817a0021dbbaa8ca79cd362c",
-        "11a7936355d055bc5437d9fc7f22926ee91fced3f947491d41655fac041d6e23"
+        "11a7936355d055bc5437d9fc7f22926ee91fced3f947491d41655fac041d6e23",
     )
-    import pdb; pdb.set_trace()
+    import pdb
+
+    pdb.set_trace()

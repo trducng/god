@@ -100,7 +100,7 @@ class Settings(object):
         result = item
 
         if isinstance(item, dict):
-            result = Settings(level=self._level+1)
+            result = Settings(level=self._level + 1)
             result.set_values(**item)
         elif isinstance(item, (list, tuple)):
             result = []
@@ -121,8 +121,9 @@ class Settings(object):
 
             if key in self.values:
                 original_value = self.__getattribute__(key)
-                if (isinstance(parsed_value, Settings)
-                        and isinstance(original_value, Settings)):
+                if isinstance(parsed_value, Settings) and isinstance(
+                    original_value, Settings
+                ):
                     object.__setattr__(self, key, original_value + parsed_value)
                 else:
                     object.__setattr__(self, key, parsed_value)
@@ -139,7 +140,7 @@ class Settings(object):
         if self._initialized:
             raise AttributeError("Setting has been initiated, cannot be re-iniated")
 
-        with open(path, 'r') as f_in:
+        with open(path, "r") as f_in:
             config = yaml.safe_load(f_in)
 
             # retrieve index db configuration
@@ -155,7 +156,7 @@ class Settings(object):
             raise AttributeError("Setting has been initiated, cannot be re-initiated")
 
         # set the system-level settings
-        system_config = Path('/etc', c.FILE_CONFIG[1:])
+        system_config = Path("/etc", c.FILE_CONFIG[1:])
         if system_config.exists():
             self.set_values_from_yaml(system_config)
 
@@ -199,7 +200,7 @@ class Settings(object):
     def __getitem__(self, key):
         """Allow accessing config value through string"""
         if key not in self.values:
-            raise IndexError(f'{key} does not exist')
+            raise IndexError(f"{key} does not exist")
         return getattr(self, key)
 
     def __len__(self):
@@ -217,11 +218,11 @@ class Settings(object):
             elif isinstance(value, (list, tuple)):
                 str_repr.append("  " * self._level + f"{each_item}:")
                 for each_config in value:
-                    str_repr.append("  " * (self._level+1) + f"- {each_config}")
+                    str_repr.append("  " * (self._level + 1) + f"- {each_config}")
             else:
                 str_repr.append("  " * self._level + f"{each_item}: {value}")
 
-        return '\n'.join(str_repr)
+        return "\n".join(str_repr)
 
     def __add__(self, other):
         """Perform addition"""
@@ -244,5 +245,6 @@ class Settings(object):
         settings.set_values(**result)
 
         return settings
+
 
 settings = Settings()

@@ -1,8 +1,7 @@
 import sqlite3
 from pathlib import Path
 
-from god.base import settings, Settings
-
+from god.base import Settings, settings
 
 
 def get_standard_index(config):
@@ -17,7 +16,7 @@ def get_standard_index(config):
         return list(config.keys())[0]
 
     for key, value in config.items():
-        if value.get('STANDARD', None):
+        if value.get("STANDARD", None):
             return key
 
     # else return the first index in config
@@ -34,11 +33,11 @@ def get_path_cols(config):
     """
     result = []
 
-    COLUMNS = config.get('COLUMNS', {})
+    COLUMNS = config.get("COLUMNS", {})
     for col_name, col_rule in COLUMNS.items():
         if not isinstance(col_rule, (dict, Settings)):
             continue
-        if col_rule.get('path', False) or col_rule.get('PATH', False):
+        if col_rule.get("path", False) or col_rule.get("PATH", False):
             result.append(col_name)
 
     return result
@@ -54,10 +53,10 @@ def get_standard_column(index_config):
         [<str>]: list of standard columns
     """
     cols = []
-    for key, value in index_config['COLUMNS'].items():
+    for key, value in index_config["COLUMNS"].items():
         if isinstance(value, str):
             continue
-        if value.get('standard', None):
+        if value.get("standard", None):
             cols.append(key)
 
     return cols
@@ -98,11 +97,11 @@ def separate_main_feature_cols(config, **kwargs):
         <{}>: the column: query for features
     """
     feature_cols = []
-    for key, value in config['COLUMNS'].items():
-            if isinstance(value, str):
-                continue
-            if value.get('type', None) == 'MANY':
-                feature_cols.append(key)
+    for key, value in config["COLUMNS"].items():
+        if isinstance(value, str):
+            continue
+        if value.get("type", None) == "MANY":
+            feature_cols.append(key)
     feature_cols = set(feature_cols)
 
     main_queries, feature_queries = {}, {}
@@ -129,21 +128,21 @@ def parse_main_conditions(**kwargs):
     """
     query_components = []
     for key, value in kwargs.items():
-        temp_queries = value.split('||')
+        temp_queries = value.split("||")
         queries = []
         for temp_query in temp_queries:
-            if '*' in temp_query:
+            if "*" in temp_query:
                 queries.append(f"main.{key} LIKE '{temp_query.replace('*', '%')}'")
             else:
                 queries.append(f"main.{key} = '{temp_query}'")
 
-        query = ' OR '.join(queries)
+        query = " OR ".join(queries)
         if len(queries) > 1:
-            query_components.append(f'({query})')
+            query_components.append(f"({query})")
         else:
             query_components.append(query)
 
-    return ' AND '.join(query_components)
+    return " AND ".join(query_components)
 
 
 def parse_feature_conditions(**kwargs):
@@ -160,21 +159,22 @@ def parse_feature_conditions(**kwargs):
     """
     query_components = []
     for key, value in kwargs.items():
-        temp_queries = value.split('||')
+        temp_queries = value.split("||")
         queries = []
         for temp_query in temp_queries:
-            if '*' in temp_query:
+            if "*" in temp_query:
                 queries.append(f"{key}.value LIKE '{temp_query.replace('*', '%')}'")
             else:
                 queries.append(f"{key}.value = '{temp_query}'")
 
-        query = ' OR '.join(queries)
+        query = " OR ".join(queries)
         if len(queries) > 1:
-            query_components.append(f'({query})')
+            query_components.append(f"({query})")
         else:
             query_components.append(query)
 
-    return ' AND '.join(query_components)
+    return " AND ".join(query_components)
+
 
 def search(config, index=None, columns=None, **kwargs):
     """Retrieve instances in index that match with query in **kwargs {col: query}
@@ -198,12 +198,12 @@ def search(config, index=None, columns=None, **kwargs):
         temp_columns = []
         path_cols = get_path_cols(config[index])
         for column in columns:
-            temp_columns.append(f'main.{column}')
+            temp_columns.append(f"main.{column}")
             if column in path_cols:
-                temp_columns.append(f'main.{column}_hash')
+                temp_columns.append(f"main.{column}_hash")
         columns = temp_columns
 
-    columns = ', '.join(columns) if columns else '*'
+    columns = ", ".join(columns) if columns else "*"
 
     # investigate queries
     main_queries, feature_queries = separate_main_feature_cols(config[index], **kwargs)
@@ -214,13 +214,14 @@ def search(config, index=None, columns=None, **kwargs):
     if feature_queries:
         joins = []
         for key in feature_queries.keys():
-            joins.append(f'INNER JOIN {key} ON main.id = {key}.id')
-        joins = ' '.join(joins)
+            joins.append(f"INNER JOIN {key} ON main.id = {key}.id")
+        joins = " ".join(joins)
         conditions = (
-            ' AND '.join([main_conditions, feature_conditions])
+            " AND ".join([main_conditions, feature_conditions])
             if main_conditions
-            else feature_conditions)
-        sql_query = f'SELECT {columns} FROM main {joins} WHERE {conditions}'
+            else feature_conditions
+        )
+        sql_query = f"SELECT {columns} FROM main {joins} WHERE {conditions}"
     else:
         conditions = main_conditions
         sql_query = f"SELECT {columns} FROM main WHERE {conditions}"
@@ -228,15 +229,11 @@ def search(config, index=None, columns=None, **kwargs):
     return search_raw_query(index, sql_query)
 
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     import yaml
-    kwargs = {
-        'class': "bike||camera",
-        'col': 'abc'
-    }
-    with open('/home/john/datasets/god-test/type4/.godconfig.yml', 'r') as f_in:
-        config = yaml.safe_load(f_in)['INDEX']
+
+    kwargs = {"class": "bike||camera", "col": "abc"}
+    with open("/home/john/datasets/god-test/type4/.godconfig.yml", "r") as f_in:
+        config = yaml.safe_load(f_in)["INDEX"]
 
     print(search(config, index=None, columns=None, **kwargs))
-

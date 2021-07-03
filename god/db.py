@@ -1,9 +1,8 @@
 import hashlib
-import os
-from pathlib import Path
 import sqlite3
+from pathlib import Path
 
-from god.base import get_base_dir, get_current_commit_db, settings
+from god.base import get_current_commit_db, settings
 
 
 def get_connection_cursor(db_name):
@@ -22,23 +21,23 @@ def create_index_db(directories):
         <str>: the hash name of the index db
     """
     directories = sorted(directories, key=lambda obj: obj[0])
-    directories_text = [','.join(each) for each in directories]
+    directories_text = [",".join(each) for each in directories]
 
-    db_name = hashlib.sha256('\n'.join(directories_text).encode()).hexdigest()
+    db_name = hashlib.sha256("\n".join(directories_text).encode()).hexdigest()
     db_path = Path(settings.DIR_DB, db_name)
     if db_path.is_file():
         return db_name
 
     # Construct the index database
     con, cur = get_connection_cursor(db_name)
-    cur.execute('CREATE TABLE dirs(path text, hash text, timestamp real)')
+    cur.execute("CREATE TABLE dirs(path text, hash text, timestamp real)")
     for path, dh in directories:
         timestamp = Path(settings.DIR_BASE, path).stat().st_mtime
         cur.execute(f'INSERT INTO dirs VALUES("{path}", "{dh}", "{timestamp}")')
-    cur.execute('CREATE INDEX index_main ON dirs (path)')
+    cur.execute("CREATE INDEX index_main ON dirs (path)")
 
     # Construct history database
-    cur.execute('CREATE TABLE depend_on(hash text)')
+    cur.execute("CREATE TABLE depend_on(hash text)")
     cur.execute(f'INSERT INTO depend_on VALUES("{get_current_commit_db()}")')
 
     con.commit()
@@ -65,9 +64,9 @@ def create_directory_db(files):
     """
     files = [(str(Path(fp).name), fh) for (fp, fh) in files]
     files = sorted(files, key=lambda obj: obj[0])
-    files_text = [','.join(each) for each in files]
+    files_text = [",".join(each) for each in files]
 
-    db_name = hashlib.sha256('\n'.join(files_text).encode()).hexdigest()
+    db_name = hashlib.sha256("\n".join(files_text).encode()).hexdigest()
     db_path = Path(settings.DIR_DB, db_name)
     if db_path.is_file():
         # Likely merely changing folder name
@@ -82,7 +81,7 @@ def create_directory_db(files):
     for file_name, file_hash in files:
         cur.execute(f'INSERT INTO dirs VALUES("{file_name}", "{file_hash}")')
 
-    cur.execute('CREATE INDEX index_main ON dirs (path)')
+    cur.execute("CREATE INDEX index_main ON dirs (path)")
     con.commit()
     con.close()
 
@@ -109,9 +108,7 @@ def get_directory_hash(directory, db_name=None):
 
     con, cur = get_connection_cursor(db_name)
 
-    result = cur.execute(
-            f'SELECT hash FROM dirs '
-            f'WHERE path = "{directory}"')
+    result = cur.execute(f"SELECT hash FROM dirs " f'WHERE path = "{directory}"')
 
     result = result.fetchall()
     con.close()
@@ -135,13 +132,11 @@ def is_directory_maintained(directory, timestamp, db_name=None):
     """
     db_name = get_current_commit_db() if db_name is None else db_name
     if not db_name:
-        raise RuntimeError(f"Cannot retrieve current commit database.")
+        raise RuntimeError("Cannot retrieve current commit database.")
 
     con, cur = get_connection_cursor(db_name)
 
-    result = cur.execute(
-            f'SELECT timestamp FROM dirs '
-            f'WHERE path = "{directory}"')
+    result = cur.execute(f"SELECT timestamp FROM dirs " f'WHERE path = "{directory}"')
 
     result = result.fetchall()[0][0]
     con.close()
@@ -170,8 +165,8 @@ def get_sub_directory(directory, recursive=False, db_name=None):
 
     con, cur = get_connection_cursor(db_name)
 
-    if directory == '.':
-        result = cur.execute('SELECT path FROM dirs')
+    if directory == ".":
+        result = cur.execute("SELECT path FROM dirs")
     else:
         result = cur.execute(f'SELECT path FROM dirs WHERE path LIKE "{directory}/%"')
     result = [each[0] for each in result.fetchall()]
@@ -180,10 +175,7 @@ def get_sub_directory(directory, recursive=False, db_name=None):
     if recursive:
         return result
 
-    return [
-        each for each in result
-        if str(Path(each).parent) == directory
-    ]
+    return [each for each in result if str(Path(each).parent) == directory]
 
 
 def get_sub_directory_and_hash(directory, recursive=False, db_name=None):
@@ -200,14 +192,16 @@ def get_sub_directory_and_hash(directory, recursive=False, db_name=None):
     directory = str(directory)
     db_name = get_current_commit_db() if db_name is None else db_name
     if not db_name:
-        raise RuntimeError(f"Cannot retrieve current commit database.")
+        raise RuntimeError("Cannot retrieve current commit database.")
 
     con, cur = get_connection_cursor(db_name)
 
-    if directory == '.':
-        result = cur.execute('SELECT path, hash FROM dirs')
+    if directory == ".":
+        result = cur.execute("SELECT path, hash FROM dirs")
     else:
-        result = cur.execute(f'SELECT path, hash FROM dirs WHERE path LIKE "{directory}/%"')
+        result = cur.execute(
+            f'SELECT path, hash FROM dirs WHERE path LIKE "{directory}/%"'
+        )
 
     result = result.fetchall()
     con.close()
@@ -215,10 +209,7 @@ def get_sub_directory_and_hash(directory, recursive=False, db_name=None):
     if recursive:
         return result
 
-    return [
-        each for each in result
-        if str(Path(each[0]).parent) == directory
-    ]
+    return [each for each in result if str(Path(each[0]).parent) == directory]
 
 
 def get_untouched_directories(directories, db_name=None):
@@ -237,8 +228,9 @@ def get_untouched_directories(directories, db_name=None):
 
     con, cur = get_connection_cursor(db_name)
 
-    sql = 'SELECT path, hash FROM dirs WHERE path NOT IN ({})'.format(
-        ','.join(['?'] * len(directories)))
+    sql = "SELECT path, hash FROM dirs WHERE path NOT IN ({})".format(
+        ",".join(["?"] * len(directories))
+    )
     result = cur.execute(sql, directories)
     result = result.fetchall()
     con.close()
@@ -277,12 +269,9 @@ def get_removed_files(file_names, cursor):
     """
     if not file_names:
         return []
-    sql = 'SELECT path, hash FROM dirs WHERE path NOT IN ({})'.format(
-        ','.join(['?'] * len(file_names)))
+    sql = "SELECT path, hash FROM dirs WHERE path NOT IN ({})".format(
+        ",".join(["?"] * len(file_names))
+    )
     result = cursor.execute(sql, file_names)
 
     return result.fetchall()
-
-
-if __name__ == '__main__':
-    create_index_sqlite_db()

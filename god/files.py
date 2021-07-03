@@ -1,15 +1,15 @@
-from collections import defaultdict
 import hashlib
 import os
-from pathlib import Path
 import shutil
+from collections import defaultdict
+from pathlib import Path
 
 from god.base import settings
 
 
 def get_file_hash(file_):
     """Calculate file hash"""
-    with open(file_, 'rb') as f_in:
+    with open(file_, "rb") as f_in:
         file_hash = hashlib.sha256(f_in.read()).hexdigest()
 
     return file_hash
@@ -44,7 +44,7 @@ def copy_objects_with_hashes(files, dir_obj, base_dir):
     # construct hash table
     for fn, fh in files:
         fn = Path(base_dir, fn)
-        hash_path = f'{fh[:2]}/{fh[2:4]}/{fh[4:]}'
+        hash_path = f"{fh[:2]}/{fh[2:4]}/{fh[4:]}"
         hash_path = dir_obj / hash_path
         hash_path.parent.mkdir(parents=True, exist_ok=True)
         if hash_path.is_file():
@@ -67,7 +67,7 @@ def copy_hashed_objects_to_files(files, dir_obj, base_dir):
     for fn, fh in files:
         fn = Path(base_dir, fn)
         fn.parent.mkdir(parents=True, exist_ok=True)
-        hash_path = f'{fh[:2]}/{fh[2:4]}/{fh[4:]}'
+        hash_path = f"{fh[:2]}/{fh[2:4]}/{fh[4:]}"
         hash_path = dir_obj / hash_path
 
         shutil.copy(hash_path, fn)
@@ -83,7 +83,7 @@ def get_objects_tst(objects, dir_obj):
     """
     tsts = []
     for ob in objects:
-        path = Path(dir_obj, f'{ob[:2]}/{ob[2:4]}/{ob[4:]}')
+        path = Path(dir_obj, f"{ob[:2]}/{ob[2:4]}/{ob[4:]}")
         tsts.append(path.stat().st_mtime)
     return tsts
 
@@ -153,7 +153,10 @@ def organize_files_by_prefix_with_tstamp(files, base_dir, files_dirs=None):
 
 
 def organize_files_in_dirs_by_prefix_with_tstamp(
-    dirs, base_dir, files_dirs=None, recursive=True,
+    dirs,
+    base_dir,
+    files_dirs=None,
+    recursive=True,
 ):
     """Organize the files in directories into dictionary of files
 
@@ -268,11 +271,10 @@ def retrieve_files_info(files, dirs, base_dir):
     return files_dirs
 
 
-"""
-OLD
-"""
 def get_nonsymlinks(path, recursive=False):
     """Get non-symlink files in folder `path` (recursively)
+
+    OLD FROM HERE.
 
     # Args
         path: the relative path to begin checking for files.
@@ -287,7 +289,7 @@ def get_nonsymlinks(path, recursive=False):
             continue
 
         if child.is_dir():
-            if child.name == '.god':
+            if child.name == ".god":
                 continue
             if recursive:
                 non_links += get_nonsymlinks(child.path)
@@ -315,17 +317,16 @@ def construct_symlinks(paths, recursive=True):
 
     temp = {}
     for each_file in files:
-        with open(each_file, 'rb') as f_in:
+        with open(each_file, "rb") as f_in:
             file_hash = hashlib.sha256(f_in.read()).hexdigest()
             temp[str(each_file)] = file_hash
 
     # construct hash table
-    hash_table = {}
     for each_file in files:
         # each_file = str(Path(each_file).resolve())
-        with open(each_file, 'rb') as f_in:
+        with open(each_file, "rb") as f_in:
             file_hash = hashlib.sha256(f_in.read()).hexdigest()
-            hash_path = f'{file_hash[:2]}/{file_hash[2:4]}/{file_hash[4:]}'
+            hash_path = f"{file_hash[:2]}/{file_hash[2:4]}/{file_hash[4:]}"
         hash_path = dir_obj / hash_path
         hash_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.move(each_file, hash_path)
@@ -348,7 +349,7 @@ def get_dir_detail(dir_name):
             continue
 
         if child.is_dir():
-            if child.name == '.god':
+            if child.name == ".god":
                 continue
             directories.append((child.path, child.stat().st_mtime))
             sub_dirs, sub_files = get_dir_detail(child.path)
@@ -364,14 +365,8 @@ def get_hash(files):
     """Construct the hash of files"""
     hashes = []
     for each_file in files:
-        with open(each_file, 'rb') as f_in:
+        with open(each_file, "rb") as f_in:
             file_hash = hashlib.sha256(f_in.read()).hexdigest()
             hashes.append(file_hash)
 
     return hashes
-
-
-
-if __name__ == '__main__':
-    # directories, non_links = get_dir_detail(get_base_dir())
-    import pdb; pdb.set_trace()

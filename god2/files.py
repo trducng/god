@@ -1,7 +1,7 @@
 import hashlib
 import os
-from pathlib import Path
 import shutil
+from pathlib import Path
 
 from god.base import settings
 
@@ -22,7 +22,7 @@ def get_nonsymlinks(path, recursive=False):
             continue
 
         if child.is_dir():
-            if child.name == '.god':
+            if child.name == ".god":
                 continue
             if recursive:
                 non_links += get_nonsymlinks(child.path)
@@ -50,7 +50,7 @@ def construct_symlinks(paths, recursive=True):
 
     temp = {}
     for each_file in files:
-        with open(each_file, 'rb') as f_in:
+        with open(each_file, "rb") as f_in:
             file_hash = hashlib.sha256(f_in.read()).hexdigest()
             temp[str(each_file)] = file_hash
 
@@ -58,9 +58,9 @@ def construct_symlinks(paths, recursive=True):
     hash_table = {}
     for each_file in files:
         # each_file = str(Path(each_file).resolve())
-        with open(each_file, 'rb') as f_in:
+        with open(each_file, "rb") as f_in:
             file_hash = hashlib.sha256(f_in.read()).hexdigest()
-            hash_path = f'{file_hash[:2]}/{file_hash[2:4]}/{file_hash[4:]}'
+            hash_path = f"{file_hash[:2]}/{file_hash[2:4]}/{file_hash[4:]}"
         hash_path = dir_obj / hash_path
         hash_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.move(each_file, hash_path)
@@ -83,7 +83,7 @@ def get_dir_detail(dir_name):
             continue
 
         if child.is_dir():
-            if child.name == '.god':
+            if child.name == ".god":
                 continue
             directories.append((child.path, child.stat().st_mtime))
             sub_dirs, sub_files = get_dir_detail(child.path)
@@ -99,17 +99,18 @@ def get_hash(files):
     """Construct the hash of files"""
     hashes = []
     for each_file in files:
-        with open(each_file, 'rb') as f_in:
+        with open(each_file, "rb") as f_in:
             file_hash = hashlib.sha256(f_in.read()).hexdigest()
             hashes.append(file_hash)
 
     return hashes
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # directories, non_links = get_dir_detail(get_base_dir())
-    import pdb; pdb.set_trace()
+    import pdb
 
+    pdb.set_trace()
     # simplify some add and op operations with move
     # reverse_add_ops, reverse_remove_ops can dup since hashes are not unique
     reverse_add_ops = {value: key for key, value in add_ops.items()}
@@ -117,7 +118,7 @@ if __name__ == '__main__':
     add_hashes = set(add_ops.values())
     remove_hashes = set(remove_ops.values())
     move_hashes = list(add_hashes.intersection(remove_hashes))
-    move = {}   # from: to
+    move = {}  # from: to
     for mh in move_hashes:
         fr = reverse_remove_ops[mh]
         to = reverse_add_ops[mh]

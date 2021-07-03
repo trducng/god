@@ -3,17 +3,24 @@ Commit the data for hashing
 """
 import hashlib
 import os
-import sqlite3
-from multiprocessing import Process, Pool
-from pathlib import Path
 import shutil
+import sqlite3
+from multiprocessing import Pool, Process
+from pathlib import Path
 
 from god.base import change_index, settings
 from god.db import (
-    get_directory_hash, get_sub_directory, get_file_hash, get_removed_files,
-    is_directory_maintained, get_connection_cursor, create_directory_db,
-    create_index_db, get_untouched_directories)
-from god.files import get_dir_detail, get_hash, construct_symlinks, get_nonsymlinks
+    create_directory_db,
+    create_index_db,
+    get_connection_cursor,
+    get_directory_hash,
+    get_file_hash,
+    get_removed_files,
+    get_sub_directory,
+    get_untouched_directories,
+    is_directory_maintained,
+)
+from god.files import construct_symlinks, get_dir_detail, get_hash, get_nonsymlinks
 from god.logs import get_log_records, save_log
 
 
@@ -41,7 +48,7 @@ def check_directory(dir_name):
     """
     directory_add, directory_remove, directory_remain = [], [], []
     file_add, file_remove, file_remain = [], [], []
-    files = []      # aggregate files because they are both symlink + files
+    files = []  # aggregate files because they are both symlink + files
 
     # get detail of each child item
     # populate directory_add & directory_remain
@@ -50,13 +57,15 @@ def check_directory(dir_name):
             # get the symlink hash
             file_path = Path(child.path)
             original = file_path.resolve()
-            file_hash = str(Path(original).relative_to(settings.DIR_OBJ)).replace('/', '')
+            file_hash = str(Path(original).relative_to(settings.DIR_OBJ)).replace(
+                "/", ""
+            )
             rel_path = str(file_path.relative_to(settings.DIR_BASE))
             files.append((rel_path, file_hash))
             continue
 
         if child.is_dir():
-            if child.name == '.god':
+            if child.name == ".god":
                 continue
 
             rel_path = str(Path(child.path).relative_to(settings.DIR_BASE))
@@ -74,7 +83,7 @@ def check_directory(dir_name):
         else:
             # calculate hash
             file_path = Path(child.path)
-            with file_path.open('rb') as f_in:
+            with file_path.open("rb") as f_in:
                 file_hash = hashlib.sha256(f_in.read()).hexdigest()
             rel_path = str(file_path.relative_to(settings.DIR_BASE))
             files.append((rel_path, file_hash))
@@ -90,20 +99,30 @@ def check_directory(dir_name):
         # not all sub-directories of directory to add are subject to be removed
         sub_adds += get_sub_directory(each, recursive=True)
 
-    sub_dir = get_sub_directory(Path(dir_name).relative_to(settings.DIR_BASE), recursive=True)
+    sub_dir = get_sub_directory(
+        Path(dir_name).relative_to(settings.DIR_BASE), recursive=True
+    )
     directory_remove = [
-        each for each in sub_dir
-        if each not in
-        directory_remain + directory_add + sub_adds +
-        [str(Path(dir_name).relative_to(settings.DIR_BASE))]]
+        each
+        for each in sub_dir
+        if each
+        not in directory_remain
+        + directory_add
+        + sub_adds
+        + [str(Path(dir_name).relative_to(settings.DIR_BASE))]
+    ]
 
     # populate file_add
     dhash = get_directory_hash(Path(dir_name).relative_to(settings.DIR_BASE))
     if not dhash:
         file_add = files
         return (
-                directory_add, directory_remove, directory_remain,
-                file_add, file_remove, file_remain
+            directory_add,
+            directory_remove,
+            directory_remain,
+            file_add,
+            file_remove,
+            file_remain,
         )
 
     # populate file_add and file_remain
@@ -123,14 +142,19 @@ def check_directory(dir_name):
     exist = [str(Path(fp).name) for (fp, fh) in file_remain]
     file_remove = get_removed_files(exist, cur)
     file_remove = [
-            (str(Path(dir_name, file_name).relative_to(settings.DIR_BASE)), file_hash)
-            for (file_name, file_hash) in file_remove]
+        (str(Path(dir_name, file_name).relative_to(settings.DIR_BASE)), file_hash)
+        for (file_name, file_hash) in file_remove
+    ]
 
     con.close()
 
     return (
-            directory_add, directory_remove, directory_remain,
-            file_add, file_remove, file_remain
+        directory_add,
+        directory_remove,
+        directory_remain,
+        file_add,
+        file_remove,
+        file_remain,
     )
 
 
@@ -150,8 +174,12 @@ def commit(path):
     idx = 0
     while idx < len(remainings):
         (
-            directory_add, directory_remove, directory_remain,
-            file_add, file_remove, file_remain
+            directory_add,
+            directory_remove,
+            directory_remain,
+            file_add,
+            file_remove,
+            file_remain,
         ) = check_directory(remainings[idx])
         directory_adds += directory_add
         directory_removes += directory_remove
@@ -183,16 +211,26 @@ def commit(path):
     construct_symlinks(directory_remains, recursive=True)
 
     return (
-            directory_adds, directory_removes, directory_remains,
-            file_adds, file_removes, file_remains)
+        directory_adds,
+        directory_removes,
+        directory_remains,
+        file_adds,
+        file_removes,
+        file_remains,
+    )
 
 
 def play_with_setting():
     print(settings)
 
-if __name__ == '__main__':
-    path = Path('/home/john/datasets/god-test/type1').resolve()
+
+if __name__ == "__main__":
+    path = Path("/home/john/datasets/god-test/type1").resolve()
     (
-        directory_add, directory_remove, directory_remain,
-        file_add, file_remove, file_remain
+        directory_add,
+        directory_remove,
+        directory_remain,
+        file_add,
+        file_remove,
+        file_remain,
     ) = commit(path)

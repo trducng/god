@@ -13,11 +13,11 @@ def get_path_cols(config):
     """
     result = []
 
-    COLUMNS = config.get('COLUMNS', {})
+    COLUMNS = config.get("COLUMNS", {})
     for col_name, col_rule in COLUMNS.items():
         if not isinstance(col_rule, (dict, Settings)):
             continue
-        if col_rule.get('path', False) or col_rule.get('PATH', False):
+        if col_rule.get("path", False) or col_rule.get("PATH", False):
             result.append(col_name)
 
     return result
@@ -34,15 +34,15 @@ def get_group_rule(config):
     """
     result = defaultdict(dict)
 
-    COLUMNS = config.get('COLUMNS', {})
+    COLUMNS = config.get("COLUMNS", {})
     for col_name, col_rule in COLUMNS.items():
         if not isinstance(col_rule, (dict, Settings)):
             continue
-        if 'conversion_group' not in col_rule:
+        if "conversion_group" not in col_rule:
             continue
 
-        group_name = list(col_rule['conversion_group'].keys())[0]
-        group_val = list(col_rule['conversion_group'].values())[0]
+        group_name = list(col_rule["conversion_group"].keys())[0]
+        group_val = list(col_rule["conversion_group"].values())[0]
         if not isinstance(group_val, (list, tuple)):
             result[group_name][group_val] = col_name
         else:
@@ -112,4 +112,3 @@ def get_primary_cols(config):
             continue
 
     return cols
-
