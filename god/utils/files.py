@@ -15,18 +15,6 @@ def get_file_hash(file_):
     return file_hash
 
 
-def get_string_hash(string):
-    """Get string hash
-
-    # Args:
-        string <str>: the input string
-
-    # Returns:
-        <str>: hash value of the string
-    """
-    return hashlib.sha256(string.encode()).hexdigest()
-
-
 def copy_objects_with_hashes(files, dir_obj, base_dir):
     """Construct symlinks
 
@@ -92,7 +80,7 @@ def get_files_tst(files, base_dir):
     """Get files timestamps
 
     # Args:
-        files <[str|Path>: list of file paths relative to `base_dir`
+        files <[str|Path]>: list of file paths relative to `base_dir`
         base_dir <str|Path>: project base directory
 
     # Returns:

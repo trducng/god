@@ -22,8 +22,6 @@ from god.porcelain import (
     status_cmd,
 )
 
-# from god.commit import commit
-
 
 class SnapCLI:
     """Snapshot functionality"""

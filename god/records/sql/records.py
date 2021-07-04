@@ -2,10 +2,11 @@ import sqlite3
 from pathlib import Path
 
 from god.records.configs import get_columns_and_types
+from god.records import BaseRecords
 
 
-class Records(object):
-    """Record table holding data information
+class Records(BaseRecords):
+    """Record SQL table holding data information
 
     This class provides record table management:
         - create record database
@@ -20,8 +21,7 @@ class Records(object):
 
     def __init__(self, record_path, record_config):
         """Initialize the record"""
-        self._record_path = record_path
-        self._record_config = record_config
+        super(self, Records).__init__(record_path, record_config)
         self.con, self.cur = None, None
 
     def start(self):
@@ -52,7 +52,7 @@ class Records(object):
         db_result = self.cur.execute("SELECT * FROM main LIMIT 0")
         cols = [each[0] for each in db_result.description]
         id_idx = cols.index("id")
-        cols = [cols[id_idx]] + cols[:id_idx] + cols[id_idx + 1 :]
+        cols = [cols[id_idx]] + cols[:id_idx] + cols[id_idx + 1:]
 
         db_result = self.cur.execute("SELECT * FROM main")
         db_result = db_result.fetchall()

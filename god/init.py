@@ -1,7 +1,7 @@
 """Inititate the repo"""
 from pathlib import Path
 
-from god.constants import (
+from god.utils.constants import (
     DEFAULT_DIR_OBJECTS,
     DIR_COMMITS,
     DIR_COMMITS_DIRECTORY,
@@ -17,7 +17,7 @@ from god.constants import (
     FILE_HEAD,
     FILE_INDEX,
 )
-from god.exceptions import RepoExisted
+from god.utils.exceptions import RepoExisted
 from god.index import create_blank_index
 
 

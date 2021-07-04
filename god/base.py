@@ -4,7 +4,7 @@ from pathlib import Path
 
 import yaml
 
-import god.constants as c
+import god.utils.constants as c
 
 _MUST_EXIST = [c.DIR_GOD, c.FILE_HEAD]
 _DEFAULT_CONFIG = {

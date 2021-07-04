@@ -20,6 +20,5 @@ DEFAULT_DIR_OBJECTS = str(Path(DIR_GOD, "objects"))
 
 FILE_HEAD = str(Path(DIR_GOD, "HEAD"))
 FILE_INDEX = str(Path(DIR_GOD, "index"))
-FILE_RECORD = ".godrecord"
 FILE_CONFIG = ".godconfig"
 FILE_LOCAL_CONFIG = str(Path(DIR_GOD, FILE_CONFIG))

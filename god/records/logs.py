@@ -1,11 +1,24 @@
 import re
 from collections import defaultdict
 
+import yaml
+
 from god.records.configs import get_group_rule, get_path_cols
 
 
-class RecordLogs:
-    pass
+def read_logic(logic_path):
+    """Read current logic from file
+
+    # Args:
+        logic_path <str>: absolute path to logic file
+
+    # Returns:
+        <{id: {col: [('+/-', value)]}}>: the logic information
+    """
+    with open(logic_path):
+        logic = yaml.safe_load(logic_path)
+
+    return logic
 
 
 def parse_transformation(transform, op, result_dict, config):
@@ -73,7 +86,7 @@ def parse_transformation(transform, op, result_dict, config):
     return result_dict
 
 
-def construct_transformation_logs(file_add, file_remove, config):
+def construct_transformation_logic(file_add, file_remove, config):
     """Construct sql logs from the file add and file remove
 
     # Args

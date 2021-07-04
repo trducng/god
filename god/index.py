@@ -1,8 +1,9 @@
 """Index-related functionality"""
+from collections import defaultdict
 import sqlite3
 from pathlib import Path
 
-from god.exceptions import FileExisted
+from god.utils.exceptions import FileExisted
 
 INDEX_DIRECTORY_COLS = [
     "name text",  # directory name
@@ -209,3 +210,32 @@ class Index:
                 (fn, fh, tst),
             )
         self.con.commit()
+
+    def to_files_hashes(self):
+        """Get active files
+
+        # Returns:
+            <{fp: fh}>: file path and file hashes
+        """
+        files_hashes = {}
+        files_info = self.get_files_info(get_remove=False)
+        for f in files_info:
+            fh = f[2] or f[1]
+            files_hashes[f[0]] = fh
+
+        return files_hashes
+
+    def to_files_dirs_hashes(self):
+        """Get active files organized by directory
+
+        # Returns:
+            <{dir_path: [(fn, fh)]}>: file path and file hashes
+        """
+        file_dirs_hashes = defaultdict(list)
+        files_info = self.get_files_info(get_remove=False)
+        for f in files_info:
+            fp = Path(f[0])
+            fh = f[2] or f[1]
+            file_dirs_hashes[str(fp.parent)].append((fp.name, fh))
+
+        return file_dirs_hashes

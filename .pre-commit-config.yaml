@@ -8,7 +8,6 @@ repos:
     -   id: check-case-conflict
     -   id: check-docstring-first
     -   id: check-executables-have-shebangs
-    -   id: check-json
     -   id: check-yaml
     -   id: debug-statements
         exclude: cli.py

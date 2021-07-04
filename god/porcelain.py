@@ -1,4 +1,8 @@
-"""Porcelain commands to be used with CLI"""
+"""Porcelain commands to be used with CLI
+
+# @TODO: porcelain might be moved to cli, because we don't use it anywhere, or make
+cli right into porcelain.
+"""
 from pathlib import Path
 
 from rich import print as rprint
@@ -14,11 +18,12 @@ from god.branches import (
     restore_working,
     status,
 )
-from god.commit import commit, is_commit, read_commit
-from god.exceptions import InvalidUserParams
+from god.commit import commit
+from god.commits.base import is_commit, read_commit
+from god.utils.exceptions import InvalidUserParams
 from god.init import init, repo_exists
 from god.records import record_add
-from god.refs import get_ref, is_ref, update_ref
+from god.branches.refs import get_ref, is_ref, update_ref
 
 
 def init_cmd(path):
