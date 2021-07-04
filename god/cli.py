@@ -5,7 +5,6 @@ import fire
 
 from god.base import settings
 
-# from god.history import get_history
 # from god.unlock import unlock
 from god.porcelain import (
     add_cmd,

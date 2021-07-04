@@ -6,7 +6,7 @@ These operations handle:
 - Maintaining sql logs
 - Update sql logs
 """
-from god.branches import track_working_changes
+from god.branches.track_changes import track_working_changes
 from god.index import Index
 from god.commits.compare import transform_commit
 from god.records.logs import construct_transformation_logic

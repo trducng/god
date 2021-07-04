@@ -45,38 +45,6 @@ def get_base_dir(path=None):
             return str(current_path)
 
 
-def change_index(value):
-    """Change pointer information"""
-    base_path = get_base_dir()
-    pointer_file = Path(base_path, c.FILE_POINTER)
-
-    with pointer_file.open("w") as f_out:
-        f_out.write(value)
-
-
-def get_current_commit_db(base_path=None):
-    """Get the current commit db
-
-    # Args
-        base_path <str>: the base directory that contains `.god`. If blank, infer
-            from current working directory
-
-    # Returns
-        <str>: the name of current commit DB. If '', then there isn't a current
-            commit database
-    """
-    base_path = get_base_dir(base_path)
-    pointer_file = Path(base_path, c.FILE_POINTER)
-
-    if not pointer_file.exists():
-        return ""
-
-    with pointer_file.open("r") as f_in:
-        current_db = f_in.read().splitlines()[0]
-
-    return current_db
-
-
 def read_HEAD(file_head):
     """Get current refs and snapshots from HEAD
 

@@ -5,9 +5,7 @@ import yaml
 
 from god.comits.base import exists_in_commit
 from god.utils.exceptions import FileExisted, OperationNotPermitted
-from god.utils.files import (
-    copy_hashed_objects_to_files,
-)
+from god.utils.files import copy_hashed_objects_to_files
 
 
 def get_conflict_dir(commit1, commit2):
