@@ -1,10 +1,9 @@
 """Index-related functionality"""
-from collections import defaultdict
 import sqlite3
+from collections import defaultdict
 from pathlib import Path
 
 from god.utils.exceptions import FileExisted
-
 
 INDEX_DIRECTORY_COLS = [
     "name text",  # directory name

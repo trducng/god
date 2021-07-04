@@ -4,7 +4,7 @@ import shutil
 from collections import defaultdict
 from pathlib import Path
 
-from god.base import settings
+from god.core.conf import settings
 
 
 def get_file_hash(file_):

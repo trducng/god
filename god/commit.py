@@ -7,7 +7,7 @@ from pathlib import Path
 import yaml
 
 from god.commits.base import calculate_commit_hash
-from god.index import Index
+from god.core.index import Index
 from god.utils.common import get_string_hash
 
 

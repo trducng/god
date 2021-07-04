@@ -6,12 +6,11 @@ These operations handle:
 - Maintaining sql logs
 - Update sql logs
 """
-from god.branches.track_changes import track_working_changes
-from god.index import Index
+from god.branches.trackchanges import track_working_changes
 from god.commits.compare import transform_commit
-from god.records.logs import construct_transformation_logic
+from god.core.files import copy_objects_with_hashes
+from god.core.index import Index
 from god.records.records import Records
-from god.utils.files import copy_objects_with_hashes, compare_files_states
 
 
 def construct_record(record_path, config, commit, commit_dir, commit_dirs_dir):
@@ -34,9 +33,7 @@ def construct_record(record_path, config, commit, commit_dir, commit_dirs_dir):
             commit1, commit, commit_dir, commit_dirs_dir
         )
 
-        sql_commands = construct_transformation_logs(
-            file_add, file_remove, record_entries, config
-        )
+        sql_commands = transform_commit(file_add, file_remove, record_entries, config)
 
     return sql_commands
 
@@ -60,7 +57,7 @@ def add(fds, index_path, dir_obj, records, base_dir):
     copy_objects_with_hashes([(each[0], each[1]) for each in update], dir_obj, base_dir)
 
     # update construct logics
-    logic = construct_transformation_logic(file_add, file_remove, config)
+    # logic = construct_transformation_logic(file_add, file_remove, config)
 
     # update the index
     with Index(index_path) as index:
@@ -72,5 +69,5 @@ def add(fds, index_path, dir_obj, records, base_dir):
             unset_mhash=unset_mhash,
         )
 
-        current_file_state = index.to_files_hashes()
-        for record_path, record_config in records.items():
+        # current_file_state = index.to_files_hashes()
+        # for record_path, record_config in records.items():

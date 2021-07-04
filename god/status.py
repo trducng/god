@@ -1,4 +1,4 @@
-from god.branches.track_changes import track_files
+from god.branches.trackchanges import track_files
 
 
 def status(fds, index_path, base_dir):

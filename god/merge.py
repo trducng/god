@@ -3,13 +3,17 @@ from pathlib import Path
 
 import yaml
 
-from god.branches.conflicts import verify_conflict_resolution, create_conflict_dir, get_conflict_dir
-from god.branches.refs import get_ref, update_ref
-from god.commit import commit
+from god.branches.conflicts import (
+    create_conflict_dir,
+    get_conflict_dir,
+    verify_conflict_resolution,
+)
 from god.comits.base import get_latest_parent_commit
+from god.commit import commit
 from god.commits.compare import transform_commit
-from god.utils.files import copy_hashed_objects_to_files, get_files_tst
-from god.index import Index
+from god.core.files import copy_hashed_objects_to_files, get_files_tst
+from god.core.index import Index
+from god.core.refs import get_ref, update_ref
 
 
 def merge(

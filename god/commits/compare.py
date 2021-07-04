@@ -1,5 +1,5 @@
 from god.commits.base import get_files_hashes_in_commit
-from god.utils.files import compare_files_states
+from god.core.files import compare_files_states
 
 
 def transform_commit(commit1, commit2, commit_dir, commit_dirs_dir):

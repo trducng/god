@@ -7,7 +7,6 @@ from pathlib import Path
 
 from rich import print as rprint
 
-from god.base import read_HEAD, read_local_config, settings, update_local_config
 from god.checkout import (
     add,
     checkout,
@@ -19,11 +18,13 @@ from god.checkout import (
 )
 from god.commit import commit
 from god.commits.base import is_commit, read_commit
-from god.utils.exceptions import InvalidUserParams
+from god.core.conf import read_local_config, settings, update_local_config
+from god.core.head import read_HEAD
+from god.core.refs import get_ref, is_ref, update_ref
 from god.init import init, repo_exists
 from god.records import record_add
-from god.branches.refs import get_ref, is_ref, update_ref
 from god.status import status
+from god.utils.exceptions import InvalidUserParams
 
 
 def init_cmd(path):

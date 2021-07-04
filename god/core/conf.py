@@ -1,91 +1,10 @@
-"""Base functions and constants. Helpful for other functions to build up."""
 from dataclasses import dataclass
 from pathlib import Path
 
 import yaml
 
 import god.utils.constants as c
-
-_MUST_EXIST = [c.DIR_GOD, c.FILE_HEAD]
-_DEFAULT_CONFIG = {
-    "OBJECTS": {
-        "STORAGE": "local",
-    }
-}
-
-
-def get_base_dir(path=None):
-    """Get `god` base dir from `path`
-
-    # Args
-        path <str>: the directory
-
-    # Returns
-        <str>: the directory that contains `.god` directory
-    """
-    if path is None:
-        path = Path.cwd().resolve()
-
-    current_path = Path(path).resolve()
-
-    while True:
-        fail = False
-        for each_must in _MUST_EXIST:
-            if not (current_path / each_must).exists():
-                fail = True
-                break
-
-        if fail:
-            if current_path.parent == current_path:
-                # this is root directory
-                raise RuntimeError("Unitialized god repo. Please run `got init`")
-            current_path = current_path.parent
-
-        else:
-            return str(current_path)
-
-
-def read_HEAD(file_head):
-    """Get current refs and snapshots from HEAD
-
-    # Args:
-        file_head <str>: path to file head
-
-    # Returns:
-        <str>: branch reference
-        <str>: snapshot name
-    """
-    with open(file_head, "r") as f_in:
-        config = yaml.safe_load(f_in)
-
-    return (
-        config.get("REFS", None),
-        config.get("SNAPSHOTS", None),
-        config.get("COMMITS", None),
-    )
-
-
-def update_HEAD(file_head, **kwargs):
-    """Update HEAD reference
-
-    # Args:
-        file_head <str>: path to file head
-        ref <str>: reference name
-    """
-    with open(file_head, "r") as f_in:
-        config = yaml.safe_load(f_in)
-
-    config.update(kwargs)
-
-    # remove unnecessary entries
-    keys = list(config.keys())
-    for k in keys:
-        if config[k] is None:
-            config.pop(k)
-
-    # write HEAD
-    with open(file_head, "w") as f_out:
-        yaml.safe_dump(config, f_out)
+from god.core.common import get_base_dir
 
 
 def parse_dot_notation_to_dict(notation, value, upper=True):

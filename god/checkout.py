@@ -1,23 +1,23 @@
 """Add operation"""
 from pathlib import Path
 
-from god.base import read_HEAD, update_HEAD
-from god.branches.refs import get_ref, update_ref
-from god.branches.track_changes import (
+from god.branches.trackchanges import (
+    track_files,
     track_staging_changes,
     track_working_changes,
-    track_files,
 )
 from god.comits.base import read_commit
 from god.commits.compare import transform_commit
-from god.utils.exceptions import OperationNotPermitted
-from god.utils.files import (
+from god.core.files import (
     copy_hashed_objects_to_files,
     copy_objects_with_hashes,
     get_files_tst,
     get_objects_tst,
 )
-from god.index import Index
+from god.core.head import read_HEAD, update_HEAD
+from god.core.index import Index
+from god.core.refs import get_ref, update_ref
+from god.utils.exceptions import OperationNotPermitted
 
 
 def add(fds, index_path, dir_obj, base_dir):

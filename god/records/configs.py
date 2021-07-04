@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-from god.base import Settings
+from god.core.conf import Settings
 
 
 def get_path_cols(config):

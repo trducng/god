@@ -1,7 +1,7 @@
 import sqlite3
 from pathlib import Path
 
-from god.base import Settings, settings
+from god.core.conf import Settings, settings
 
 
 def get_standard_index(config):

@@ -3,7 +3,7 @@ from pathlib import Path
 
 import fire
 
-from god.base import settings
+from god.core.conf import settings
 
 # from god.unlock import unlock
 from god.porcelain import (

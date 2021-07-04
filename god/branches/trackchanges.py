@@ -1,14 +1,14 @@
 from collections import defaultdict
 from pathlib import Path
 
-from god.utils.files import (
+from god.core.files import (
     filter_common_parents,
     get_file_hash,
     resolve_paths,
     retrieve_files_info,
     separate_paths_to_files_dirs,
 )
-from god.index import Index
+from god.core.index import Index
 
 
 def track_staging_changes(fds, index_path, base_dir):
