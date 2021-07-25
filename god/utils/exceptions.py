@@ -20,3 +20,9 @@ class OperationNotPermitted(Exception):
     """Operation not permitted in the repo"""
 
     pass
+
+
+class RecordEntryNotFound(Exception):
+    """Record entry not found"""
+
+    pass

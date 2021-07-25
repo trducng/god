@@ -14,6 +14,7 @@ repos:
     -   id: detect-aws-credentials
     -   id: detect-private-key
     -   id: end-of-file-fixer
+        exclude: tests
     -   id: trailing-whitespace
     -   id: mixed-line-ending
 -   repo: https://github.com/timothycrosley/isort
