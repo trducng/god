@@ -9,10 +9,10 @@ from god.records.configs import get_group_rule, get_path_cols
 def read_logic(logic_path):
     """Read current logic from file
 
-    # Args:
+    Args:
         logic_path <str>: absolute path to logic file
 
-    # Returns:
+    Returns:
         <{id: {col: [('+/-', value)]}}>: the logic information
     """
     with open(logic_path):
@@ -27,13 +27,13 @@ def parse_transformation(transform, op, result_dict, config):
     # @TODO: it seems logs and configs are DB-agnostic functions, we can move these
     # scripts into default locations. Rename this module from sqlrecords -> records
 
-    # Args:
+    Args:
         transform <{}>: filepath: filehash
         op <str>: whether '+' (add) or '-' (remove)
         result_dict <{str: {str: [('+/-', str)]}}>: place to store result
         config <Settings>: the record config
 
-    # Returns:
+    Returns:
         <{str: {str: [('+/-', str)]}}>: the result (stored in `result_dict`)
     """
     ALLOWED_OPS = ["+", "-"]
@@ -89,12 +89,12 @@ def parse_transformation(transform, op, result_dict, config):
 def construct_transformation_logic(file_add, file_remove, config):
     """Construct sql logs from the file add and file remove
 
-    # Args
+    Args:
         file_add <[(str, str)]>: file name and file hash to add
         file_remove <[(str, str)]>: file name and file hash to remove
         config <Settings>: the record config
 
-    # Returns
+    Returns:
         <[str]>: sql statements
     """
     logic = defaultdict(dict)  # {id: {col: [(-/+, val)]}}
@@ -102,3 +102,4 @@ def construct_transformation_logic(file_add, file_remove, config):
     logic = parse_transformation(file_add, "+", logic, config)
 
     return logic
+

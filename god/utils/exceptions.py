@@ -26,3 +26,9 @@ class RecordEntryNotFound(Exception):
     """Record entry not found"""
 
     pass
+
+
+class InternalNodeNotFound(Exception):
+    """Internal node not found"""
+
+    pass

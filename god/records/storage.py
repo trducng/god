@@ -434,7 +434,7 @@ def prolly_insert(records: list, root: str, tree_dir: str, leaf_dir: str) -> str
 
 
 def prolly_delete(keys: list, root: str, tree_dir: str, leaf_dir: str) -> str:
-    """Insert keys into the tree
+    """Delete records from the tree that match `keys`
 
     Args:
         keys: each item is a string containing key values
