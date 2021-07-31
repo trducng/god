@@ -13,7 +13,7 @@ from god.records.compare import (
     get_root,
 )
 from god.records.storage import (
-    construct_node,
+    construct_internal_node,
     get_keys_indices,
     get_keys_values,
     get_leaf_nodes,

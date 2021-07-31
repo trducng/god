@@ -26,7 +26,25 @@ from god.utils.common import binary_search, one_line_sorted_json
 from god.utils.exceptions import RecordEntryNotFound
 
 
-def construct_node(node_contents: list, node_dir: str) -> str:
+def construct_leaf_node(records: dict, node_dir: str) -> str:
+    """Construct the node
+
+    Args:
+        records: has format `{KEY: {col1: val1, col2: val2}}`
+        node_dir: the directory to store the node
+
+    Returns:
+        the hash of node
+    """
+    content = json.dumps(records, sort_keys=True)
+    hash_value = sha256(content.encode()).hexdigest()
+    with Path(node_dir, hash_value).open("w") as fo:
+        fo.write(content)
+
+    return hash_value
+
+
+def construct_internal_node(node_contents: list, node_dir: str) -> str:
     """Construct the node
 
     Args:
@@ -162,10 +180,10 @@ def get_records(root: str, tree_dir: str, leaf_dir: str) -> list:
     """
     leaf_nodes = get_leaf_nodes(root, tree_dir, sort_keys=True)
 
-    result = []
+    result = {}
     for leaf_hash, _, _ in leaf_nodes:
         with Path(leaf_dir, leaf_hash).open("r") as fi:
-            result += json.load(fi)
+            result.update(json.load(fi))
 
     return result
 
@@ -201,50 +219,49 @@ def build_tree_trunk(nodes: list, window: int, tree_dir: str) -> str:
             "".join(start_key_hashes[idx - window + 1 : idx + 1]).encode()
         ).hexdigest()
         if window_hash[:3] == "000":
-            hash_value = construct_node(nodes[last_idx : idx + 1], tree_dir)
+            hash_value = construct_internal_node(nodes[last_idx : idx + 1], tree_dir)
             new_nodes.append((hash_value, nodes[last_idx][1], end_key))
             last_idx = idx + 1
 
     if last_idx != len(nodes):
-        hash_value = construct_node(nodes[last_idx:], tree_dir)
+        hash_value = construct_internal_node(nodes[last_idx:], tree_dir)
         new_nodes.append((hash_value, nodes[last_idx][1], nodes[-1][2]))
 
     return build_tree_trunk(nodes=new_nodes, window=window, tree_dir=tree_dir)
 
 
-def prolly_create(items: list, tree_dir: str, leaf_dir: str) -> str:
+def prolly_create(records: dict, tree_dir: str, leaf_dir: str) -> str:
     """Create a prolly tree containing the items
 
     Instead of using a rolling hash, we can use the hash of the key, as by our usage,
     the key is the primary key used to index the information.
 
     Args:
-        items: each item is a dict with format `{KEY: {{col1, val1}, {col2, val2}}}`
+        records: has format `{KEY: {col1: val1, col2: val2}}`
         tree_dir: the output directory to store the tree
         leaf_dir: the directory containing leaf nodes
 
     Returns:
         hash value of root node
     """
-    items = sorted(items, key=lambda obj: list(obj.keys())[0])
+    items = sorted(list(records.keys()))
 
     # handle leaf nodes
     last_idx = 0
     nodes = []
-    for idx, each_item in enumerate(items):
-        each_key = list(each_item.keys())[0]
+    for idx, each_key in enumerate(items):
         key_hash = sha256(each_key.encode()).hexdigest()
         if key_hash[:3] == "000":
-            hash_value = construct_node(items[last_idx : idx + 1], leaf_dir)
-            nodes.append((hash_value, list(items[last_idx].keys())[0], each_key))
+            to_save = {key: records[key] for key in items[last_idx : idx + 1]}
+            hash_value = construct_leaf_node(to_save, leaf_dir)
+            nodes.append((hash_value, items[last_idx], each_key))
             last_idx = idx + 1
 
     if last_idx != len(items):
         # resolve dangling entries
-        hash_value = construct_node(items[last_idx:], leaf_dir)
-        nodes.append(
-            (hash_value, list(items[last_idx].keys())[0], list(items[-1].keys())[0])
-        )
+        to_save = {key: records[key] for key in items[last_idx:]}
+        hash_value = construct_leaf_node(to_save, leaf_dir)
+        nodes.append((hash_value, items[last_idx], items[-1]))
 
     return build_tree_trunk(nodes, 2, tree_dir)
 
@@ -309,7 +326,10 @@ def prolly_locate(keys: list, root: str, tree_dir: str, leaf_dir: str) -> dict:
     for leaf_hash, buff_keys in buff.items():
         with Path(leaf_dir, leaf_hash).open("r") as f_in:
             leaf_contents = json.load(f_in)
-        result.update(get_keys_values(buff_keys, leaf_contents))
+        for buff_key in buff_keys:
+            result[buff_key] = (
+                leaf_contents[buff_key] if buff_key in leaf_contents else None
+            )
 
     return result
 
@@ -349,7 +369,7 @@ def adjust_intermediate_nodes(
                 else:
                     new_children.append(child)
 
-            new_hash = construct_node(new_children, tree_dir)
+            new_hash = construct_internal_node(new_children, tree_dir)
             resolved[old_hash] = new_hash
             buff[idx].append(new_hash)
 
@@ -367,7 +387,7 @@ def prolly_update(records: list, root: str, tree_dir: str, leaf_dir: str) -> str
     value, not adding or deleting columns.
 
     Args:
-        records: each item is a dict with format `{KEY: {{col1, val1}, {col2, val2}}}`
+        records: has format `{KEY: {col1: val1, col2: val2}}`
         root: the address of tree root
         tree_dir: the output directory to store the tree
         leaf_dir: the directory containing leaf nodes
@@ -375,7 +395,6 @@ def prolly_update(records: list, root: str, tree_dir: str, leaf_dir: str) -> str
     Returns:
         the new root node hash value
     """
-    records = {list(_.keys())[0]: list(_.values())[0] for _ in records}
     keys = list(records.keys())
 
     prolly_paths = get_paths_to_records(keys, root, tree_dir)
@@ -387,12 +406,12 @@ def prolly_update(records: list, root: str, tree_dir: str, leaf_dir: str) -> str
     for leaf_hash, temp_keys in buff.items():
         with Path(leaf_dir, leaf_hash).open("r") as fi:
             leaf_nodes = json.load(fi)
-        for temp_key, temp_key_idx in get_keys_indices(temp_keys, leaf_nodes).items():
-            if temp_key_idx is None:
+        for temp_key in temp_keys:
+            if temp_key not in leaf_nodes:
                 raise RecordEntryNotFound(f"{temp_key} not found in {leaf_hash}")
-            leaf_nodes[temp_key_idx][temp_key].update(records[temp_key])
+            leaf_nodes[temp_key].update(records[temp_key])
 
-        hash_value = construct_node(leaf_nodes, leaf_dir)
+        hash_value = construct_leaf_node(leaf_nodes, leaf_dir)
         resolved[leaf_hash] = hash_value
 
     # update to the root node
@@ -419,7 +438,7 @@ def prolly_insert(records: list, root: str, tree_dir: str, leaf_dir: str) -> str
         5. perform tree construction
 
     Args:
-        records: each item is a dict with format `{key: [(col1, val1), (col2, val2)]}`
+        records: has format `{KEY: {col1: val1, col2: val2}}`
         root: the address of tree root
         tree_dir: the output directory to store the tree
         leaf_dir: the directory containing leaf nodes
@@ -428,7 +447,7 @@ def prolly_insert(records: list, root: str, tree_dir: str, leaf_dir: str) -> str
         the new root node hash value
     """
     all_records = get_records(root, tree_dir, leaf_dir)
-    all_records += records
+    all_records.update(records)
 
     return prolly_create(all_records, tree_dir, leaf_dir)
 
@@ -445,12 +464,9 @@ def prolly_delete(keys: list, root: str, tree_dir: str, leaf_dir: str) -> str:
     Returns:
         the hash of new root tree
     """
-    keys = set(keys)
-    records = [
-        record
-        for record in get_records(root, tree_dir, leaf_dir)
-        if list(record.keys())[0] not in keys
-    ]
+    records = get_records(root, tree_dir, leaf_dir)
+    for key in keys:
+        del records[key]
 
     return prolly_create(records, tree_dir, leaf_dir)
 
@@ -467,27 +483,22 @@ def prolly_edit(
     delete_temp, insert_temp = [], []
 
     # update records
+    update_records = {}
     if update:
-        update_dict = {list(_.keys())[0]: list(_.values())[0] for _ in update}
-        update_records = prolly_locate(
-            list(update_dict.keys()), root, tree_dir, leaf_dir
-        )
+        update_records = prolly_locate(list(update.keys()), root, tree_dir, leaf_dir)
         for key, record in update_records.items():
-            record.update(update_dict[key])
+            record.update(update[key])
 
-        delete_temp += list(update_dict.keys())
-        insert_temp += [{key: record} for key, record in update_records.items()]
+        delete_temp += list(update.keys())
 
     # delete records
-    delete = set(delete + delete_temp)
-    records = [
-        record
-        for record in get_records(root, tree_dir, leaf_dir)
-        if list(record.keys())[0] not in delete
-    ]
+    delete_ = delete + delete_temp
+    records = get_records(root, tree_dir, leaf_dir)
+    for record in delete_:
+        del records[record]
 
     # insert records
-    records += insert
-    records += insert_temp
+    records.update(insert)
+    records.update(update_records)
 
     return prolly_create(records, tree_dir, leaf_dir)
