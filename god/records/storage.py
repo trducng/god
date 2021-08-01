@@ -480,7 +480,8 @@ def prolly_edit(
     delete: list = None,
 ) -> str:
     """Edit prolly tree with insert, update and delete"""
-    delete_temp, insert_temp = [], []
+    delete_temp = []
+    delete = [] if delete is None else delete
 
     # update records
     update_records = {}
