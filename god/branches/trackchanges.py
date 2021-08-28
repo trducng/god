@@ -70,6 +70,7 @@ def track_working_changes(fds, index_path, base_dir, get_remove=True):
         fds <str>: the directory to add (absolute path)
         index_path <str>: path to index file
         base_dir <str>: project base directory
+        get_remove <bool>: whether to include files marked as removed in index
 
     # Returns
         <[str, str, float]>: add - files newly added

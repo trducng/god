@@ -14,7 +14,6 @@ from god.porcelain import (
     init_cmd,
     log_cmd,
     merge_cmd,
-    record_add_cmd,
     reset_cmd,
     restore_staged_cmd,
     restore_working_cmd,
@@ -54,7 +53,7 @@ class RecordCLI:
     def add(self, name, **kwargs):
         """Construct the records logs from commit"""
         settings.set_global_settings(**kwargs)
-        record_add_cmd(name)
+        # record_add_cmd(name)
 
     def execute(self, **kwargs):
         """Execute the records logs into database, and hold the record logs"""

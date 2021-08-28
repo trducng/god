@@ -233,7 +233,7 @@ if __name__ == "__main__":
     import yaml
 
     kwargs = {"class": "bike||camera", "col": "abc"}
-    with open("/home/john/datasets/god-test/type4/.godconfig.yml", "r") as f_in:
+    with open("/home/john/datasets/god-test/type4/.godconfig", "r") as f_in:
         config = yaml.safe_load(f_in)["INDEX"]
 
     print(search(config, index=None, columns=None, **kwargs))

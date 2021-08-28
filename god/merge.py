@@ -8,8 +8,8 @@ from god.branches.conflicts import (
     get_conflict_dir,
     verify_conflict_resolution,
 )
-from god.comits.base import get_latest_parent_commit
 from god.commit import commit
+from god.commits.base import get_latest_parent_commit
 from god.commits.compare import transform_commit
 from god.core.files import copy_hashed_objects_to_files, get_files_tst
 from god.core.index import Index

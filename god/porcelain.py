@@ -11,7 +11,6 @@ from god.checkout import (
     add,
     checkout,
     checkout_new_branch,
-    merge,
     reset,
     restore_staged,
     restore_working,
@@ -22,7 +21,7 @@ from god.core.conf import read_local_config, settings, update_local_config
 from god.core.head import read_HEAD
 from god.core.refs import get_ref, is_ref, update_ref
 from god.init import init, repo_exists
-from god.records import record_add
+from god.merge import merge
 from god.status import status
 from god.utils.exceptions import InvalidUserParams
 
@@ -121,8 +120,8 @@ def add_cmd(paths):
 def commit_cmd(message):
     """Commit the changes in staging area to commit"""
     config = read_local_config(settings.FILE_LOCAL_CONFIG)
-    if config.USER is None:
-        print("Please config user.name and user.email")
+    if config.get("USER", None) is None:
+        print("Please config USER.NAME and USER.EMAIL")
         return
 
     if config.USER.get("NAME", None) is None:
@@ -277,15 +276,15 @@ def merge_cmd(branch):
     )
 
 
-def record_add_cmd(name):
-    """Construct sql logs"""
-    refs, _, _ = read_HEAD(settings.FILE_HEAD)
-    commit_id = get_ref(refs, settings.DIR_REFS_HEADS)
+# def record_add_cmd(name):
+#     """Construct sql logs"""
+#     refs, _, _ = read_HEAD(settings.FILE_HEAD)
+#     commit_id = get_ref(refs, settings.DIR_REFS_HEADS)
 
-    record_add(
-        record_path=str(Path(settings.DIR_RECORDS_DB, name)),
-        config=settings.RECORDS[name],
-        commit=commit_id,
-        commit_dir=settings.DIR_COMMITS,
-        commit_dirs_dir=settings.DIR_COMMITS_DIRECTORY,
-    )
+#     record_add(
+#         record_path=str(Path(settings.DIR_RECORDS_DB, name)),
+#         config=settings.RECORDS[name],
+#         commit=commit_id,
+#         commit_dir=settings.DIR_COMMITS,
+#         commit_dirs_dir=settings.DIR_COMMITS_DIRECTORY,
+#     )

@@ -6,7 +6,7 @@ from god.branches.trackchanges import (
     track_staging_changes,
     track_working_changes,
 )
-from god.comits.base import read_commit
+from god.commits.base import read_commit
 from god.commits.compare import transform_commit
 from god.core.files import (
     copy_hashed_objects_to_files,

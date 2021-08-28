@@ -1,4 +1,5 @@
 """Inititate the repo"""
+import json
 from pathlib import Path
 
 from god.core.index import create_blank_index
@@ -51,6 +52,7 @@ def init(path):
             - records/ - store the records
             - snaps/ - store the snapshots
             - refs/ - store branch references for commits and records
+            - .godconfig
         .godconfig - the common local config for everyone to follow
 
     The initialization process initializes `.god` and `.godconfig`.
@@ -80,7 +82,7 @@ def init(path):
 
     # Create file
     with Path(path, FILE_HEAD).open("w") as f_out:
-        f_out.write({"REFS": "main"})
+        json.dump({"REFS": "main"}, f_out)
     create_blank_index(Path(path, FILE_INDEX))
 
 

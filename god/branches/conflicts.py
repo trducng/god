@@ -1,9 +1,10 @@
+"""Module relating to conflict resolution"""
 from collections import Counter
 from pathlib import Path
 
 import yaml
 
-from god.comits.base import exists_in_commit
+from god.commits.base import exists_in_commit
 from god.core.files import copy_hashed_objects_to_files
 from god.utils.exceptions import FileExisted, OperationNotPermitted
 

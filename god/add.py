@@ -35,10 +35,7 @@ def construct_record(record_path, config, commit, commit_dir, commit_dirs_dir):
         )
 
         sql_commands = construct_transformation_logic(
-            file_add,
-            file_remove,
-            record_entries,
-            config
+            file_add, file_remove, record_entries, config
         )
 
     return sql_commands
@@ -70,4 +67,3 @@ def add(fds, index_path, dir_obj, base_dir):
             reset_tst=reset_tst,
             unset_mhash=unset_mhash,
         )
-

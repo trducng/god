@@ -92,7 +92,7 @@ def update(target, operation, config, index=None, **kwargs):
     pattern = re.compile(config[index]["PATTERN"])
     file_ids = []
     for fn in files:
-        if fn == ".godconfig.yml":
+        if fn == ".godconfig":
             continue
         match = pattern.match(str(Path(fn).relative_to(settings.DIR_BASE)))
         if match is None:

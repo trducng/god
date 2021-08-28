@@ -102,4 +102,3 @@ def construct_transformation_logic(file_add, file_remove, config):
     logic = parse_transformation(file_add, "+", logic, config)
 
     return logic
-

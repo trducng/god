@@ -180,9 +180,6 @@ def organize_files_in_dirs_by_prefix_with_tstamp(
                     continue
 
             # if child is a file
-            if child.name == ".godconfig":
-                continue
-
             parent = str(each_dir.relative_to(base_dir))
             files_dirs[parent].append((child.name, child.stat().st_mtime))
 
