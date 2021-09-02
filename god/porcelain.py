@@ -7,8 +7,8 @@ from pathlib import Path
 
 from rich import print as rprint
 
+from god.add import add
 from god.checkout import (
-    add,
     checkout,
     checkout_new_branch,
     reset,

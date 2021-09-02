@@ -28,6 +28,7 @@ def commit(user, email, message, prev_commit, index_path, commit_dir, commit_dir
     """
     with Index(index_path) as index:
         files_info = index.get_files_info(get_remove=False)
+        records_info = index.get_records()
 
     index_files_dirs = defaultdict(list)
     for f in files_info:
@@ -52,6 +53,10 @@ def commit(user, email, message, prev_commit, index_path, commit_dir, commit_dir
             f_out.write(fs)
         commit_dir_file.chmod(0o440)
 
+    records = {}
+    for rn, rh, _ in sorted(records_info, key=lambda obj: obj[0]):
+        records[rn] = rh
+
     # construct commit object
     commit_obj = {
         "user": user,
@@ -59,6 +64,7 @@ def commit(user, email, message, prev_commit, index_path, commit_dir, commit_dir
         "message": message,
         "prev": prev_commit,
         "objects": dir_hashes,
+        "records": records,
     }
     commit_hash = calculate_commit_hash(commit_obj)
     commit_file = Path(commit_dir, commit_hash)

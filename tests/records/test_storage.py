@@ -113,6 +113,29 @@ class StorageCreateTest(unittest.TestCase):
         self.assertEqual(len(result), len(records))
         self.assertEqual(result, records)
 
+    def test_prolly_create_empty(self):
+        """Test can create emptry tree"""
+        result = prolly_create(
+            records={}, tree_dir=self.internal_nodes, leaf_dir=self.leaf_nodes
+        )
+
+        # should have expected root hash value
+        exp_root = "94aeb2d1f95b0496a43379e486d9aaa8fb6e26b3780f69fda4cfe4d0c3c34747"
+        self.assertEqual(result, exp_root)
+
+        # should have the expected number of nodes
+        exp_number_of_internal_nodes = 1
+        self.assertEqual(
+            len(list(self.internal_nodes.glob("*"))),
+            exp_number_of_internal_nodes,
+        )
+
+        exp_number_of_leaf_nodes = 0
+        self.assertEqual(
+            len(list(self.leaf_nodes.glob("*"))),
+            exp_number_of_leaf_nodes,
+        )
+
 
 class StorageRUDTest(unittest.TestCase):
     """Test the data for RUD operations"""

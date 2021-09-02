@@ -1,10 +1,21 @@
+"""Parse, operate on records config
+
+Each record collection has a separate config, separated by name. Each config has
+following fields:
+    PATTERN: the pattern to separate files
+    COLUMNS:
+        COL_NAME:
+            - type
+            - whether to store path?
+            - conversion group?
+"""
 from collections import defaultdict
 
 from god.core.conf import Settings
 
 
 def get_path_cols(config):
-    """Get the group rule
+    """Get columns that have paths
 
     # Args:
         config <{}>: the configuration
@@ -112,3 +123,27 @@ def get_primary_cols(config):
             continue
 
     return cols
+
+
+def get_records(config):
+    pass
+
+
+def compare_config(config1, config2):
+    """Compare the config between config 1 and config 2
+
+    Args:
+        config1 <dict>: the records of first config
+        config2 <dict>: the records of second config
+
+    Returns:
+        changes in pattern
+        columns added
+        columns removed
+        columns updated
+    """
+    pass
+
+
+def check_conflict(config1, config2):
+    pass

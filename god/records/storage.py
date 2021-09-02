@@ -244,6 +244,10 @@ def prolly_create(records: dict, tree_dir: str, leaf_dir: str) -> str:
     Returns:
         hash value of root node
     """
+    if not records:
+        # construct empty tree
+        return construct_internal_node([], tree_dir)
+
     items = sorted(list(records.keys()))
 
     # handle leaf nodes

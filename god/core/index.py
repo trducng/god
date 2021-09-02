@@ -16,6 +16,13 @@ INDEX_DIRECTORY_COLS = [
     "tstamp real",  # last modified time
 ]
 
+INDEX_RECORD_COLS = [
+    "name text",  # record name
+    "hash text",  # commited root
+    "shash text",  # staged root
+    "mhash text",  # current root value
+]
+
 
 def create_blank_index(path):
     """Create a blank index
@@ -29,8 +36,12 @@ def create_blank_index(path):
     con = sqlite3.connect(str(path))
     cur = con.cursor()
 
+    # files index
     cur.execute(f'CREATE TABLE dirs({", ".join(INDEX_DIRECTORY_COLS)})')
     cur.execute("CREATE INDEX index_dirs ON dirs(name)")
+
+    # records index
+    cur.execute(f'CREATE TABLE records({", ".join(INDEX_RECORD_COLS)})')
 
     con.commit()
     con.close()
@@ -239,3 +250,32 @@ class Index:
             file_dirs_hashes[str(fp.parent)].append((fp.name, fh))
 
         return file_dirs_hashes
+
+    def update_records(self, add: str = []) -> None:
+        """Add records to index
+
+        Args:
+            add: each item contains (name, root-hash)
+            mhash: internal root node
+        """
+        for rn, rh in add:
+            self.cur.execute(
+                "INSERT INTO records (name, shash, mhash) VALUES (?, ?, ?)",
+                (rn, rh, rh),
+            )
+        self.con.commit()
+
+    def get_records(self, name: str = None) -> list:
+        """Get records information
+
+        Args:
+            name: if yes, filter by name
+
+        Returns:
+            Each item contains (name, shash, mhash)
+        """
+        conditions = f" WHERE name='{name}'" if name else ""
+        sql = f"SELECT name, shash, mhash FROM records{conditions}"
+        result = self.cur.execute(sql)
+
+        return result.fetchall()

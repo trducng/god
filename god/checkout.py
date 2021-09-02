@@ -20,33 +20,6 @@ from god.core.refs import get_ref, update_ref
 from god.utils.exceptions import OperationNotPermitted
 
 
-def add(fds, index_path, dir_obj, base_dir):
-    """Add the files and directories to staging area
-
-    # Args:
-        fds <str>: the directory to add (absolute path)
-        index_path <str>: path to index file
-        dr_obj <str>: the path to object directory
-        base_dir <str>: project base directory
-    """
-    add, update, remove, reset_tst, unset_mhash = track_working_changes(
-        fds, index_path, base_dir
-    )
-
-    # copy files to objects directory
-    copy_objects_with_hashes([(each[0], each[1]) for each in add], dir_obj, base_dir)
-    copy_objects_with_hashes([(each[0], each[1]) for each in update], dir_obj, base_dir)
-
-    with Index(index_path) as index:
-        index.update(
-            add=add,
-            update=update,
-            remove=remove,
-            reset_tst=reset_tst,
-            unset_mhash=unset_mhash,
-        )
-
-
 def restore_staged(fds, index_path, dir_obj, base_dir):
     """Restore files from the staging area to the working area
 
