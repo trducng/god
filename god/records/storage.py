@@ -167,7 +167,32 @@ def get_leaf_nodes(root: str, tree_dir: str, sort_keys: bool = False) -> list:
     return result
 
 
-def get_records(root: str, tree_dir: str, leaf_dir: str) -> list:
+def get_internal_nodes(root: str, tree_dir: str, sort_keys: bool = False) -> list:
+    """Get all internal nodes that have `root` as parent
+
+    Args:
+        root: the hash of root node
+        tree_dir: the directory storing root node and intermediate nodes
+
+    Returns:
+        List of node hash
+    """
+    with Path(tree_dir, root).open("r") as f_in:
+        child_nodes = json.load(f_in)
+
+    result = [root]
+    for child_hash, start_key, end_key in child_nodes:
+        if not Path(tree_dir, child_hash).exists():
+            return result
+        result += get_internal_nodes(child_hash, tree_dir)
+
+    if sort_keys:
+        result = sorted(result)
+
+    return result
+
+
+def get_records(root: str, tree_dir: str, leaf_dir: str) -> dict:
     """Get records from `root`
 
     Args:
@@ -176,7 +201,7 @@ def get_records(root: str, tree_dir: str, leaf_dir: str) -> list:
         leaf_dir: the directory containing leaf nodes
 
     Returns:
-        list of records, sorted by keys
+        All records with format {"id": {"col": "val"}}
     """
     leaf_nodes = get_leaf_nodes(root, tree_dir, sort_keys=True)
 

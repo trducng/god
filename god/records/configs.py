@@ -11,10 +11,16 @@ following fields:
 """
 from collections import defaultdict
 
-from god.core.conf import Settings
+from god.core.conf import Settings, read_local_config
 
 
-def get_path_cols(config):
+def get_records_config(config_path: str) -> dict:
+    """Get records config"""
+    settings = read_local_config(config_path)
+    return settings.get("RECORDS", Settings())
+
+
+def get_path_columns(config):
     """Get columns that have paths
 
     # Args:
@@ -45,7 +51,7 @@ def get_group_rule(config):
     """
     result = defaultdict(dict)
 
-    COLUMNS = config.get("COLUMNS", {})
+    COLUMNS = config["COLUMNS"]
     for col_name, col_rule in COLUMNS.items():
         if not isinstance(col_rule, (dict, Settings)):
             continue
@@ -85,11 +91,6 @@ def get_columns_and_types(config):
             col_types.append(value)
             continue
 
-        if value.get("path", False):  # path format
-            cols += [key, f"{key}_hash"]
-            col_types += ["TEXT", "TEXT"]
-            continue
-
         cols.append(key)
         col_types.append(value.get("type", "TEXT"))
         # TODO: handle ManyToMany type
@@ -125,10 +126,6 @@ def get_primary_cols(config):
     return cols
 
 
-def get_records(config):
-    pass
-
-
 def compare_config(config1, config2):
     """Compare the config between config 1 and config 2
 
@@ -145,5 +142,57 @@ def compare_config(config1, config2):
     pass
 
 
-def check_conflict(config1, config2):
-    pass
+class RecordsConfig():
+    """Record configuration
+
+    Args:
+        records_name: name of the records
+        config_path: the path to config file that has record definition
+    """
+
+    def __init__(self, records_name: str, config_path: str) -> None:
+        self._config: Settings = get_records_config(config_path)[records_name]
+
+    def get_path_columns(self):
+        return get_path_columns(self._config)
+
+    def get_nonauto_columns(self) -> list:
+        """Get non-automatically-filled columns
+
+        This method exclude:
+            - Columns that have `path=True`
+            - `id column
+
+        Returns:
+            Names of non-path column
+        """
+        result = []
+
+        COLUMNS = config.get("COLUMNS", {})
+        for col_name, col_rule in COLUMNS.items():
+            if col_name == "id":
+                continue
+
+            if not isinstance(col_rule, (dict, Settings)):
+                result.append(col_name)
+                continue
+
+            if col_rule.get("path", False) or col_rule.get("PATH", False):
+                result.append(col_name)
+
+        return result
+
+    def get_group_rule(self):
+        return get_group_rule(self._config)
+
+    def get_columns_and_types(self):
+        return get_columns_and_types(self._config)
+
+    def get_primary_cols(self):
+        return get_primary_cols(self._config)
+
+    def get_pattern(self):
+        return self._config["PATTERN"]
+
+    def get_columns_config(self):
+        return self._config["COLUMNS"]

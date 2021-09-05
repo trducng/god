@@ -32,3 +32,9 @@ class InternalNodeNotFound(Exception):
     """Internal node not found"""
 
     pass
+
+
+class RecordParsingError(Exception):
+    """Happens when there is problem with parsing records"""
+
+    pass

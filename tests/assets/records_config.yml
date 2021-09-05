@@ -1,0 +1,92 @@
+RECORDS:
+
+  type1:
+    PATTERN: '(?P<input>train1/(?P<id>(?P<label>cat|dog)\.\d+)\..+$)'
+    COLUMNS:
+      id: INTEGER
+      label: TEXT
+      input:
+        path: true
+
+  type2:
+    PATTERN: '(?P<id>.+?)(_(?P<masktype_>GT\d))?.[^.]+$'
+    COLUMNS:
+      id: TEXT
+      input:
+        path: true
+        primary: true
+        conversion_group:
+          masktype_: null
+      horizontal_mask:
+        path: true
+        primary: true
+        conversion_group:
+          masktype_: GT0
+      vertical_mask:
+        path: true
+        primary: true
+        conversion_group:
+          masktype_: GT1
+      area_mask:
+        path: true
+        primary: true
+        conversion_group:
+          masktype_: GT2
+      stamp_mask:
+        path: true
+        primary: true
+        conversion_group:
+          masktype_: GT3
+      other_mask:
+        path: true
+        primary: true
+        conversion_group:
+          masktype_: GT4
+      features:
+        type: TEXT
+
+  type3:
+    PATTERN: '(?P<id>.+)\.(?P<switch_>.+$)'
+    COLUMNS:
+      id: TEXT
+      input:
+        path: true
+        primary: true
+        conversion_group:
+          switch_:
+            - png
+            - jpeg
+            - jpg
+      label:
+        path: true
+        primary: true
+        conversion_group:
+          switch_: json
+
+  type4:
+    PATTERN: '(?P<class>.+?)/(?P<id>.+\d+)(?P<switch_>.pbdata|/geometry.pbdata|/video.MOV)$'
+    COLUMNS:
+      id: TEXT
+      class: TEXT
+      location:
+        path: true
+        primary: true
+        conversion_group:
+          switch_: .pbdata
+      mask_3d:
+        path: true
+        primary: true
+        conversion_group:
+          switch_: '/geometry.pbdata'
+      input:
+        path: true
+        primary: true
+        conversion_group:
+          switch_: '/video.MOV'
+      features:
+        type: MANY
+        values:
+          - risk
+          - no-risk
+          - some-risk
+

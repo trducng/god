@@ -88,7 +88,7 @@ class Settings(object):
         """Initiate the setting object"""
         object.__setattr__(self, "_level", level)
         object.__setattr__(self, "_initialized", False)
-        object.__setattr__(self, "values", [])
+        object.__setattr__(self, "_values", [])
 
     def parse(self, item):
         """Parse the item"""
@@ -114,7 +114,7 @@ class Settings(object):
             # key = key.upper()
             parsed_value = self.parse(value)
 
-            if key in self.values:
+            if key in self._values:
                 original_value = self.__getattribute__(key)
                 if isinstance(parsed_value, Settings) and isinstance(
                     original_value, Settings
@@ -124,7 +124,7 @@ class Settings(object):
                     object.__setattr__(self, key, parsed_value)
             else:
                 object.__setattr__(self, key, parsed_value)
-                self.values.append(key)
+                self._values.append(key)
 
     def set_values_from_yaml(self, path):
         """Set config from yaml file
@@ -180,12 +180,22 @@ class Settings(object):
             self.set_values(**constants)
 
         object.__setattr__(self, "_initialized", True)
-        object.__setattr__(self, "values", tuple(self.values))
+        object.__setattr__(self, "_values", tuple(self._values))
 
     def items(self):
         """Iterate key and value config"""
-        for each_item in self.values:
+        for each_item in self._values:
             yield each_item, getattr(self, each_item)
+
+    def keys(self):
+        """Iterate key config"""
+        for each_item in self._values:
+            yield each_item
+
+    def values(self):
+        """Iterate value config"""
+        for each_item in self._values:
+            yield getattr(self, each_item)
 
     def as_list(self, list_):
         result = []
@@ -201,7 +211,7 @@ class Settings(object):
     def as_dict(self):
         """Return a dictionary representation of the setting"""
         result = {}
-        for each_item in self.values:
+        for each_item in self._values:
             value = self.__getattribute__(each_item)
             if isinstance(value, Settings):
                 value = value.as_dict()
@@ -212,24 +222,24 @@ class Settings(object):
 
     def get(self, key, default):
         """Get config value"""
-        if key not in self.values:
+        if key not in self._values:
             return default
         return getattr(self, key)
 
     def __getitem__(self, key):
         """Allow accessing config value through string"""
-        if key not in self.values:
+        if key not in self._values:
             raise IndexError(f"{key} does not exist")
         return getattr(self, key)
 
     def __len__(self):
         """Get the amount of configs"""
-        return len(self.values)
+        return len(self._values)
 
     def __str__(self):
         """Pretty string representation"""
         str_repr = []
-        for each_item in self.values:
+        for each_item in self._values:
             value = self.__getattribute__(each_item)
             if isinstance(value, Settings):
                 str_repr.append("  " * self._level + f"{each_item}:")
@@ -243,6 +253,9 @@ class Settings(object):
 
         return "\n".join(str_repr)
 
+    def __contains__(self, item):
+        return item in self._values
+
     def __repr__(self):
         """Pretty string representation"""
         return self.__str__()
@@ -250,7 +263,7 @@ class Settings(object):
     def __add__(self, other):
         """Perform addition"""
         result = {}
-        for each_value in self.values:
+        for each_value in self._values:
             if each_value in other.values:
                 here = getattr(self, each_value)
                 there = getattr(other, each_value)
@@ -261,7 +274,7 @@ class Settings(object):
             else:
                 result[each_value] = getattr(self, each_value)
 
-        for each_value in list(set(other.values).difference(self.values)):
+        for each_value in list(set(other.values).difference(self._values)):
             result[each_value] = getattr(other, each_value)
 
         settings = Settings(level=self._level)

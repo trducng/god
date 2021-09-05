@@ -3,7 +3,7 @@ from collections import defaultdict
 
 import yaml
 
-from god.records.configs import get_group_rule, get_path_cols
+from god.records.configs import get_group_rule, get_path_columns
 
 
 def read_logic(logic_path):
@@ -42,7 +42,7 @@ def parse_transformation(transform, op, result_dict, config):
 
     pattern = re.compile(config["PATTERN"])
     conversion_groups = get_group_rule(config)
-    path_cols = set(get_path_cols(config))
+    path_cols = set(get_path_columns(config))
 
     result_dict = defaultdict(dict)  # {id: {col: [(-/+, val)]}}
     for fn, fh in transform.items():

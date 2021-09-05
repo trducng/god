@@ -19,8 +19,9 @@ INDEX_DIRECTORY_COLS = [
 INDEX_RECORD_COLS = [
     "name text",  # record name
     "hash text",  # commited root
-    "shash text",  # staged root
-    "mhash text",  # current root value
+    "mhash text",  # staged root
+    "whash text",  # working root value
+    "remove integer",   # whether the record is removed
 ]
 
 
@@ -251,16 +252,19 @@ class Index:
 
         return file_dirs_hashes
 
-    def update_records(self, add: str = []) -> None:
+    def update_records(self, add: list = [], update: list = []) -> None:
         """Add records to index
 
         Args:
             add: each item contains (name, root-hash)
-            mhash: internal root node
+            update: each item contains (name, mhash)
         """
+        for rn, rmh in update:
+            self.cur.execute(f"UPDATE records SET mhash={rmh} WHERE name='{rn}'")
+
         for rn, rh in add:
             self.cur.execute(
-                "INSERT INTO records (name, shash, mhash) VALUES (?, ?, ?)",
+                "INSERT INTO records (name, mhash, whash) VALUES (?, ?, ?)",
                 (rn, rh, rh),
             )
         self.con.commit()
@@ -272,10 +276,10 @@ class Index:
             name: if yes, filter by name
 
         Returns:
-            Each item contains (name, shash, mhash)
+            Each item contains (name, hash, mhash, whash)
         """
         conditions = f" WHERE name='{name}'" if name else ""
-        sql = f"SELECT name, shash, mhash FROM records{conditions}"
+        sql = f"SELECT name, hash, mhash, whash FROM records{conditions}"
         result = self.cur.execute(sql)
 
         return result.fetchall()
