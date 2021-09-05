@@ -22,6 +22,7 @@ from god.core.head import read_HEAD
 from god.core.refs import get_ref, is_ref, update_ref
 from god.init import init, repo_exists
 from god.merge import merge
+from god.records.operations import check_records_conflict
 from god.status import status
 from god.utils.exceptions import InvalidUserParams
 
@@ -114,7 +115,14 @@ def add_cmd(paths):
         raise InvalidUserParams("Must supply paths to files or directories")
 
     paths = [str(Path(_).resolve()) for _ in paths]
-    add(paths, settings.FILE_INDEX, settings.DEFAULT_DIR_OBJECTS, settings.DIR_BASE)
+    add(
+        fds=paths,
+        index_path=settings.FILE_INDEX,
+        dir_obj=settings.DEFAULT_DIR_OBJECTS,
+        base_dir=settings.DIR_BASE,
+        dir_cache_records=settings.DIR_CACHE_RECORDS,
+        dir_records=settings.DIR_RECORDS,
+    )
 
 
 def commit_cmd(message):
@@ -134,6 +142,11 @@ def commit_cmd(message):
 
     refs, _, _ = read_HEAD(settings.FILE_HEAD)
     prev_commit = get_ref(refs, settings.DIR_REFS_HEADS)
+    check_records_conflict(
+        index_path=settings.FILE_INDEX,
+        dir_obj=settings.DEFAULT_DIR_OBJECTS,
+    )
+    import pdb; pdb.set_trace()
 
     current_commit = commit(
         user=config.USER.NAME,

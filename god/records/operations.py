@@ -3,10 +3,11 @@ import shutil
 from collections import defaultdict
 from pathlib import Path
 
+from god.core.index import Index
 from god.records.configs import get_records_config, RecordsConfig
 from god.records.storage import get_internal_nodes, get_leaf_nodes
 from god.utils.constants import RECORDS_INTERNALS, RECORDS_LEAVES
-from god.utils.exceptions import RecordParsingError
+from god.utils.exceptions import RecordParsingError, RecordNotExisted
 
 
 def copy_tree(root: str, dir_cache: str, dir_records: str) -> None:
@@ -242,7 +243,6 @@ def check_records_conflict(index_path: str, dir_obj: str) -> bool:
     """
     with Index(index_path) as index:
         godconfig = index.get_files_info(files=".godconfig")
-        records = index.get_records()
 
     if not godconfig:  # no godconfig file
         return False
@@ -251,18 +251,8 @@ def check_records_conflict(index_path: str, dir_obj: str) -> bool:
     if not godconfig[2]:  # no change in godconfig file
         return False
 
-    # check config to be consistent
-    old_config_file = godconfig[1]
+    # check new config file is valid
     new_config_file = godconfig[2]
-
-    old_config: dict = get_records_config(
-        Path(
-            dir_obj,
-            f"{old_config_file[:2]}",
-            f"{old_config_file[2:4]}",
-            f"{old_config_file[4:]}",
-        )
-    )
     new_config: dict = get_records_config(
         Path(
             dir_obj,
@@ -272,5 +262,40 @@ def check_records_conflict(index_path: str, dir_obj: str) -> bool:
         )
     )
 
-    for records_name, records_config in old_config.items():
-        pass
+    for records_name, records_config in new_config.items():
+        with Index(index_path) as index:
+            record_index = index.get_records(name=records_name)
+        if not record_index:
+            raise RecordNotExisted(
+                f'Cannot find record "{records_name}". '
+                f"Please run `god records init {records_name}"
+            )
+
+    # check consistency between old and new config file
+    old_config_file = godconfig[1]
+    if not old_config_file:
+        return True
+
+    old_config: dict = get_records_config(
+        Path(
+            dir_obj,
+            f"{old_config_file[:2]}",
+            f"{old_config_file[2:4]}",
+            f"{old_config_file[4:]}",
+        )
+    )
+
+    return True
+
+
+def init(name: str, index_path: str, dir_cache_records: str):
+    """Initiate the records
+
+    Args:
+        name: the record name to initiate
+        index_path: path to index file
+    """
+    # construct empty records
+
+    # add entries to index
+    pass

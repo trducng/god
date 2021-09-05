@@ -5,6 +5,7 @@ from pathlib import Path
 
 from god.utils.exceptions import FileExisted
 
+
 INDEX_DIRECTORY_COLS = [
     "name text",  # directory name
     "hash text",  # directory hash (calculated by files content)

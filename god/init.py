@@ -3,22 +3,13 @@ import json
 from pathlib import Path
 
 from god.core.index import create_blank_index
-from god.utils.constants import (
-    DEFAULT_DIR_OBJECTS,
-    DIR_COMMITS,
-    DIR_COMMITS_DIRECTORY,
-    DIR_GOD,
-    DIR_RECORDS,
-    DIR_RECORDS_CACHE,
-    DIR_RECORDS_DB,
-    DIR_RECORDS_LOG,
-    DIR_REFS,
-    DIR_REFS_HEADS,
-    DIR_SNAPS,
-    FILE_CONFIG,
-    FILE_HEAD,
-    FILE_INDEX,
-)
+import god.utils.constants as c
+# from god.utils.constants import (
+#     DIR_GOD,
+#     FILE_CONFIG,
+#     FILE_HEAD,
+#     FILE_INDEX,
+# )
 from god.utils.exceptions import RepoExisted
 
 
@@ -31,11 +22,11 @@ def repo_exists(path):
     # Exception:
         RepoExisted: if any of the main file and folder already exist
     """
-    if Path(path, DIR_GOD).is_dir():
-        raise RepoExisted(f"`{DIR_GOD}` directory already exists")
+    if Path(path, c.DIR_GOD).is_dir():
+        raise RepoExisted(f"`{c.DIR_GOD}` directory already exists")
 
-    if Path(path, FILE_CONFIG).is_file():
-        raise RepoExisted(f"`{FILE_CONFIG}` file already exists")
+    if Path(path, c.FILE_CONFIG).is_file():
+        raise RepoExisted(f"`{c.FILE_CONFIG}` file already exists")
 
 
 def init(path):
@@ -63,27 +54,14 @@ def init(path):
     path = Path(path).resolve()
 
     # Create directory structure
-    Path(path, DIR_GOD).mkdir(parents=True, exist_ok=True)
-
-    Path(path, DIR_COMMITS).mkdir(parents=True, exist_ok=True)
-    Path(path, DIR_COMMITS_DIRECTORY).mkdir(parents=True, exist_ok=True)
-
-    Path(path, DIR_RECORDS).mkdir(parents=True, exist_ok=True)
-    Path(path, DIR_RECORDS_LOG).mkdir(parents=True, exist_ok=True)
-    Path(path, DIR_RECORDS_DB).mkdir(parents=True, exist_ok=True)
-    Path(path, DIR_RECORDS_CACHE).mkdir(parents=True, exist_ok=True)
-
-    Path(path, DIR_REFS).mkdir(parents=True, exist_ok=True)
-    Path(path, DIR_REFS_HEADS).mkdir(parents=True, exist_ok=True)
-
-    Path(path, DIR_SNAPS).mkdir(parents=True, exist_ok=True)
-
-    Path(path, DEFAULT_DIR_OBJECTS).mkdir(parents=True, exist_ok=True)
+    for each_var in dir(c):
+        if "DIR" in each_var:
+            Path(path, getattr(c, each_var)).mkdir(parents=True, exist_ok=True)
 
     # Create file
-    with Path(path, FILE_HEAD).open("w") as f_out:
+    with Path(path, c.FILE_HEAD).open("w") as f_out:
         json.dump({"REFS": "main"}, f_out)
-    create_blank_index(Path(path, FILE_INDEX))
+    create_blank_index(Path(path, c.FILE_INDEX))
 
 
 if __name__ == "__main__":
