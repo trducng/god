@@ -22,6 +22,8 @@ from god.core.head import read_HEAD
 from god.core.refs import get_ref, is_ref, update_ref
 from god.init import init, repo_exists
 from god.merge import merge
+from god.records.add import radd
+from god.records.init import init as rinit
 from god.records.operations import check_records_conflict
 from god.status import status
 from god.utils.exceptions import InvalidUserParams
@@ -146,7 +148,6 @@ def commit_cmd(message):
         index_path=settings.FILE_INDEX,
         dir_obj=settings.DEFAULT_DIR_OBJECTS,
     )
-    import pdb; pdb.set_trace()
 
     current_commit = commit(
         user=config.USER.NAME,
@@ -287,6 +288,26 @@ def merge_cmd(branch):
         user=config.USER.NAME,
         email=config.USER.EMAIL,
     )
+
+
+def records_init_cmd(name: str) -> None:
+    """Initialize records
+
+    Args:
+        name: the records name
+    """
+    rinit(name, settings.FILE_INDEX, settings.DIR_CACHE_RECORDS, settings.DIR_RECORDS)
+
+
+def records_add_cmd(name: str) -> None:
+    """Add the records from working to staging area
+
+    @TODO: tolerate add all records if name is blank
+
+    Args:
+        name: the records name
+    """
+    radd(name, settings.FILE_INDEX, settings.DIR_CACHE_RECORDS, settings.DIR_RECORDS)
 
 
 # def record_add_cmd(name):

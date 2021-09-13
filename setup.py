@@ -14,7 +14,8 @@ setuptools.setup(
     url="https://github.com/johntd54/god/",
     packages=setuptools.find_packages(exclude=("tests", "tests.*")),
     install_requires=["pyyaml", "fire", "rich"],
-    scripts=["bin/god"],
+    # scripts=["bin/god"],
+    entry_points={"console_scripts": ["god=god.cli:main"]},
     python_requires=">=3",
     classifiers=[
         "Programming Language :: Python :: 3",

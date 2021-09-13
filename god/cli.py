@@ -1,11 +1,8 @@
-"""Provide CLI-compatible adapter"""
 from pathlib import Path
 
-import fire
+import click
 
 from god.core.conf import settings
-
-# from god.unlock import unlock
 from god.porcelain import (
     add_cmd,
     checkout_cmd,
@@ -14,6 +11,8 @@ from god.porcelain import (
     init_cmd,
     log_cmd,
     merge_cmd,
+    records_add_cmd,
+    records_init_cmd,
     reset_cmd,
     restore_staged_cmd,
     restore_working_cmd,
@@ -21,191 +20,160 @@ from god.porcelain import (
 )
 
 
-class SnapCLI:
-    """Snapshot functionality"""
-
-    def add(self, file_path, name):
-        from god.snap import add
-
-        settings.set_global_settings()
-        file_path = Path(file_path).resolve()
-        print(add(file_path, name))
-
-    def ls(self):
-        from god.snap import ls
-
-        settings.set_global_settings()
-        print(ls())
-
-    def compare(self, name1, name2):
-        from god.snap import compare
-
-        settings.set_global_settings()
-        add, remove, update = compare(name1, name2)
-
-    def refresh(self, name1):
-        pass
+@click.group()
+def main():
+    """god is the git of data"""
+    pass
 
 
-class RecordCLI:
-    """Record CLI"""
+# 1. Main group
+@main.command("init")
+@click.argument("path", default=".")
+def init(path):
+    """Initialize the repo
 
-    def add(self, name, **kwargs):
-        """Construct the records logs from commit"""
-        settings.set_global_settings(**kwargs)
-        # record_add_cmd(name)
-
-    def execute(self, **kwargs):
-        """Execute the records logs into database, and hold the record logs"""
-        pass
+    PATH is the repo directory. If not specified, use current working directory.
+    """
+    init_cmd(path)
 
 
-class CLI:
-    """Command line interface for `god`"""
-
-    def __init__(self):
-        self.snap = SnapCLI()
-        self.record = RecordCLI()
-
-    def init(self, path=".", **kwargs):
-        """Initiate the repo"""
-        init_cmd(path)
-
-    def config(self, op, **kwargs):
-        """View, update the config
-
-        # Args
-            op <str>: can be 'list', 'list-local', 'add'
-            **kwargs <{}>: config value to be updated
-        """
-        settings.set_global_settings()
-        result = config_cmd(op, **kwargs)
-        if op != "add":
-            print(result)
-
-    def status(self, *paths, **kwargs):
-        """View repo status"""
-        settings.set_global_settings()
-        if not paths:
-            paths = ["."]
-        status_cmd(paths)
-
-    def add(self, *paths, **kwargs):
-        """Add files and directories to staging area
-
-        # Args
-            *paths <[str]>: list of paths
-        """
-        settings.set_global_settings()
-        add_cmd(paths)
-
-    def commit(self, message, **kwargs):
-        """Run the commit function"""
-        settings.set_global_settings()
-        commit_cmd(message)
-
-    def log(self, **kwargs):
-        """Print out history of the god repository"""
-        settings.set_global_settings(**kwargs)
-        log_cmd()
-
-    def restore(self, *paths, **kwargs):
-        """Restore files state"""
-        settings.set_global_settings(**kwargs)
-        staged = kwargs.pop("staged", False)
-        if staged:
-            restore_staged_cmd(paths)
-        else:
-            restore_working_cmd(paths)
-
-    def checkout(self, branch, **kwargs):
-        """Checkout
-
-        # Args:
-            branch <str>: name of the branch
-            new <bool>: whether to create new branch
-        """
-        settings.set_global_settings()
-        new = kwargs.pop("new", False)
-        checkout_cmd(branch, new)
-
-    def reset(self, head_past, *arg, **kwargs):
-        """Reset the repository to `commit_id`
-
-        # Args:
-            head_past <str>: the head past, of format HEAD^x, where x is an integer
-            hard <bool>: if true, complete convert to commit_id
-        """
-        settings.set_global_settings()
-        hard = kwargs.pop("hard", False)
-        reset_cmd(head_past, hard)
-
-    def merge(self, branch, **kwargs):
-        """Merge to target branch `branch`
-
-        # Args:
-            branch <str>: name of the branch
-        """
-        settings.set_global_settings()
-        merge_cmd(branch)
-
-    def search(self, index=None, columns=None, **kwargs):
-        """
-        Example usage:
-            god search index --col1 "value1||value2" --col2 "valuea"
-        """
-        import time
-
-        from god.search import search
-
-        settings.set_global_settings()
-        if columns is not None:
-            columns = columns.split(",")
-
-        result = search(settings.INDEX, index, columns, **kwargs)
-        with Path(settings.DIR_CWD, "god.godsnap").open("w") as f_out:
-            query = ",".join(f"{key}:{value}" for key, value in kwargs.items())
-            f_out.write(f"# Time: {time.time()}\n")
-            f_out.write(f"# Index: {index}\n")
-            f_out.write(f"# Query: {query}\n")
-            f_out.write("=" * 88)
-            for each in result:
-                f_out.write("\n")
-                f_out.write(",".join(each))
-
-    def update(self, index, operation, target, **kwargs):
-        """Update feature attributes
-
-        god update index add folder --features risk
-
-        @TODO: problem because of * expansion in zsh shell
-        """
-        from god.update import update
-
-        settings.set_global_settings()
-        update(str(target), operation, settings.INDEX, index, **kwargs)
-
-    def check(self, **kwargs):
-        from pprint import pprint
-
-        pprint(kwargs)
-
-    def debug(self, command, *args, **kwargs):
-        """Run in debug mode"""
-        import sys
-        import traceback
-        from pdb import Pdb
-
-        pdb = Pdb()
-
-        try:
-            self.__getattribute__(command)(*args, **kwargs)
-        except Exception:
-            traceback.print_exc()
-            print("Uncaught exception. Entering post mortem debugging")
-            t = sys.exc_info()[2]
-            pdb.interaction(None, t)
+@main.command("config")
+@click.argument("op", type=click.Choice(["list", "list-local", "add"]))
+def config(op):
+    """View, update the config"""
+    settings.set_global_settings()
+    result = config_cmd(op)
+    if op != "add":
+        click.echo(result)
 
 
-if __name__ == "__main__":
-    fire.Fire(CLI)
+@main.command("status")
+@click.argument("paths", nargs=-1, type=click.Path(exists=True))
+def status(paths):
+    """Show the working tree status
+
+    Display the changes and what would be commited, including files and records.
+    """
+    settings.set_global_settings()
+    if not paths:
+        paths = (str(Path.cwd()),)
+    status_cmd(paths)
+
+
+@main.command("add")
+@click.argument("paths", nargs=-1, type=click.Path(exists=True))
+def add(paths):
+    """Add files from working directory to staging. Add all records to staging.
+
+    This is an umbrella command for `god files add` and `god records add`. Add
+    specific files from working area to staging area. Add all records from working
+    area to staging area.
+    """
+    settings.set_global_settings()
+    add_cmd(paths)
+
+
+@main.command("commit")
+@click.option("-m", "--message", required=True, type=str, help="Commit message")
+def commit(message):
+    """Commit changes from staging area"""
+    settings.set_global_settings()
+    commit_cmd(message)
+
+
+@main.command("log")
+def log():
+    """Show commit history"""
+    settings.set_global_settings()
+    log_cmd()
+
+
+@main.command("restore")
+@click.argument("paths", nargs=-1, type=click.Path(exists=True), required=True)
+@click.option(
+    "-s",
+    "--staged",
+    is_flag=True,
+    help="Revert from staging to working area. Else, revert from working area to latest commit.",
+    default=False,
+)
+def restore(paths, staged):
+    """Restore modified files"""
+    settings.set_global_settings()
+    if staged:
+        restore_staged_cmd(paths)
+    else:
+        restore_working_cmd(paths)
+
+
+@main.command("reset")
+@click.argument("head_past")
+@click.option(
+    "--hard",
+    is_flag=True,
+    help="Complete reset to previous commit. Otherwise, keep the changes in working area",
+    default=False,
+)
+def reset(head_past, hard):
+    """Reset the repository to previous commit"""
+    settings.set_global_settings()
+    reset_cmd(head_past, hard)
+
+
+@main.command("checkout")
+@click.argument("branch")
+@click.option("-n", "--new", is_flag=True, help="Create new branch", default=False)
+def checkout(branch, new):
+    """Checkout to a branch"""
+    settings.set_global_settings()
+    checkout_cmd(branch, new)
+
+
+@main.command("merge")
+@click.argument("branch")
+def merge(branch):
+    """Merge current branch to branch BRANCH"""
+    settings.set_global_settings()
+    merge_cmd(branch)
+
+
+# 2. File-related group
+@main.group()
+def files():
+    pass
+
+
+@files.command("add")
+def files_add():
+    settings.set_global_settings()
+    print("files_add")
+
+
+# 3. Records related group
+@main.group()
+def records():
+    """Manage records"""
+    pass
+
+
+@records.command("init")
+@click.argument("name")
+def records_init(name, type=str):
+    """Initialize record NAME"""
+    settings.set_global_settings()
+    records_init_cmd(name)
+
+
+@records.command("add")
+@click.argument(name)
+def records_add(name):
+    """Add record NAME from working to staging area"""
+    settings.set_global_settings()
+    records_add_cmd(name)
+
+
+@records.command("status")
+@click.option("-n", "--name", default="john")
+def records_status(name):
+    settings.set_global_settings()
+    print(f"records_status {name}")

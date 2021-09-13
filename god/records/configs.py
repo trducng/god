@@ -142,7 +142,7 @@ def compare_config(config1, config2):
     pass
 
 
-class RecordsConfig():
+class RecordsConfig:
     """Record configuration
 
     Args:
@@ -168,7 +168,7 @@ class RecordsConfig():
         """
         result = []
 
-        COLUMNS = config.get("COLUMNS", {})
+        COLUMNS = self._config.get("COLUMNS", {})
         for col_name, col_rule in COLUMNS.items():
             if col_name == "id":
                 continue

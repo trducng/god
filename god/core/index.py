@@ -5,7 +5,6 @@ from pathlib import Path
 
 from god.utils.exceptions import FileExisted
 
-
 INDEX_DIRECTORY_COLS = [
     "name text",  # directory name
     "hash text",  # directory hash (calculated by files content)
@@ -22,7 +21,7 @@ INDEX_RECORD_COLS = [
     "hash text",  # commited root
     "mhash text",  # staged root
     "whash text",  # working root value
-    "remove integer",   # whether the record is removed
+    "remove integer",  # whether the record is removed
 ]
 
 
@@ -253,19 +252,55 @@ class Index:
 
         return file_dirs_hashes
 
-    def update_records(self, add: list = [], update: list = []) -> None:
+    def update_records(
+        self,
+        add: list = [],
+        update: list = [],
+        delete: list = [],
+        update_whash: list = [],
+    ) -> None:
         """Add records to index
 
         Args:
             add: each item contains (name, root-hash)
             update: each item contains (name, mhash)
+            delete: each item is a record name
         """
         for rn, rmh in update:
-            self.cur.execute(f"UPDATE records SET mhash={rmh} WHERE name='{rn}'")
+            self.cur.execute(f"UPDATE records SET mhash='{rmh}' WHERE name='{rn}'")
+
+        for rn, rwh in update_whash:
+            self.cur.execute(f"UPDATE records SET whash='{rwh}' WHERE name='{rn}'")
 
         for rn, rh in add:
             self.cur.execute(
                 "INSERT INTO records (name, mhash, whash) VALUES (?, ?, ?)",
+                (rn, rh, rh),
+            )
+
+        if delete:
+            self.cur.execute(
+                f"DELETE FROM records WHERE "
+                f"name in ({','.join(['?'] * len(delete))})",
+                delete,
+            )
+
+        self.con.commit()
+
+    def reconstruct_records(self, records: list) -> None:
+        """Construct the index based
+
+        Args:
+           records: each item contains record name and hash
+        """
+        # reset the table
+        self.cur.execute("DELETE FROM records")
+        self.con.commit()
+
+        # construct records
+        for rn, rh in records:
+            self.cur.execute(
+                "INSERT INTO records (name, hash, whash) VALUES (?, ?, ?)",
                 (rn, rh, rh),
             )
         self.con.commit()
@@ -277,10 +312,10 @@ class Index:
             name: if yes, filter by name
 
         Returns:
-            Each item contains (name, hash, mhash, whash)
+            Each item contains (name, hash, mhash, whash, remove)
         """
         conditions = f" WHERE name='{name}'" if name else ""
-        sql = f"SELECT name, hash, mhash, whash FROM records{conditions}"
+        sql = f"SELECT name, hash, mhash, whash, remove FROM records{conditions}"
         result = self.cur.execute(sql)
 
         return result.fetchall()

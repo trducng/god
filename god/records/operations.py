@@ -4,10 +4,10 @@ from collections import defaultdict
 from pathlib import Path
 
 from god.core.index import Index
-from god.records.configs import get_records_config, RecordsConfig
+from god.records.configs import RecordsConfig, get_records_config
 from god.records.storage import get_internal_nodes, get_leaf_nodes
 from god.utils.constants import RECORDS_INTERNALS, RECORDS_LEAVES
-from god.utils.exceptions import RecordParsingError, RecordNotExisted
+from god.utils.exceptions import RecordNotExisted, RecordParsingError
 
 
 def copy_tree(root: str, dir_cache: str, dir_records: str) -> None:

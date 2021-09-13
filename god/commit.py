@@ -54,8 +54,9 @@ def commit(user, email, message, prev_commit, index_path, commit_dir, commit_dir
         commit_dir_file.chmod(0o440)
 
     records = {}
-    for rn, rh, _ in sorted(records_info, key=lambda obj: obj[0]):
-        records[rn] = rh
+    for rn, _, rmh, _, remove in sorted(records_info, key=lambda obj: obj[0]):
+        if not remove:
+            records[rn] = rmh
 
     # construct commit object
     commit_obj = {
@@ -79,7 +80,11 @@ def commit(user, email, message, prev_commit, index_path, commit_dir, commit_dir
 
     # reconstruct index
     with Index(index_path) as index:
+        # files
         files = [(_[0], _[2] or _[1], _[7]) for _ in files_info]
         index.construct_index_from_files_hashes_tsts(files)
+
+        # records
+        index.reconstruct_records(records=list(records.items()))
 
     return commit_hash

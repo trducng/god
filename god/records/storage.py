@@ -228,7 +228,7 @@ def build_tree_trunk(nodes: list, window: int, tree_dir: str) -> str:
     if not nodes:
         raise AttributeError("empty nodes")
 
-    if len(nodes) == 1:
+    if len(nodes) == 1 and Path(tree_dir, nodes[0][0]).is_file():
         return nodes[0][0]
 
     start_key_hashes = [
@@ -319,6 +319,8 @@ def get_paths_to_records(keys: list, root: str, tree_dir: str) -> dict:
 
     with Path(tree_dir, root).open("r") as f_in:
         child_nodes = json.load(f_in)
+        if not child_nodes:
+            return {key: [None] for key in keys}
 
     for key in keys:
         child_hash = get_matching_child(key, child_nodes)
@@ -351,7 +353,7 @@ def prolly_locate(keys: list, root: str, tree_dir: str, leaf_dir: str) -> dict:
     for key, leaf_hash in prolly_paths.items():
         buff[leaf_hash[-1]].append(key)
 
-    result = {}
+    result = {key: None for key in buff.pop(None, [])}
     for leaf_hash, buff_keys in buff.items():
         with Path(leaf_dir, leaf_hash).open("r") as f_in:
             leaf_contents = json.load(f_in)
@@ -409,7 +411,7 @@ def adjust_intermediate_nodes(
     return result
 
 
-def prolly_update(records: list, root: str, tree_dir: str, leaf_dir: str) -> str:
+def prolly_update(records: dict, root: str, tree_dir: str, leaf_dir: str) -> str:
     """Update the tree.
 
     This method assumes that each value in `records` relates involves updating column
@@ -505,7 +507,7 @@ def prolly_edit(
     tree_dir: str,
     leaf_dir: str,
     insert: list = None,
-    update: list = None,
+    update: dict = None,
     delete: list = None,
 ) -> str:
     """Edit prolly tree with insert, update and delete"""
@@ -518,6 +520,10 @@ def prolly_edit(
         update_records = prolly_locate(list(update.keys()), root, tree_dir, leaf_dir)
         for key, record in update_records.items():
             record.update(update[key])
+            cols = record.keys()
+            for col in cols:
+                if record[col] is None:
+                    record.pop(col)
 
         delete_temp += list(update.keys())
 
