@@ -53,10 +53,11 @@ def commit(user, email, message, prev_commit, index_path, commit_dir, commit_dir
             f_out.write(fs)
         commit_dir_file.chmod(0o440)
 
-    records = {}
-    for rn, _, rmh, _, remove in sorted(records_info, key=lambda obj: obj[0]):
-        if not remove:
-            records[rn] = rmh
+    records = []
+    for rn, rh, rmh, rwh, remove in sorted(records_info, key=lambda obj: obj[0]):
+        if remove:
+            continue
+        records.append((rn, rmh or rh, rwh))
 
     # construct commit object
     commit_obj = {
@@ -65,12 +66,14 @@ def commit(user, email, message, prev_commit, index_path, commit_dir, commit_dir
         "message": message,
         "prev": prev_commit,
         "objects": dir_hashes,
-        "records": records,
+        "records": {rn: rh for rn, rh, _ in records if rh},
     }
     commit_hash = calculate_commit_hash(commit_obj)
     commit_file = Path(commit_dir, commit_hash)
     if commit_file.is_file():
         print("Commit already exists.")
+        # TODO: require a stricter check for "objects" & "records" because the
+        # commit hash will always be different because of diff in `prev_commit`
         return commit_hash
 
     with commit_file.open("w") as f_out:
@@ -85,6 +88,6 @@ def commit(user, email, message, prev_commit, index_path, commit_dir, commit_dir
         index.construct_index_from_files_hashes_tsts(files)
 
         # records
-        index.reconstruct_records(records=list(records.items()))
+        index.reconstruct_records(records=records)
 
     return commit_hash

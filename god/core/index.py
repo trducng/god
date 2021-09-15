@@ -291,17 +291,17 @@ class Index:
         """Construct the index based
 
         Args:
-           records: each item contains record name and hash
+           records: each item contains record name, hash and whash
         """
         # reset the table
         self.cur.execute("DELETE FROM records")
         self.con.commit()
 
         # construct records
-        for rn, rh in records:
+        for rn, rh, rwh in records:
             self.cur.execute(
                 "INSERT INTO records (name, hash, whash) VALUES (?, ?, ?)",
-                (rn, rh, rh),
+                (rn, rh, rwh),
             )
         self.con.commit()
 

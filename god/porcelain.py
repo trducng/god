@@ -22,9 +22,11 @@ from god.core.head import read_HEAD
 from god.core.refs import get_ref, is_ref, update_ref
 from god.init import init, repo_exists
 from god.merge import merge
-from god.records.add import radd
+from god.records.add import add as radd
+from god.records.configs import RecordsConfig
 from god.records.init import init as rinit
-from god.records.operations import check_records_conflict
+from god.records.operations import check_records_conflict, path_to_record_id
+from god.records.update import update as rupdate
 from god.status import status
 from god.utils.exceptions import InvalidUserParams
 
@@ -302,7 +304,7 @@ def records_init_cmd(name: str) -> None:
 def records_add_cmd(name: str) -> None:
     """Add the records from working to staging area
 
-    @TODO: tolerate add all records if name is blank
+    @TODO: add all records if name is blank
 
     Args:
         name: the records name
@@ -310,15 +312,30 @@ def records_add_cmd(name: str) -> None:
     radd(name, settings.FILE_INDEX, settings.DIR_CACHE_RECORDS, settings.DIR_RECORDS)
 
 
-# def record_add_cmd(name):
-#     """Construct sql logs"""
-#     refs, _, _ = read_HEAD(settings.FILE_HEAD)
-#     commit_id = get_ref(refs, settings.DIR_REFS_HEADS)
+def records_update_cmd(name: str, paths: tuple, set_: tuple, del_: tuple) -> None:
+    """Update records information
 
-#     record_add(
-#         record_path=str(Path(settings.DIR_RECORDS_DB, name)),
-#         config=settings.RECORDS[name],
-#         commit=commit_id,
-#         commit_dir=settings.DIR_COMMITS,
-#         commit_dirs_dir=settings.DIR_COMMITS_DIRECTORY,
-#     )
+    Args:
+        name: the name of the record
+        paths: a list of files
+        set_: a list of column and value to update
+        del_: a list of column to unset value
+    """
+    config = RecordsConfig(name, settings.FILE_CONFIG)
+
+    ids = []
+    if paths:
+        ids = list(path_to_record_id(paths, config).values())
+
+    if not ids:
+        return
+
+    rupdate(
+        ids=ids,
+        sets=set_,
+        dels=del_,
+        name=name,
+        config=config,
+        index_path=settings.FILE_INDEX,
+        dir_cache_records=settings.DIR_CACHE_RECORDS,
+    )

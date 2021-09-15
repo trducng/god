@@ -13,6 +13,7 @@ from god.porcelain import (
     merge_cmd,
     records_add_cmd,
     records_init_cmd,
+    records_update_cmd,
     reset_cmd,
     restore_staged_cmd,
     restore_working_cmd,
@@ -165,7 +166,7 @@ def records_init(name, type=str):
 
 
 @records.command("add")
-@click.argument(name)
+@click.argument("name")
 def records_add(name):
     """Add record NAME from working to staging area"""
     settings.set_global_settings()
@@ -173,7 +174,46 @@ def records_add(name):
 
 
 @records.command("status")
-@click.option("-n", "--name", default="john")
-def records_status(name):
+def records_status():
+    """Get status of the records"""
+    from rich import print as rprint
+
+    from god.records.status import status
+
     settings.set_global_settings()
-    print(f"records_status {name}")
+    stage_add, stage_update, stage_remove, add, update = status(settings.FILE_INDEX)
+
+    if stage_add or stage_update or stage_remove:
+        rprint("Changes to be commited:")
+        for each in stage_add:
+            rprint(f"\t[green]new record:\t{each}[/]")
+        for each in stage_update:
+            rprint(f"\t[green]updated:\t{each}[/]")
+        for each in stage_remove:
+            rprint(f"\t[green]deleted:\t{each}[/]")
+        rprint()
+
+    if update:
+        rprint("Changes not staged for commit:")
+        for each in update:
+            rprint(f"\t[red]updated:\t{each}[/]")
+        rprint()
+
+    if add:
+        rprint("Untracked records:")
+        for each in add:
+            rprint(f"\t[red]{each}[/]")
+        rprint()
+
+    exit(0)
+
+
+@records.command("update")
+@click.argument("name")
+@click.argument("paths", nargs=-1, type=click.Path(exists=True))
+@click.option("--set", "set_", multiple=True, type=str, help="col=val")
+@click.option("--del", "del_", multiple=True, type=str, help="col1")
+def records_update(name, paths, set_, del_):
+    """Update the records"""
+    settings.set_global_settings()
+    records_update_cmd(name, paths, set_, del_)

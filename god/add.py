@@ -8,11 +8,7 @@ Behaviors:
     - Add/Update/Remove records to/from record collection
     -> We need to understand about the working area for records
 """
-from pathlib import Path
-
 from god.branches.trackchanges import track_working_changes
-from god.commits.compare import transform_commit
-from god.core.conf import read_local_config
 from god.core.files import copy_objects_with_hashes
 from god.core.index import Index
 from god.records.operations import copy_tree
@@ -52,7 +48,7 @@ def add(fds, index_path, dir_obj, base_dir, dir_cache_records, dir_records):
         # move records to staging
         current_records = index.get_records()
         records_update = []
-        for rn, rh, rmh, rwh in current_records:
+        for rn, rh, rmh, rwh, rm in current_records:
             if rwh == rmh:
                 continue
             records_update.append((rn, rwh))
