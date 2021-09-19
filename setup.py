@@ -15,7 +15,9 @@ setuptools.setup(
     packages=setuptools.find_packages(exclude=("tests", "tests.*")),
     install_requires=["pyyaml", "fire", "rich"],
     # scripts=["bin/god"],
-    entry_points={"console_scripts": ["god=god.cli:main"]},
+    entry_points={
+        "console_scripts": ["god=god.cli:main", "god-db=god.records.sqlitehook:db"]
+    },
     python_requires=">=3",
     classifiers=[
         "Programming Language :: Python :: 3",

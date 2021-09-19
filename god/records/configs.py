@@ -177,7 +177,7 @@ class RecordsConfig:
                 result.append(col_name)
                 continue
 
-            if col_rule.get("path", False) or col_rule.get("PATH", False):
+            if not (col_rule.get("path", False) or col_rule.get("PATH", False)):
                 result.append(col_name)
 
         return result

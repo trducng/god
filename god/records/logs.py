@@ -6,21 +6,6 @@ import yaml
 from god.records.configs import get_group_rule, get_path_columns
 
 
-def read_logic(logic_path):
-    """Read current logic from file
-
-    Args:
-        logic_path <str>: absolute path to logic file
-
-    Returns:
-        <{id: {col: [('+/-', value)]}}>: the logic information
-    """
-    with open(logic_path):
-        logic = yaml.safe_load(logic_path)
-
-    return logic
-
-
 def parse_transformation(transform, op, result_dict, config):
     """Parse transformation
 
@@ -84,21 +69,3 @@ def parse_transformation(transform, op, result_dict, config):
                     result_dict[id_][group] = items
 
     return result_dict
-
-
-def construct_transformation_logic(file_add, file_remove, config):
-    """Construct sql logs from the file add and file remove
-
-    Args:
-        file_add <[(str, str)]>: file name and file hash to add
-        file_remove <[(str, str)]>: file name and file hash to remove
-        config <Settings>: the record config
-
-    Returns:
-        <[str]>: sql statements
-    """
-    logic = defaultdict(dict)  # {id: {col: [(-/+, val)]}}
-    logic = parse_transformation(file_remove, "-", logic, config)
-    logic = parse_transformation(file_add, "+", logic, config)
-
-    return logic

@@ -27,6 +27,14 @@ def main():
     pass
 
 
+# For testing
+@main.command("test")
+def main_test():
+    from god.hooks.events import post_commit
+
+    post_commit()
+
+
 # 1. Main group
 @main.command("init")
 @click.argument("path", default=".")
@@ -217,3 +225,20 @@ def records_update(name, paths, set_, del_):
     """Update the records"""
     settings.set_global_settings()
     records_update_cmd(name, paths, set_, del_)
+
+
+@records.command("search")
+@click.argument("name")
+@click.option(
+    "-q", "--query", "queries", multiple=True, type=str, help="Search query (col=val)"
+)
+@click.option(
+    "-c", "--col", "columns", multiple=True, type=str, help="Column to return"
+)
+@click.option("--pager", is_flag=True, default=False, help="Use pager")
+def records_search(name: str, queries: list, columns: list, pager: bool):
+    """Update the records"""
+    from god.porcelain import records_search_cmd
+
+    settings.set_global_settings()
+    records_search_cmd(name, queries, columns, pager)

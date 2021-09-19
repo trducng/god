@@ -6,6 +6,8 @@ cli right into porcelain.
 from pathlib import Path
 
 from rich import print as rprint
+from rich.console import Console
+from rich.table import Table
 
 from god.add import add
 from god.checkout import (
@@ -127,6 +129,9 @@ def add_cmd(paths):
         dir_cache_records=settings.DIR_CACHE_RECORDS,
         dir_records=settings.DIR_RECORDS,
     )
+    from god.hooks.events import post_commit_hook
+
+    post_commit_hook()
 
 
 def commit_cmd(message):
@@ -162,6 +167,12 @@ def commit_cmd(message):
     )
 
     update_ref(refs, current_commit, settings.DIR_REFS_HEADS)
+    # ignite post-commit hooks: (1) collect hooks, (2) call hooks
+    # each by each for now, the post-commit only concern with the
+    # god-db command
+    from god.hooks.events import post_commit_hook
+
+    post_commit_hook()
 
 
 def log_cmd():
@@ -339,3 +350,40 @@ def records_update_cmd(name: str, paths: tuple, set_: tuple, del_: tuple) -> Non
         index_path=settings.FILE_INDEX,
         dir_cache_records=settings.DIR_CACHE_RECORDS,
     )
+    from god.hooks.events import post_commit_hook
+
+    post_commit_hook()
+
+
+def records_search_cmd(name: str, queries: list, columns: list, pager: bool):
+    """Search the records
+
+    This command prints result to the console.
+
+    Args:
+        name: the name of the record
+        queries: the conditions to return result
+        return_cols: the list of columns to return
+    """
+    import csv
+
+    from god.hooks.events import record_search_hook
+
+    completed_process = record_search_hook(name, queries, columns)
+    result = str(completed_process.stdout, encoding="utf-8").strip().splitlines()
+    result = list(csv.reader(result))
+    if not result:
+        return
+
+    table = Table(show_header=True)
+    for each_column in result[0]:
+        table.add_column(each_column)
+    for each_row in result[1:]:
+        table.add_row(*each_row)
+
+    if pager:
+        console = Console()
+        with console.pager():
+            console.print(table)
+    else:
+        rprint(table)
