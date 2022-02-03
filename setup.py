@@ -13,10 +13,15 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/johntd54/god/",
     packages=setuptools.find_packages(exclude=("tests", "tests.*")),
-    install_requires=["pyyaml", "fire", "rich"],
+    install_requires=["pyyaml", "click", "rich", "tqdm"],
     # scripts=["bin/god"],
     entry_points={
-        "console_scripts": ["god=god.cli:main", "god-db=god.records.sqlitehook:db"]
+        "console_scripts": [
+            "god=god.cli:main",
+            "god-db=god.records.sqlitehook:db",
+            "god-storage-local=god.storage.local:main",
+            "god-storage-s3=god.storage.s3:main",
+        ]
     },
     python_requires=">=3",
     classifiers=[
