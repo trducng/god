@@ -21,6 +21,7 @@ setuptools.setup(
             "god-db=god.records.sqlitehook:db",
             "god-storage-local=god.storage.local:main",
             "god-storage-s3=god.storage.s3:main",
+            "god-files=god.files:main",
         ]
     },
     python_requires=">=3",
