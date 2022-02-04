@@ -45,3 +45,29 @@ Commit entry
 }
 ```
 """
+from typing import Dict, List
+
+
+class FileDescriptor:
+    # @TODO: can create base class for descriptor content, similar to serializer idea
+    @staticmethod
+    def descriptor() -> Dict:
+        return {
+            "type": "file",
+            "hash": "",
+            "checksum": "",
+            "location": "",
+            "plugins": [],
+        }
+
+
+class DirectoryDescriptor:
+    @staticmethod
+    def descriptor() -> Dict:
+        return {"type": "directory", "plugins": []}
+
+
+class CommitDescriptor:
+    @staticmethod
+    def descriptor() -> List:
+        return []

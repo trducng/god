@@ -8,13 +8,15 @@ Behaviors:
     - Add/Update/Remove records to/from record collection
     -> We need to understand about the working area for records
 """
+import json
 import subprocess
+from pathlib import Path
 
 from tqdm import tqdm
 
 from god.branches.trackchanges import track_working_changes
 from god.core.index import Index
-from god.records.operations import copy_tree
+from god.files.descriptors import FileDescriptor
 
 
 def add(fds, index_path, dir_obj, base_dir, dir_cache_records, dir_records):
@@ -36,11 +38,32 @@ def add(fds, index_path, dir_obj, base_dir, dir_cache_records, dir_records):
     # decide the config format (should be YAML like)
 
     # @TODO: move files to cache, create symlink
+    symlink = True
+    if symlink:
+        print("Move files to cache and create symlink")
 
+    plugins = [["god-compress"], ["god-encrypt"]]
+    # @TODO: handle files with the same hash (maybe add the fp here)
     for fp, fh, _ in tqdm(add + update):
-        # @TODO: construct descriptor (as json)
-        # @TODO: encrypt and compress file, calculate hash
-        # @TODO: save descriptor
+        descriptor = FileDescriptor.descriptor()
+        descriptor["hash"] = "sha256"
+        descriptor["checksum"] = fh
+
+        # process each files with plugin
+        for plugin in plugins:
+            # @NOTE: declare the plugin inside config, and call here
+            p = subprocess.run(plugin + [fp])
+            if p.returncode:
+                raise RuntimeError(f"Error when running plugin {plugin}")
+            if p.stdout.strip():
+                result = json.loads(p.stdout.strip())
+                if "fp" in result:
+                    fp = result["fp"]
+                if "fh" in result:
+                    fh = result["fh"]
+                if "plugin" in result:
+                    descriptor["plugin"].append(result["plugin"])
+
         # @TODO: upload the files to storage
         # @TODO: suppose that we get the storage implementation from config, but we
         # should get this knowledge from some place like plugins manager and config
@@ -52,10 +75,24 @@ def add(fds, index_path, dir_obj, base_dir, dir_cache_records, dir_records):
         # https://stackoverflow.com/questions/9743838/python-subprocess-in-parallel
         # @NOTE: at the moment, still use this slow approach because it's simpler, we
         # can experiment the modes of inter-process communicatin later.
+        # @TODO: nevertheless, if we want to simplify the plugin creation process for
+        # developers, we need to implement inter-process communication strategy that
+        # they can just reuse (maybe setup a shared memory space first hand?).
+        descriptor["location"] = fh
         p = subprocess.run(["god-storage-s3", "store-file", fp, fh])
         if p.returncode:
             raise RuntimeError(f"Error during adding file: {p.stderr}")
+
+        # @TODO: save descriptor
+        p = subprocess.run(
+            ["god-descriptor", "store-descriptor", json.dumps(descriptor)]
+        )
+        if p.returncode:
+            raise RuntimeError(f"Error during saving descriptor: {p.stderr}")
+
         # @TODO: delete the local storage files to save space
+        if descriptor["checksum"] != descriptor["location"]:
+            Path(fp).unlink()
 
     # @TODO: hook2: before update index
 
@@ -72,13 +109,13 @@ def add(fds, index_path, dir_obj, base_dir, dir_cache_records, dir_records):
         )
 
         # @TODO: move this block to the record-plugin code
-        current_records = index.get_records()
-        records_update = []
-        for rn, rh, rmh, rwh, rm in current_records:
-            if rwh == rmh:
-                continue
-            records_update.append((rn, rwh))
-            copy_tree(rwh, dir_cache_records, dir_records)
-        index.update_records(update=records_update)
+        # current_records = index.get_records()
+        # records_update = []
+        # for rn, rh, rmh, rwh, rm in current_records:
+        #     if rwh == rmh:
+        #         continue
+        #     records_update.append((rn, rwh))
+        #     copy_tree(rwh, dir_cache_records, dir_records)
+        # index.update_records(update=records_update)
 
     # @TODO: hook3: after update index

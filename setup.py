@@ -22,6 +22,7 @@ setuptools.setup(
             "god-storage-local=god.storage.local:main",
             "god-storage-s3=god.storage.s3:main",
             "god-files=god.files:main",
+            "god-descriptor=god.descriptors.base:main",
         ]
     },
     python_requires=">=3",
