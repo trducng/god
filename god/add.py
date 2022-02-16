@@ -31,4 +31,4 @@ def add(fds, index_path, dir_obj, base_dir, dir_cache_records, dir_records):
     # so that 3rd-party plugin can readily use it to extract information they need.
     # @TODO: you need to define some standard config parameters so that your code can
     # follow the same behavior across plugins.
-    files_add(fds, index_path, dir_obj, base_dir, dir_cache_records, dir_records)
+    files_add(fds, index_path, base_dir)

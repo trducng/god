@@ -9,17 +9,17 @@ Behaviors:
     -> We need to understand about the working area for records
 """
 import json
+import logging
+import shutil
 import subprocess
 from pathlib import Path
-
-from tqdm import tqdm
 
 from god.branches.trackchanges import track_working_changes
 from god.core.index import Index
 from god.files.descriptors import FileDescriptor
 
 
-def add(fds, index_path, dir_obj, base_dir, dir_cache_records, dir_records):
+def add(fds, index_path, base_dir):
     """Add the files, directories & all records to staging area.
 
     Args:
@@ -37,63 +37,86 @@ def add(fds, index_path, dir_obj, base_dir, dir_cache_records, dir_records):
     # seems to hook to clean up the variables `add`, `update`,...
     # decide the config format (should be YAML like)
 
-    # @TODO: move files to cache, create symlink
-    symlink = True
-    if symlink:
-        print("Move files to cache and create symlink")
-
-    # @TODO: parse the plugins from settings
-    plugins = [["god-compress"], ["god-encrypt"]]
-    # @TODO: handle files with the same hash (maybe add the fp here)
-    for fp, fh, _ in tqdm(add + update):
+    # each item in new_objs has format [prefix, hash, path]
+    new_objs = [[fp, fh, str(Path(base_dir, fp))] for fp, fh, _ in add] + [
+        [fp, fh, str(Path(base_dir, fp))] for fp, fh, _ in update
+    ]
+    descriptors = []
+    for _, fh, _ in new_objs:
         descriptor = FileDescriptor.descriptor()
         descriptor["hash"] = "sha256"
         descriptor["checksum"] = fh
+        descriptors.append(descriptor)
 
-        # process each files with plugin
-        for plugin in plugins:
-            # @NOTE: declare the plugin inside config, and call here
-            p = subprocess.run(plugin + [fp])
-            if p.returncode:
-                raise RuntimeError(f"Error when running plugin {plugin}")
-            if p.stdout.strip():
-                result = json.loads(p.stdout.strip())
-                if "fp" in result:
-                    fp = result["fp"]
-                if "fh" in result:
-                    fh = result["fh"]
-                if "plugin" in result:
-                    descriptor["plugin"].append(result["plugin"])
+    # @TODO: move files to cache, create symlink
+    symlink = False
+    if symlink:
+        logging.info("Move files to cache and create symlink")
+        cache_folder = Path(
+            base_dir, ".god", "cache", "files-add"
+        )  # @TODO: get from config
+        cache_folder.mkdir(parents=True, exist_ok=True)
+        for idx in range(len(new_objs)):
+            target = cache_folder / new_objs[idx][1]
+            if not target.exists():
+                shutil.copy(new_objs[idx][2], target)
+                target.chmod(0o440)
+            new_objs[idx][2] = str(target)
 
-        # @TODO: upload the files to storage
-        # @TODO: suppose that we get the storage implementation from config, but we
-        # should get this knowledge from some place like plugins manager and config
-        # @TODO: starting a new process for each file in a for loop is not quite nice
-        # because of the overhead in initiation process (e.g. reading the config,
-        # finding the base...). Maybe we can have an option for inter-process
-        # communication (https://en.wikipedia.org/wiki/Inter-process_communication)
-        # with MPI, shared memory, or etc. There is a nice Python code snippet here:
-        # https://stackoverflow.com/questions/9743838/python-subprocess-in-parallel
-        # @NOTE: at the moment, still use this slow approach because it's simpler, we
-        # can experiment the modes of inter-process communicatin later.
-        # @TODO: nevertheless, if we want to simplify the plugin creation process for
-        # developers, we need to implement inter-process communication strategy that
-        # they can just reuse (maybe setup a shared memory space first hand?).
-        descriptor["location"] = fh
-        p = subprocess.run(["god-storage-s3", "store-file", fp, fh])
-        if p.returncode:
-            raise RuntimeError(f"Error during adding file: {p.stderr}")
-
-        # @TODO: save descriptor
-        p = subprocess.run(
-            ["god-descriptor", "store-descriptor", json.dumps(descriptor)]
+    # @TODO: parse the plugins from settings, maybe also parsing the args
+    plugins = [["god-compress"], ["god-encrypt"]]
+    for plugin in plugins:  # get plugin params, and skip
+        logging.info(f"Running plugin {plugin}")
+        child = subprocess.Popen(
+            args=plugin,
+            stdout=subprocess.PIPE,
+            stdin=subprocess.PIPE,
         )
-        if p.returncode:
-            raise RuntimeError(f"Error during saving descriptor: {p.stderr}")
+        output, _ = child.communicate(input=json.dumps(new_objs).encode())
+        if child.returncode:
+            # @TODO: note in doc, printing diagnostic message is the role of the child
+            # process, not the role of parent process
+            raise RuntimeError(f"{plugin} exit with status {child.returncode}")
 
-        # @TODO: delete the local storage files to save space
-        if descriptor["checksum"] != descriptor["location"]:
-            Path(fp).unlink()
+        output = json.loads(output.strip())  # [(hash, path, plugin)]
+        for idx in range(len(output)):
+            new_objs[idx][1] = output[idx][0]
+            new_objs[idx][2] = output[idx][1]
+            descriptors[idx]["plugins"].append(output[idx][2])
+
+    # finalize descriptor info
+    for idx in range(len(new_objs)):
+        descriptors[idx]["location"] = new_objs[idx][1]
+        descriptors[idx]["plugins"] = list(reversed(descriptors[idx]["plugins"]))
+
+    # move the objects to storage
+    # @TODO: suppose that we get the storage implementation from config, but we
+    # should get this knowledge from some place like plugins manager and config
+    storage_cmd = "god-storage-local"
+    child = subprocess.Popen(
+        args=[storage_cmd, "store-files"],
+        stdout=subprocess.PIPE,
+        stdin=subprocess.PIPE,
+    )
+    _, _ = child.communicate(
+        input=json.dumps([[each[2], each[1]] for each in new_objs]).encode()
+    )
+    if child.returncode:
+        raise RuntimeError(f"Cannot run {storage_cmd}")
+
+    # store descriptor
+    child = subprocess.Popen(
+        args=["god-descriptor", "store-descriptors"],
+        stdout=subprocess.PIPE,
+        stdin=subprocess.PIPE,
+    )
+    output, _ = child.communicate(input=json.dumps(descriptors).encode())
+    if child.returncode:
+        raise RuntimeError("Cannot store descriptor")
+    output = json.loads(output.strip())  # [(hash, path, plugin)]
+    print(output)
+
+    # @TODO: remove cache
 
     # @TODO: hook2: before update index
 

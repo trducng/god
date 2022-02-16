@@ -31,7 +31,11 @@ class BaseDescriptor:
     def store_descriptor_object(self, obj: Dict) -> str:
         content = json.dumps(obj, sort_keys=True, ensure_ascii=False)
         hash_value = sha256(content.encode()).hexdigest()
-        with (self._path / self._get_hash_path(hash_value)).open("w") as fo:
+
+        target_path = self._path / self._get_hash_path(hash_value)
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+
+        with target_path.open("w") as fo:
             fo.write(content)
 
         return hash_value
@@ -58,3 +62,12 @@ def store_descriptor(json_string: str):
     content = json.loads(json_string)
     fh = descriptor.store_descriptor_object(content)
     print(fh, file=sys.stdout)
+
+
+@main.command("store-descriptors")
+def store_descriptors():
+    input_ = sys.stdin.read().strip()
+    hashes = []
+    for content in json.loads(input_):
+        hashes.append(descriptor.store_descriptor_object(content))
+    print(json.dumps(hashes), file=sys.stdout)

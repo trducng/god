@@ -1,4 +1,6 @@
+import json
 import posixpath
+import sys
 from pathlib import Path
 
 import boto3
@@ -113,3 +115,10 @@ def main():
 @click.argument("file-hash", type=str)
 def store_file(file_path, file_hash):
     ls.store_file(file_path, file_hash)
+
+
+@main.command("store-files")
+def store_files():
+    input_ = sys.stdin.read().strip()
+    for file_path, file_hash in json.loads(input_):
+        ls.store_file(file_path, file_hash)
