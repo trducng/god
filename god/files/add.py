@@ -42,6 +42,7 @@ def add(fds, index_path, dir_obj, base_dir, dir_cache_records, dir_records):
     if symlink:
         print("Move files to cache and create symlink")
 
+    # @TODO: parse the plugins from settings
     plugins = [["god-compress"], ["god-encrypt"]]
     # @TODO: handle files with the same hash (maybe add the fp here)
     for fp, fh, _ in tqdm(add + update):
@@ -98,6 +99,8 @@ def add(fds, index_path, dir_obj, base_dir, dir_cache_records, dir_records):
 
     # update the index
     with Index(index_path) as index:
+        # @TODO: must expose index as command so that 3rd-party plugins can make use
+        # of it
 
         # update files
         index.update(

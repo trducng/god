@@ -1,6 +1,6 @@
 import shutil
 from pathlib import Path
-from typing import Dict
+from typing import Dict, List
 
 import click
 
@@ -93,6 +93,10 @@ class LocalStorage(BaseStorage):
             True if the file exists, False otherwise
         """
         return (self._path / self._get_hash_path(hash_value)).exists()
+
+    def get_hashes(self) -> List[str]:
+        """Return all hashes inside the object storage"""
+        return []
 
 
 ls = LocalStorage({})
