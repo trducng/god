@@ -3,6 +3,7 @@ import os
 import shutil
 from collections import defaultdict
 from pathlib import Path
+from typing import List
 
 from god.core.conf import settings
 
@@ -93,7 +94,7 @@ def get_files_tst(files, base_dir):
     return tsts
 
 
-def resolve_paths(fds, base_dir):
+def resolve_paths(fds, base_dir) -> List[str]:
     """Resolve path relative to `base_dir`
 
     # Args:
@@ -216,11 +217,11 @@ def separate_paths_to_files_dirs(fds, base_dir):
     return files, dirs, unknowns
 
 
-def filter_common_parents(fds):
+def filter_common_parents(fds: List[str]):
     """Filter common parents in a list of files and directories
 
     # Args:
-        fds <[str|Path]>: list of relative paths
+        fds: list of relative paths
     """
     fds = sorted(fds, key=lambda obj: len(obj))
 

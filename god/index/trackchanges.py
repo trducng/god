@@ -37,7 +37,7 @@ def track_staging_changes(fds, index_path, base_dir):
 
     with Index(index_path) as index:
         for fd in fds:
-            result = index.match(fd)
+            result = index.get_folder(names=[fd], get_remove=True)
             for entry in result:
                 if entry[3]:  # marked as removed
                     if entry[1]:
@@ -51,7 +51,7 @@ def track_staging_changes(fds, index_path, base_dir):
     return add, update, remove
 
 
-def track_working_changes(fds, index_path, base_dir, get_remove=True):
+def track_working_changes(fds, index_path, base_dir):
     """Track changes from working area compared to staging and commit area
 
     This function handles add, update and removal of existing files
@@ -67,10 +67,9 @@ def track_working_changes(fds, index_path, base_dir, get_remove=True):
     Also, items specific in fds can both exist and removed.
 
     # Args:
-        fds <str>: the directory to add (absolute path)
+        fds <str>: the directory to track (absolute path)
         index_path <str>: path to index file
         base_dir <str>: project base directory
-        get_remove <bool>: whether to include files marked as removed in index
 
     # Returns
         <[str, str, float]>: add - files newly added
@@ -80,11 +79,11 @@ def track_working_changes(fds, index_path, base_dir, get_remove=True):
         <[str]>: files that are changed, and then manually changed back to commit ver
     """
     base_dir = Path(base_dir).resolve()
-    if not isinstance(fds, (list, int)):
+    if not isinstance(fds, (list, tuple)):
         fds = [fds]
 
-    fds = resolve_paths(fds, base_dir)
-    fds = filter_common_parents(fds)  # list of relative paths to `base_dir`
+    fds = resolve_paths(fds, base_dir)  # list of relative directory paths to `base_dir`
+    fds = filter_common_parents(fds)  # list of relative directory paths to `base_dir`
 
     files, dirs, unknowns = separate_paths_to_files_dirs(fds, base_dir)
     files_dirs = retrieve_files_info(files, dirs, base_dir)
@@ -92,7 +91,7 @@ def track_working_changes(fds, index_path, base_dir, get_remove=True):
     index_files_dirs, index_unknowns = defaultdict(list), []
     with Index(index_path) as index:
         for fd in fds:
-            result = index.match(fd, get_remove=False)
+            result = index.get_folder(names=[fd], get_remove=False)
             if not result:  # not exist
                 index_unknowns.append(fd)
                 continue
@@ -101,7 +100,7 @@ def track_working_changes(fds, index_path, base_dir, get_remove=True):
                 continue
             for _ in result:  # directory of files
                 index_files_dirs[str(Path(_[0]).parent)].append(
-                    (Path(_[0]).name, _[1], _[2], _[3], _[4], _[5], _[6], _[7])
+                    (Path(_[0]).name, _[1], _[2], _[3], _[4], _[5])
                 )
 
         add, update, remove, reset_tst, unset_mhash = [], [], [], [], []
@@ -148,7 +147,7 @@ def track_working_changes(fds, index_path, base_dir, get_remove=True):
 
             # update operation
             for fn in list(pfn.intersection(ifn)):
-                if path_files[fn] == index_files[fn][6]:
+                if path_files[fn] == index_files[fn][4]:
                     # equal timestamp
                     continue
 
@@ -179,7 +178,7 @@ def track_files(fds, index_path, base_dir):
         base_dir <str>: project base directory
     """
     add, update, remove, reset_tst, unset_mhash = track_working_changes(
-        fds, index_path, base_dir, get_remove=False
+        fds, index_path, base_dir
     )
     stage_add, stage_update, stage_remove = track_staging_changes(
         fds, index_path, base_dir
