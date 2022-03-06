@@ -31,7 +31,7 @@ def add(fds, index_path, base_dir):
         dir_records <str>: directory containing to-be-committed records
     """
     add, update, remove, reset_tst, unset_mhash = track_working_changes(
-        fds, index_path, base_dir
+        fds, index_path, base_dir  # this is index-level information
     )
     # @TODO: hook1: track-working changes -> might need hook here
     # seems to hook to clean up the variables `add`, `update`,...
@@ -92,7 +92,7 @@ def add(fds, index_path, base_dir):
     # move the objects to storage
     # @TODO: suppose that we get the storage implementation from config, but we
     # should get this knowledge from some place like plugins manager and config
-    storage_cmd = "god-storage-local"
+    storage_cmd = "god-storage-s3"
     child = subprocess.Popen(
         args=[storage_cmd, "store-files"],
         stdout=subprocess.PIPE,

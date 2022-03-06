@@ -38,14 +38,15 @@ Commit entry
 
 ```
 {
-    "files": [
-        ["dir1","descripto-hash1"],
-        ["dir2","descripto-hash2"]
+    "type": "commit",
+    "dirs": [
+        ["dir1","descriptor-hash1"],
+        ["dir2","descriptor-hash2"]
     ]
 }
 ```
 """
-from typing import Dict, List
+from typing import Dict
 
 
 class FileDescriptor:
@@ -69,5 +70,5 @@ class DirectoryDescriptor:
 
 class CommitDescriptor:
     @staticmethod
-    def descriptor() -> List:
-        return []
+    def descriptor() -> Dict:
+        return {"type": "commit", "dirs": []}

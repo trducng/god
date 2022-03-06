@@ -10,7 +10,7 @@ _DEFAULT_CONFIG = {
 }
 
 
-def get_base_dir(path=None):
+def get_base_dir(path=None) -> str:
     """Get `god` base dir from `path`
 
     # Args
