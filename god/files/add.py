@@ -14,8 +14,6 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from god.branches.trackchanges import track_working_changes
-from god.core.index import Index
 from god.files.descriptors import FileDescriptor
 
 
@@ -23,16 +21,21 @@ def add(fds, index_path, base_dir):
     """Add the files, directories & all records to staging area.
 
     Args:
-        fds <str>: the directory to add (absolute path)
+        fds <list str>: the directory to add (absolute path)
         index_path <str>: path to index file
         dir_obj <str>: the path to object directory
         base_dir <str>: project base directory
         dir_cache_records <str>: directory containing working records
         dir_records <str>: directory containing to-be-committed records
     """
-    add, update, remove, reset_tst, unset_mhash = track_working_changes(
-        fds, index_path, base_dir  # this is index-level information
+    p = subprocess.Popen(
+        ["god-index", "track", "files", "--working"],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
     )
+    out, _ = p.communicate(input=json.dumps(fds).encode())
+    add, update, remove, reset_tst, unset_mhash = json.loads(out)
+
     # @TODO: hook1: track-working changes -> might need hook here
     # seems to hook to clean up the variables `add`, `update`,...
     # decide the config format (should be YAML like)
@@ -114,34 +117,60 @@ def add(fds, index_path, base_dir):
     if child.returncode:
         raise RuntimeError("Cannot store descriptor")
     output = json.loads(output.strip())  # [(hash, path, plugin)]
-    print(output)
 
     # @TODO: remove cache
 
     # @TODO: hook2: before update index
 
     # update the index
-    with Index(index_path) as index:
-        # @TODO: must expose index as command so that 3rd-party plugins can make use
-        # of it
-
-        # update files
-        index.update(
-            add=add,
-            update=update,
-            remove=remove,
-            reset_tst=reset_tst,
-            unset_mhash=unset_mhash,
+    if unset_mhash:
+        p = subprocess.Popen(
+            ["god-index", "revert", "files", "--mhash"],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
         )
+        _, _ = p.communicate(input=json.dumps(unset_mhash).encode())
 
-        # @TODO: move this block to the record-plugin code
-        # current_records = index.get_records()
-        # records_update = []
-        # for rn, rh, rmh, rwh, rm in current_records:
-        #     if rwh == rmh:
-        #         continue
-        #     records_update.append((rn, rwh))
-        #     copy_tree(rwh, dir_cache_records, dir_records)
-        # index.update_records(update=records_update)
+    if reset_tst:
+        p = subprocess.Popen(
+            ["god-index", "revert", "files"],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+        )
+        _, _ = p.communicate(input=json.dumps(reset_tst).encode())
+
+    if remove:
+        p = subprocess.Popen(
+            ["god-index", "delete", "files", "--staged"],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+        )
+        _, _ = p.communicate(input=json.dumps(remove).encode())
+
+    if update:
+        p = subprocess.Popen(
+            ["god-index", "update", "files"],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+        )
+        _, _ = p.communicate(input=json.dumps(update).encode())
+
+    if add:
+        p = subprocess.Popen(
+            ["god-index", "add", "files", "--staged"],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+        )
+        _, _ = p.communicate(input=json.dumps(add).encode())
+
+    # @TODO: move this block to the record-plugin code
+    # current_records = index.get_records()
+    # records_update = []
+    # for rn, rh, rmh, rwh, rm in current_records:
+    #     if rwh == rmh:
+    #         continue
+    #     records_update.append((rn, rwh))
+    #     copy_tree(rwh, dir_cache_records, dir_records)
+    # index.update_records(update=records_update)
 
     # @TODO: hook3: after update index

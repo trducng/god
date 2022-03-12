@@ -71,7 +71,7 @@ def status_cmd(paths):
         add,
         update,
         remove,
-        reset_tst,
+        _,
         unset_mhash,
     ) = status(paths, settings.FILE_INDEX, settings.DIR_BASE)
 
@@ -99,7 +99,7 @@ def status_cmd(paths):
         for each, _, _ in update:
             rprint(f"\t[red]updated:\t{each}[/]")
         for each in unset_mhash:
-            rprint(f"\t[red]updated:\t{each}[/]")
+            rprint(f"\t[red]updated:\t{each[0]}[/]")
         for each in remove:
             rprint(f"\t[red]deleted:\t{each}[/]")
         rprint()

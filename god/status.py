@@ -1,4 +1,5 @@
-from god.branches.trackchanges import track_files
+import json
+import subprocess
 
 
 def status(fds, index_path, base_dir):
@@ -9,4 +10,10 @@ def status(fds, index_path, base_dir):
         index_path <str>: path to index file
         base_dir <str>: project base directory
     """
-    return track_files(fds, index_path, base_dir)
+    p = subprocess.Popen(
+        ["god-index", "track", "files"],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+    )
+    out, _ = p.communicate(input=json.dumps(fds).encode())
+    return json.loads(out)

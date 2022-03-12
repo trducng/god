@@ -12,6 +12,11 @@ import sys
 import click
 
 from god.index.base import Index
+from god.index.trackchanges import (
+    track_files,
+    track_staging_changes,
+    track_working_changes,
+)
 
 
 def get_index_path_temp(name: str) -> str:
@@ -26,6 +31,16 @@ def get_index_path_temp(name: str) -> str:
     return str(Path(get_base_dir(), ".god", "indices", name))
 
 
+def get_working_base_dir() -> str:
+    """We will remove this
+
+    @TODO: use a plugin-method to get index path
+    """
+    from god.core.common import get_base_dir
+
+    return str(get_base_dir())
+
+
 @click.group()
 def main():
     """Index manager"""
@@ -36,7 +51,7 @@ def main():
 @click.argument("name", type=str)
 @click.option("--force", is_flag=True, default=False)
 def build(name: str, force: bool):
-    """Create the plugin"""
+    """Construct the index"""
     index_path = get_index_path_temp(name)
     index = Index(index_path)
     index.build(force=force)
@@ -45,7 +60,7 @@ def build(name: str, force: bool):
 @main.command("unbuild")
 @click.argument("name", type=str)
 def unbuild(name: str):
-    """Create the plugin"""
+    """Delete the index"""
     index_path = get_index_path_temp(name)
     index = Index(index_path)
     index.unbuild()
@@ -56,7 +71,7 @@ def unbuild(name: str):
 @click.option("--items", type=click.File("r"), default=sys.stdin)
 @click.option("--staged", is_flag=True, default=False)
 def add(name: str, items, staged: bool):
-    """Create the plugin"""
+    """Add entries to the index"""
     index_path = get_index_path_temp(name)
     if items:
         items = json.load(items)
@@ -69,7 +84,7 @@ def add(name: str, items, staged: bool):
 @click.option("--items", type=click.File("r"), default=sys.stdin)
 @click.option("--staged", is_flag=True, default=False)
 def delete(name: str, items, staged: bool):
-    """Create the plugin"""
+    """Delete entries from the index"""
     index_path = get_index_path_temp(name)
     if items:
         items = json.load(items)
@@ -83,7 +98,7 @@ def delete(name: str, items, staged: bool):
 @click.option("--mhash", is_flag=True, default=False)
 @click.option("--remove", is_flag=True, default=False)
 def revert(name: str, items, mhash: bool, remove: bool):
-    """Create the plugin"""
+    """Revert entries to the original version"""
     index_path = get_index_path_temp(name)
     if items:
         items = json.load(items)
@@ -95,7 +110,7 @@ def revert(name: str, items, mhash: bool, remove: bool):
 @click.argument("name", type=str)
 @click.option("--items", type=click.File("r"), default=sys.stdin)
 def update(name: str, items):
-    """Create the plugin"""
+    """Update information of the newest entries"""
     index_path = get_index_path_temp(name)
     if items:
         items = json.load(items)
@@ -109,7 +124,7 @@ def update(name: str, items):
 @click.option("--get-remove", is_flag=True, default=False)
 @click.option("--not-in", is_flag=True, default=False)
 def get_files(name: str, names, get_remove: bool, not_in: bool):
-    """Create the plugin"""
+    """Get entries as files"""
     index_path = get_index_path_temp(name)
     if names:
         names = json.load(names)
@@ -123,10 +138,32 @@ def get_files(name: str, names, get_remove: bool, not_in: bool):
 @click.option("--names", type=click.File("r"), default=sys.stdin)
 @click.option("--get-remove", is_flag=True, default=False)
 def get_folder(name: str, names, get_remove: bool):
-    """Create the plugin"""
+    """Get entries as folder"""
     index_path = get_index_path_temp(name)
     if names:
         names = json.load(names)
     with Index(index_path) as index:
         result = index.get_folder(names=names, get_remove=get_remove)
+    print(json.dumps(result))
+
+
+@main.command("track")
+@click.argument("name", type=str)
+@click.option("--fds", type=click.File("r"), default=sys.stdin)
+@click.option("--staging", is_flag=True, default=False)
+@click.option("--working", is_flag=True, default=False)
+def track(name: str, fds, staging: bool, working: bool):
+    """Get entries as folder"""
+    index_path = get_index_path_temp(name)
+    base_dir = get_working_base_dir()
+    if fds:
+        fds = json.load(fds)
+
+    if staging and not working:
+        result = track_staging_changes(fds, index_path, base_dir)
+    elif working and not staging:
+        result = track_working_changes(fds, index_path, base_dir)
+    else:
+        result = track_files(fds, index_path, base_dir)
+
     print(json.dumps(result))

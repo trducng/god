@@ -74,7 +74,8 @@ def track_working_changes(fds, index_path, base_dir):
         <[str, str, float]>: update - files updated
         <[str]>: remove - files removed
         <[str, float]>: reset_tst - files that changed in timestamp but same content
-        <[str]>: files that are changed, and then manually changed back to commit ver
+        <[str, float]>: files that are changed, and then manually changed back to
+            commit ver
     """
     base_dir = Path(base_dir).resolve()
     if not isinstance(fds, (list, tuple)):
@@ -159,7 +160,8 @@ def track_working_changes(fds, index_path, base_dir):
                     reset_tst.append((str(Path(each_dir, fn)), path_files[fn]))
                     if index_files[fn][1]:
                         # reset to commit, update the timestamp
-                        unset_mhash.append(str(Path(each_dir, fn)))
+                        # @TODO: might not be nice to have timestamp in unset_mhash
+                        unset_mhash.append((str(Path(each_dir, fn)), path_files[fn]))
                     continue
 
                 update.append((str(Path(each_dir, fn)), fh, path_files[fn]))
