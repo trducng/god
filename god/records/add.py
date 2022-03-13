@@ -1,12 +1,8 @@
-from pathlib import Path
-
-from god.core.index import Index
-from god.records.operations import copy_tree
-from god.utils.constants import RECORDS_INTERNALS, RECORDS_LEAVES
-from god.utils.exceptions import RecordNotExisted
+import json
+import subprocess
 
 
-def add(name: str, index_path: str, dir_cache_records: str, dir_records: str) -> None:
+def add(name: str) -> None:
     """Add the records from working condition to staging condition
 
     Example:
@@ -21,10 +17,54 @@ def add(name: str, index_path: str, dir_cache_records: str, dir_records: str) ->
         name: the name of the record
         indx_path: the path to index file
     """
-    with Index(index_path) as index:
-        records = index.get_records(name=name)
-        if not records:
-            raise RecordNotExisted(f"Record {name} not existed")
-        rn, rh, rmh, rwh, _ = records[0]
-        copy_tree(root=rwh, dir_cache=dir_cache_records, dir_records=dir_records)
-        index.update_records(update=[(rn, rwh)])
+    p = subprocess.Popen(
+        ["god-index", "track", "records", "--working"],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    out, _ = p.communicate(input=json.dumps([name]).encode())
+    add, update, remove, reset_tst, unset_mhash = json.loads(out)
+
+    # @TODO: construct Storage & Descriptor for records
+
+    # update the index
+    if unset_mhash:
+        p = subprocess.Popen(
+            ["god-index", "revert", "records", "--mhash"],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+        )
+        _, _ = p.communicate(input=json.dumps(unset_mhash).encode())
+
+    if reset_tst:
+        p = subprocess.Popen(
+            ["god-index", "revert", "records"],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+        )
+        _, _ = p.communicate(input=json.dumps(reset_tst).encode())
+
+    if remove:
+        p = subprocess.Popen(
+            ["god-index", "delete", "records", "--staged"],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+        )
+        _, _ = p.communicate(input=json.dumps(remove).encode())
+
+    if update:
+        p = subprocess.Popen(
+            ["god-index", "update", "records"],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+        )
+        _, _ = p.communicate(input=json.dumps(update).encode())
+
+    if add:
+        p = subprocess.Popen(
+            ["god-index", "add", "records", "--staged"],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+        )
+        _, _ = p.communicate(input=json.dumps(add).encode())

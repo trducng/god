@@ -2,8 +2,8 @@ from pathlib import Path
 
 from god.core.index import Index
 from god.records.configs import RecordsConfig
+from god.records.constants import RECORDS_INTERNALS, RECORDS_LEAVES
 from god.records.storage import prolly_edit, prolly_locate
-from god.utils.constants import RECORDS_INTERNALS, RECORDS_LEAVES
 
 COL_TYPE_INT = "INTEGER"
 COL_TYPE_FLOAT = "FLOAT"

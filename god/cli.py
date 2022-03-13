@@ -181,41 +181,6 @@ def records_add(name):
     records_add_cmd(name)
 
 
-@records.command("status")
-def records_status():
-    """Get status of the records"""
-    from rich import print as rprint
-
-    from god.records.status import status
-
-    settings.set_global_settings()
-    stage_add, stage_update, stage_remove, add, update = status(settings.FILE_INDEX)
-
-    if stage_add or stage_update or stage_remove:
-        rprint("Changes to be commited:")
-        for each in stage_add:
-            rprint(f"\t[green]new record:\t{each}[/]")
-        for each in stage_update:
-            rprint(f"\t[green]updated:\t{each}[/]")
-        for each in stage_remove:
-            rprint(f"\t[green]deleted:\t{each}[/]")
-        rprint()
-
-    if update:
-        rprint("Changes not staged for commit:")
-        for each in update:
-            rprint(f"\t[red]updated:\t{each}[/]")
-        rprint()
-
-    if add:
-        rprint("Untracked records:")
-        for each in add:
-            rprint(f"\t[red]{each}[/]")
-        rprint()
-
-    exit(0)
-
-
 @records.command("update")
 @click.argument("name")
 @click.argument("paths", nargs=-1, type=click.Path(exists=True))
@@ -242,3 +207,12 @@ def records_search(name: str, queries: list, columns: list, pager: bool):
 
     settings.set_global_settings()
     records_search_cmd(name, queries, columns, pager)
+
+
+@records.command("status")
+def records_status():
+    """Update the records"""
+    from god.porcelain import records_status_cmd
+
+    settings.set_global_settings()
+    records_status_cmd()

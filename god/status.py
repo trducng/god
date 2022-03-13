@@ -1,6 +1,8 @@
 import json
 import subprocess
 
+from god.core.files import resolve_paths
+
 
 def status(fds, index_path, base_dir):
     """Track statuses of the directories
@@ -10,6 +12,7 @@ def status(fds, index_path, base_dir):
         index_path <str>: path to index file
         base_dir <str>: project base directory
     """
+    fds = resolve_paths(fds, base_dir)
     p = subprocess.Popen(
         ["god-index", "track", "files"],
         stdin=subprocess.PIPE,

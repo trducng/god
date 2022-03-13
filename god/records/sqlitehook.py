@@ -14,26 +14,18 @@ so.
 import csv
 import re
 import sqlite3
-import subprocess
 from collections import defaultdict
 from io import StringIO
 from pathlib import Path
 
 import click
 
-from god.commits.base import get_files_hashes_in_commit, read_commit
 from god.core.common import get_base_dir
 from god.core.index import Index
 from god.records.configs import RecordsConfig
+from god.records.constants import RECORDS_INTERNALS, RECORDS_LEAVES
 from god.records.storage import get_records
-from god.utils.constants import (
-    DIR_CACHE_DB,
-    DIR_CACHE_RECORDS,
-    FILE_CONFIG,
-    FILE_INDEX,
-    RECORDS_INTERNALS,
-    RECORDS_LEAVES,
-)
+from god.utils.constants import DIR_CACHE_DB, DIR_CACHE_RECORDS, FILE_CONFIG, FILE_INDEX
 
 
 class SQLiteTable:

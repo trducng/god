@@ -31,14 +31,21 @@ def get_index_path_temp(name: str) -> str:
     return str(Path(get_base_dir(), ".god", "indices", name))
 
 
-def get_working_base_dir() -> str:
+def get_working_base_dir(name: str) -> str:
     """We will remove this
 
     @TODO: use a plugin-method to get index path
     """
+    from pathlib import Path
+
     from god.core.common import get_base_dir
 
-    return str(get_base_dir())
+    if name == "files":
+        return str(get_base_dir())
+    if name == "records":
+        return str(Path(get_base_dir(), ".god", "workings", "records", "tracks"))
+    else:
+        return str(get_base_dir())
 
 
 @click.group()
@@ -155,7 +162,7 @@ def get_folder(name: str, names, get_remove: bool):
 def track(name: str, fds, staging: bool, working: bool):
     """Get entries as folder"""
     index_path = get_index_path_temp(name)
-    base_dir = get_working_base_dir()
+    base_dir = get_working_base_dir(name)
     if fds:
         fds = json.load(fds)
 

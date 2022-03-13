@@ -4,7 +4,6 @@ from pathlib import Path
 from god.core.files import (
     filter_common_parents,
     get_file_hash,
-    resolve_paths,
     retrieve_files_info,
     separate_paths_to_files_dirs,
 )
@@ -28,7 +27,6 @@ def track_staging_changes(fds, index_path, base_dir):
     if not isinstance(fds, (list, int)):
         fds = [fds]
 
-    fds = resolve_paths(fds, base_dir)
     fds = filter_common_parents(fds)  # list of relative paths to `base_dir`
 
     add, update, remove = [], [], []
@@ -65,7 +63,7 @@ def track_working_changes(fds, index_path, base_dir):
     Also, items specific in fds can both exist and removed.
 
     # Args:
-        fds <str>: the directory to track (absolute path)
+        fds <str>: the directory to track (relative path)
         index_path <str>: path to index file
         base_dir <str>: project base directory
 
@@ -81,7 +79,6 @@ def track_working_changes(fds, index_path, base_dir):
     if not isinstance(fds, (list, tuple)):
         fds = [fds]
 
-    fds = resolve_paths(fds, base_dir)  # list of relative directory paths to `base_dir`
     fds = filter_common_parents(fds)  # list of relative directory paths to `base_dir`
 
     files, dirs, unknowns = separate_paths_to_files_dirs(fds, base_dir)
@@ -146,7 +143,7 @@ def track_working_changes(fds, index_path, base_dir):
 
             # update operation
             for fn in list(pfn.intersection(ifn)):
-                if path_files[fn] == index_files[fn][4]:
+                if path_files[fn] == index_files[fn][3]:
                     # equal timestamp
                     continue
 

@@ -14,10 +14,11 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from god.core.files import resolve_paths
 from god.files.descriptors import FileDescriptor
 
 
-def add(fds, index_path, base_dir):
+def add(fds, base_dir):
     """Add the files, directories & all records to staging area.
 
     Args:
@@ -28,6 +29,7 @@ def add(fds, index_path, base_dir):
         dir_cache_records <str>: directory containing working records
         dir_records <str>: directory containing to-be-committed records
     """
+    fds = resolve_paths(fds, base_dir)
     p = subprocess.Popen(
         ["god-index", "track", "files", "--working"],
         stdin=subprocess.PIPE,

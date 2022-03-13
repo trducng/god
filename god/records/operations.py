@@ -5,8 +5,8 @@ from pathlib import Path
 
 from god.core.index import Index
 from god.records.configs import RecordsConfig, get_records_config
+from god.records.constants import RECORDS_INTERNALS, RECORDS_LEAVES
 from god.records.storage import get_internal_nodes, get_leaf_nodes
-from god.utils.constants import RECORDS_INTERNALS, RECORDS_LEAVES
 from god.utils.exceptions import RecordNotExisted, RecordParsingError
 
 
@@ -102,7 +102,7 @@ def parse_strict(files: list, config: RecordsConfig) -> dict:
     """
     pattern = re.compile(config.get_pattern())
     conversion_groups = config.get_group_rule()
-    path_cols = set(config.get_path_columns())
+    # path_cols = set(config.get_path_columns())
 
     result_dict = defaultdict(dict)  # {id: {col: [vals]}}
     for fn in files:
@@ -186,8 +186,8 @@ def records_consistency(
     """
     problems = {}
 
-    paths_ids1 = path_to_id(files, config1)
-    paths_ids2 = path_to_id(files, config2)
+    paths_ids1 = path_to_record_id(files, config1)
+    paths_ids2 = path_to_record_id(files, config2)
 
     for fp in paths_ids1.keys():
         if paths_ids1[fp] != paths_ids2[fp]:
@@ -224,7 +224,7 @@ def validate_records(config: RecordsConfig, records: dict, files: list) -> tuple
     unknown_ids = set(records.keys()).difference(set(parsed_paths.keys()))
     unknown_ids = sorted(list(unknown_ids))
 
-    return invalid_cols, unkown_ids
+    return invalid_cols, unknown_ids
 
 
 def check_records_conflict(index_path: str, dir_obj: str) -> bool:
@@ -276,7 +276,7 @@ def check_records_conflict(index_path: str, dir_obj: str) -> bool:
     if not old_config_file:
         return True
 
-    old_config: dict = get_records_config(
+    get_records_config(
         Path(
             dir_obj,
             f"{old_config_file[:2]}",

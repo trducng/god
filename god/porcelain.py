@@ -123,11 +123,7 @@ def add_cmd(paths):
     paths = [str(Path(_).resolve()) for _ in paths]
     add(
         fds=paths,
-        index_path=settings.FILE_INDEX,
-        dir_obj=settings.DEFAULT_DIR_OBJECTS,
         base_dir=settings.DIR_BASE,
-        dir_cache_records=settings.DIR_CACHE_RECORDS,
-        dir_records=settings.DIR_RECORDS,
     )
     from god.hooks.events import post_commit_hook
 
@@ -309,7 +305,12 @@ def records_init_cmd(name: str) -> None:
     Args:
         name: the records name
     """
-    rinit(name, settings.FILE_INDEX, settings.DIR_CACHE_RECORDS, settings.DIR_RECORDS)
+    # @TODO: supply the settings from main program (after we decompose records as plugin)
+    rinit(
+        name=name,
+        base_dir=str(Path(settings.DIR_BASE, ".god", "workings", "records")),
+        force=False,
+    )
 
 
 def records_add_cmd(name: str) -> None:
@@ -320,7 +321,7 @@ def records_add_cmd(name: str) -> None:
     Args:
         name: the records name
     """
-    radd(name, settings.FILE_INDEX, settings.DIR_CACHE_RECORDS, settings.DIR_RECORDS)
+    radd(name)
 
 
 def records_update_cmd(name: str, paths: tuple, set_: tuple, del_: tuple) -> None:
@@ -387,3 +388,44 @@ def records_search_cmd(name: str, queries: list, columns: list, pager: bool):
             console.print(table)
     else:
         rprint(table)
+
+
+def records_status_cmd():
+    from god.records.status import status
+
+    (
+        stage_add,
+        stage_update,
+        stage_remove,
+        add,
+        update,
+        remove,
+        _,
+        unset_mhash,
+    ) = status()
+
+    if stage_add or stage_update or stage_remove:
+        rprint("Changes to be commited:")
+        for each in stage_add:
+            rprint(f"\t[green]new file:\t{each}[/]")
+        for each in stage_update:
+            rprint(f"\t[green]updated:\t{each}[/]")
+        for each in stage_remove:
+            rprint(f"\t[green]deleted:\t{each}[/]")
+        rprint()
+
+    if update or remove or unset_mhash:
+        rprint("Changes not staged for commit:")
+        for each, _, _ in update:
+            rprint(f"\t[red]updated:\t{each}[/]")
+        for each in unset_mhash:
+            rprint(f"\t[red]updated:\t{each[0]}[/]")
+        for each in remove:
+            rprint(f"\t[red]deleted:\t{each}[/]")
+        rprint()
+
+    if add:
+        rprint("Untracked files:")
+        for each, _, _ in add:
+            rprint(f"\t[red]{each}[/]")
+        rprint()

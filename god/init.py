@@ -4,13 +4,6 @@ from pathlib import Path
 
 import god.utils.constants as c
 from god.core.index import create_blank_index
-
-# from god.utils.constants import (
-#     DIR_GOD,
-#     FILE_CONFIG,
-#     FILE_HEAD,
-#     FILE_INDEX,
-# )
 from god.utils.exceptions import RepoExisted
 
 

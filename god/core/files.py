@@ -129,11 +129,10 @@ def organize_files_by_prefix_with_tstamp(files, base_dir, files_dirs=None):
     # Returns:
         <{str: [(str, float)]}>: files_dirs format
     """
-    base_dir = Path(base_dir).resolve()
     files_dirs = defaultdict(list) if files_dirs is None else files_dirs
 
     for each_file in files:
-        f = Path(each_file).resolve()
+        f = Path(base_dir, each_file)
         parent = str(f.parent.relative_to(base_dir))
         if f.is_file():
             files_dirs[parent].append((f.name, f.stat().st_mtime))
