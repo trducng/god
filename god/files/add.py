@@ -165,14 +165,4 @@ def add(fds, base_dir):
         )
         _, _ = p.communicate(input=json.dumps(add).encode())
 
-    # @TODO: move this block to the record-plugin code
-    # current_records = index.get_records()
-    # records_update = []
-    # for rn, rh, rmh, rwh, rm in current_records:
-    #     if rwh == rmh:
-    #         continue
-    #     records_update.append((rn, rwh))
-    #     copy_tree(rwh, dir_cache_records, dir_records)
-    # index.update_records(update=records_update)
-
     # @TODO: hook3: after update index

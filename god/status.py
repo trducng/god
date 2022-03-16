@@ -4,12 +4,11 @@ import subprocess
 from god.core.files import resolve_paths
 
 
-def status(fds, index_path, base_dir):
+def status(fds, base_dir):
     """Track statuses of the directories
 
     # Args:
         fds <str>: the directory to add (absolute path)
-        index_path <str>: path to index file
         base_dir <str>: project base directory
     """
     fds = resolve_paths(fds, base_dir)
