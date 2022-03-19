@@ -42,10 +42,8 @@ def get_working_base_dir(name: str) -> str:
 
     if name == "files":
         return str(get_base_dir())
-    if name == "records":
-        return str(Path(get_base_dir(), ".god", "workings", "records", "tracks"))
     else:
-        return str(get_base_dir())
+        return str(Path(get_base_dir(), ".god", "workings", name, "tracks"))
 
 
 @click.group()

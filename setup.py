@@ -24,6 +24,7 @@ setuptools.setup(
             "god-files=god.files:main",
             "god-descriptor=god.descriptors.base:main",
             "god-index=god.index.cli:main",
+            "god-config=god.configs.cli:main",
         ]
     },
     python_requires=">=3",
