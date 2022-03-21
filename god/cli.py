@@ -3,6 +3,7 @@ from pathlib import Path
 import click
 
 from god.core.conf import settings
+from god.plugins.cli import main as plugin_cli
 from god.porcelain import (
     add_cmd,
     checkout_cmd,
@@ -21,10 +22,49 @@ from god.porcelain import (
 )
 
 
-@click.group()
+class DynamicGroup(click.Group):
+    def get_command(self, ctx, cmd_name):
+        rv = click.Group.get_command(self, ctx, cmd_name)
+        if rv is not None:
+            return rv
+
+        return click.Group.get_command(self, ctx, "execute-plugin")
+
+    def resolve_command(self, ctx, args):
+        _, cmd, new_args = super().resolve_command(ctx, args)
+        if cmd.name == "execute-plugin":
+            return cmd.name, cmd, args
+
+        return cmd.name, cmd, new_args
+
+
+@click.command(cls=DynamicGroup)
 def main():
     """god is the git of data"""
     pass
+
+
+# For testing
+@main.command("execute-plugin", context_settings=dict(ignore_unknown_options=True))
+@click.argument("extra_args", nargs=-1, type=click.UNPROCESSED)
+def execute_plugin(extra_args):
+    import os
+    import subprocess
+    from pathlib import Path
+
+    from god.core.common import get_base_dir
+
+    # subprocess.run([])
+    plugin_bin = Path(get_base_dir(), ".god", "workings", "plugins", "bin")
+    executable = f"god-{extra_args[0]}"
+    if not (plugin_bin / executable).is_file():
+        print(f'Please make sure plugin "{executable}" is installed')
+    else:
+        cmd = list(extra_args)
+        cmd[0] = f"god-{extra_args[0]}"
+        my_env = os.environ.copy()
+        my_env["PATH"] = f"{str(plugin_bin)}:" + my_env["PATH"]
+        subprocess.run(cmd, env=my_env)
 
 
 # For testing
@@ -216,3 +256,6 @@ def records_status():
 
     settings.set_global_settings()
     records_status_cmd()
+
+
+main.add_command(plugin_cli, "plugins")

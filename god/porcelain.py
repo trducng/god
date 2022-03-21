@@ -73,7 +73,7 @@ def status_cmd(paths):
         remove,
         _,
         unset_mhash,
-    ) = status(paths, settings.FILE_INDEX, settings.DIR_BASE)
+    ) = status(paths, settings.DIR_BASE)
 
     refs, snapshot, commits = read_HEAD(settings.FILE_HEAD)
 
