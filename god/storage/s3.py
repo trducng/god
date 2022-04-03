@@ -2,6 +2,7 @@ import json
 import posixpath
 import sys
 from pathlib import Path
+from typing import List
 
 import boto3
 import click
@@ -31,7 +32,7 @@ class S3Storage(BaseStorage):
         return posixpath.join(*components, hash_value[self._dir_levels * 2 :])
 
     def get_file(self, hash_value: str, file_path: str):
-        """Get the file and store in file_path
+        """Get the file and store that file in file_path
 
         Args:
             hash_value: the object hash value
@@ -83,22 +84,27 @@ class S3Storage(BaseStorage):
         s3r = boto3.resource("s3")
         s3r.Object(self._bucket, self._get_hash_path(hash_value)).delete()
 
-    def exists(self, hash_value: str) -> bool:
+    def exists(self, hash_values: List[str]) -> List[bool]:
         """Check whether an object or a file with a specific hash value exist
 
         Args:
-            hash_value: the file hash value
+            hash_values: the list of file hash values
 
         Returns:
             True if the file exists, False otherwise
         """
+        result = []
         s3c = boto3.client("s3")
-        try:
-            s3c.head_object(Bucket=self._bucket, Key=self._get_hash_path(hash_value))
-        except ClientError:
-            return False
+        for hash_value in hash_values:
+            try:
+                s3c.head_object(
+                    Bucket=self._bucket, Key=self._get_hash_path(hash_value)
+                )
+                result.append(True)
+            except ClientError:
+                result.append(False)
 
-        return True
+        return result
 
 
 ls = S3Storage({})
@@ -122,3 +128,9 @@ def store_files():
     input_ = sys.stdin.read().strip()
     for file_path, file_hash in json.loads(input_):
         ls.store_file(file_path, file_hash)
+
+
+@main.command("exists")
+def exists_cmd():
+    input_ = json.loads(sys.stdin.read().strip())
+    print(ls.exists(input_))
