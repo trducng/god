@@ -12,7 +12,6 @@ from god.configs.init import init
 from god.configs.status import status
 from god.configs.utils import edit_file
 from god.core.common import get_base_dir
-from god.utils.constants import DIR_HIDDEN_WORKING_CONFIG
 
 
 @click.group()
@@ -24,7 +23,7 @@ def main():
 @main.command("init")
 @click.option("--force", is_flag=True, default=False)
 def init_cmd(force):
-    working_dir = Path(get_base_dir(), DIR_HIDDEN_WORKING_CONFIG)
+    working_dir = Path(get_base_dir(), ".god", "workings", "configs")
     init(str(working_dir), force)
 
 

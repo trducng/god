@@ -1,10 +1,12 @@
 """Inititate the repo"""
 import json
+import subprocess
 from pathlib import Path
 
 import god.utils.constants as c
-from god.core.index import create_blank_index
 from god.utils.exceptions import RepoExisted
+from god.configs.init import init as config_init
+from god.plugins.install import construct_working_directory, create_blank_index
 
 
 def repo_exists(path):
@@ -55,7 +57,12 @@ def init(path):
     # Create file
     with Path(path, c.FILE_HEAD).open("w") as f_out:
         json.dump({"REFS": "main"}, f_out)
-    create_blank_index(Path(path, c.FILE_INDEX))
+    subprocess.run(["god-index", "build", "files"])
+
+    # Setup configs
+    working_dir = construct_working_directory("configs")
+    create_blank_index("configs")
+    config_init(str(working_dir), False)
 
 
 if __name__ == "__main__":

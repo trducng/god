@@ -8,7 +8,6 @@ DIR_COMMITS_DIRECTORY = str(Path(DIR_COMMITS, "dirs"))
 
 DIR_INDICES = str(Path(DIR_GOD, "indices"))
 DIR_HIDDEN_WORKING = str(Path(DIR_GOD, "workings"))
-DIR_HIDDEN_WORKING_CONFIG = str(Path(DIR_HIDDEN_WORKING, "configs"))
 DIR_HIDDEN_WORKING_PLUGINS = str(Path(DIR_HIDDEN_WORKING, "plugins"))
 
 DIR_RECORDS = str(Path(DIR_GOD, "records"))

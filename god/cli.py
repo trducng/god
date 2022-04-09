@@ -4,6 +4,7 @@ import click
 
 from god.core.conf import settings
 from god.plugins.cli import main as plugin_cli
+from god.configs.cli import main as config_cli
 from god.porcelain import (
     add_cmd,
     checkout_cmd,
@@ -84,16 +85,6 @@ def init(path):
     PATH is the repo directory. If not specified, use current working directory.
     """
     init_cmd(path)
-
-
-@main.command("config")
-@click.argument("op", type=click.Choice(["list", "list-local", "add"]))
-def config(op):
-    """View, update the config"""
-    settings.set_global_settings()
-    result = config_cmd(op)
-    if op != "add":
-        click.echo(result)
 
 
 @main.command("status")
@@ -256,6 +247,13 @@ def records_status():
 
     settings.set_global_settings()
     records_status_cmd()
-
-
 main.add_command(plugin_cli, "plugins")
+main.add_command(config_cli, "configs")
+
+
+def entrypoint():
+    """Exception handling"""
+    try:
+        main()
+    except Exception as e:
+        click.echo(e)

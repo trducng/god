@@ -23,9 +23,9 @@ def init(working_dir: str, force: bool):
         - tracked plugin configuration
     """
     # untracked
-    construct_empty_config(Path(working_dir, "local.yaml"), force)
+    construct_empty_config(Path(working_dir, "configs"), force)
     Path(working_dir, "plugins").mkdir(exist_ok=force, parents=True)
 
     # tracked
-    construct_empty_config(Path(working_dir, "tracks", "local.yaml"), force)
+    construct_empty_config(Path(working_dir, "tracks", "configs"), force)
     Path(working_dir, "tracks", "plugins").mkdir(exist_ok=force, parents=True)
