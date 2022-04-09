@@ -24,11 +24,7 @@ from god.core.head import read_HEAD
 from god.core.refs import get_ref, is_ref, update_ref
 from god.init import init, repo_exists
 from god.merge import merge
-from god.records.add import add as radd
-from god.records.configs import RecordsConfig
-from god.records.init import init as rinit
-from god.records.operations import check_records_conflict, path_to_record_id
-from god.records.update import update as rupdate
+from god.records.operations import check_records_conflict
 from god.status import status
 from god.utils.exceptions import InvalidUserParams
 
@@ -125,9 +121,9 @@ def add_cmd(paths):
         fds=paths,
         base_dir=settings.DIR_BASE,
     )
-    from god.hooks.events import post_commit_hook
+    # from god.hooks.events import post_commit_hook
 
-    post_commit_hook()
+    # post_commit_hook()
 
 
 def commit_cmd(message):
@@ -297,135 +293,3 @@ def merge_cmd(branch):
         user=config.USER.NAME,
         email=config.USER.EMAIL,
     )
-
-
-def records_init_cmd(name: str) -> None:
-    """Initialize records
-
-    Args:
-        name: the records name
-    """
-    # @TODO: supply the settings from main program (after we decompose records as plugin)
-    rinit(
-        name=name,
-        base_dir=str(Path(settings.DIR_BASE, ".god", "workings", "records")),
-        force=False,
-    )
-
-
-def records_add_cmd(name: str) -> None:
-    """Add the records from working to staging area
-
-    @TODO: add all records if name is blank
-
-    Args:
-        name: the records name
-    """
-    radd(name)
-
-
-def records_update_cmd(name: str, paths: tuple, set_: tuple, del_: tuple) -> None:
-    """Update records information
-
-    Args:
-        name: the name of the record
-        paths: a list of files
-        set_: a list of column and value to update
-        del_: a list of column to unset value
-    """
-    config = RecordsConfig(name, settings.FILE_CONFIG)
-
-    ids = []
-    if paths:
-        ids = list(path_to_record_id(paths, config).values())
-
-    if not ids:
-        return
-
-    rupdate(
-        ids=ids,
-        sets=set_,
-        dels=del_,
-        name=name,
-        config=config,
-        index_path=settings.FILE_INDEX,
-        dir_cache_records=settings.DIR_CACHE_RECORDS,
-    )
-    from god.hooks.events import post_commit_hook
-
-    post_commit_hook()
-
-
-def records_search_cmd(name: str, queries: list, columns: list, pager: bool):
-    """Search the records
-
-    This command prints result to the console.
-
-    Args:
-        name: the name of the record
-        queries: the conditions to return result
-        return_cols: the list of columns to return
-    """
-    import csv
-
-    from god.hooks.events import record_search_hook
-
-    completed_process = record_search_hook(name, queries, columns)
-    result = str(completed_process.stdout, encoding="utf-8").strip().splitlines()
-    result = list(csv.reader(result))
-    if not result:
-        return
-
-    table = Table(show_header=True)
-    for each_column in result[0]:
-        table.add_column(each_column)
-    for each_row in result[1:]:
-        table.add_row(*each_row)
-
-    if pager:
-        console = Console()
-        with console.pager():
-            console.print(table)
-    else:
-        rprint(table)
-
-
-def records_status_cmd():
-    from god.records.status import status
-
-    (
-        stage_add,
-        stage_update,
-        stage_remove,
-        add,
-        update,
-        remove,
-        _,
-        unset_mhash,
-    ) = status()
-
-    if stage_add or stage_update or stage_remove:
-        rprint("Changes to be commited:")
-        for each in stage_add:
-            rprint(f"\t[green]new file:\t{each}[/]")
-        for each in stage_update:
-            rprint(f"\t[green]updated:\t{each}[/]")
-        for each in stage_remove:
-            rprint(f"\t[green]deleted:\t{each}[/]")
-        rprint()
-
-    if update or remove or unset_mhash:
-        rprint("Changes not staged for commit:")
-        for each, _, _ in update:
-            rprint(f"\t[red]updated:\t{each}[/]")
-        for each in unset_mhash:
-            rprint(f"\t[red]updated:\t{each[0]}[/]")
-        for each in remove:
-            rprint(f"\t[red]deleted:\t{each}[/]")
-        rprint()
-
-    if add:
-        rprint("Untracked files:")
-        for each, _, _ in add:
-            rprint(f"\t[red]{each}[/]")
-        rprint()

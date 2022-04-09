@@ -9,15 +9,24 @@ following fields:
             - whether to store path?
             - conversion group?
 """
+import json
+import subprocess
 from collections import defaultdict
 
 from god.core.conf import Settings, read_local_config
 
 
-def get_records_config(config_path: str) -> dict:
+def get_records_config() -> Settings:
     """Get records config"""
-    settings = read_local_config(config_path)
-    return settings.get("RECORDS", Settings())
+    settings = Settings()
+
+    result = subprocess.run(["god", "configs", "list", "--plugin", "records"], capture_output=True)
+    result = json.loads(result.stdout).get("RECORDS")
+    if not result:
+        return settings
+
+    settings.set_values(**result)
+    return settings
 
 
 def get_path_columns(config):
@@ -150,8 +159,8 @@ class RecordsConfig:
         config_path: the path to config file that has record definition
     """
 
-    def __init__(self, records_name: str, config_path: str) -> None:
-        self._config: Settings = get_records_config(config_path)[records_name]
+    def __init__(self, records_name: str) -> None:
+        self._config: Settings = get_records_config()[records_name]
 
     def get_path_columns(self):
         return get_path_columns(self._config)

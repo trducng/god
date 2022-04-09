@@ -13,9 +13,6 @@ from god.porcelain import (
     init_cmd,
     log_cmd,
     merge_cmd,
-    records_add_cmd,
-    records_init_cmd,
-    records_update_cmd,
     reset_cmd,
     restore_staged_cmd,
     restore_working_cmd,
@@ -177,76 +174,6 @@ def merge(branch):
     merge_cmd(branch)
 
 
-# 2. File-related group
-@main.group()
-def files():
-    pass
-
-
-@files.command("add")
-def files_add():
-    settings.set_global_settings()
-    print("files_add")
-
-
-# 3. Records related group
-@main.group()
-def records():
-    """Manage records"""
-    pass
-
-
-@records.command("init")
-@click.argument("name")
-def records_init(name, type=str):
-    """Initialize record NAME"""
-    settings.set_global_settings()
-    records_init_cmd(name)
-
-
-@records.command("add")
-@click.argument("name")
-def records_add(name):
-    """Add record NAME from working to staging area"""
-    settings.set_global_settings()
-    records_add_cmd(name)
-
-
-@records.command("update")
-@click.argument("name")
-@click.argument("paths", nargs=-1, type=click.Path(exists=True))
-@click.option("--set", "set_", multiple=True, type=str, help="col=val")
-@click.option("--del", "del_", multiple=True, type=str, help="col1")
-def records_update(name, paths, set_, del_):
-    """Update the records"""
-    settings.set_global_settings()
-    records_update_cmd(name, paths, set_, del_)
-
-
-@records.command("search")
-@click.argument("name")
-@click.option(
-    "-q", "--query", "queries", multiple=True, type=str, help="Search query (col=val)"
-)
-@click.option(
-    "-c", "--col", "columns", multiple=True, type=str, help="Column to return"
-)
-@click.option("--pager", is_flag=True, default=False, help="Use pager")
-def records_search(name: str, queries: list, columns: list, pager: bool):
-    """Update the records"""
-    from god.porcelain import records_search_cmd
-
-    settings.set_global_settings()
-    records_search_cmd(name, queries, columns, pager)
-
-
-@records.command("status")
-def records_status():
-    """Update the records"""
-    from god.porcelain import records_status_cmd
-
-    settings.set_global_settings()
-    records_status_cmd()
 main.add_command(plugin_cli, "plugins")
 main.add_command(config_cli, "configs")
 

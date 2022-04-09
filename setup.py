@@ -17,7 +17,7 @@ setuptools.setup(
     extra_requires=["ipython", "pdbpp"],
     entry_points={
         "console_scripts": [
-            "god=god.cli:main",
+            "god=god.cli:entrypoint",
             "god-db=god.records.sqlitehook:db",
             "god-storage-local=god.storage.local:main",
             "god-storage-s3=god.storage.s3:main",
