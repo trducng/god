@@ -3,11 +3,6 @@ from pathlib import Path
 import god.utils.constants as c
 
 _MUST_EXIST = [c.DIR_GOD, c.FILE_HEAD]
-_DEFAULT_CONFIG = {
-    "OBJECTS": {
-        "STORAGE": "local",
-    }
-}
 
 
 def get_base_dir(path=None) -> str:

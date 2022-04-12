@@ -1,8 +1,8 @@
 from pathlib import Path
+from typing import List
 
-from god.core.index import Index
 from god.records.configs import RecordsConfig
-from god.records.constants import RECORDS_INTERNALS, RECORDS_LEAVES
+from god.records.constants import RECORDS_INTERNALS, RECORDS_LEAVES, RECORDS_ROOT
 from god.records.storage import prolly_edit, prolly_locate
 
 COL_TYPE_INT = "INTEGER"
@@ -60,13 +60,7 @@ def parse_update_rule(rule: str, cols_types: dict) -> tuple:
 
 
 def update(
-    ids: list,
-    sets: list,
-    dels: list,
-    name: str,
-    config: RecordsConfig,
-    index_path: str,
-    dir_cache_records: str,
+    ids: List, sets: List, dels: List, config: RecordsConfig, dir_records: str
 ) -> None:
     """Update entries in the records
 
@@ -84,23 +78,19 @@ def update(
 
     Args:
         ids: the instance ids in record
-        vals: each item is a string with format col=val, col+=val, col-=val
+        sets: each item is a string with format col=val, col+=val, col-=val
         dels: each item is a string col name
-        name: record name
         config: the record config
-        index_path: the path to index file
-        dir_cache_records: the path to store objects
         dir_records: place to store records
     """
-    with Index(index_path) as index:
-        record = index.get_records(name=name)
-        root = record[0][3]
+    with Path(dir_records, RECORDS_ROOT).open("r") as fi:
+        root = fi.read().strip()
 
     items = prolly_locate(
         keys=ids,
         root=root,
-        tree_dir=Path(dir_cache_records, RECORDS_INTERNALS),
-        leaf_dir=Path(dir_cache_records, RECORDS_LEAVES),
+        tree_dir=str(Path(dir_records, RECORDS_INTERNALS)),
+        leaf_dir=str(Path(dir_records, RECORDS_LEAVES)),
     )
 
     add = {}
@@ -147,11 +137,11 @@ def update(
 
     new_root = prolly_edit(
         root=root,
-        tree_dir=Path(dir_cache_records, RECORDS_INTERNALS),
-        leaf_dir=Path(dir_cache_records, RECORDS_LEAVES),
+        tree_dir=str(Path(dir_records, RECORDS_INTERNALS)),
+        leaf_dir=str(Path(dir_records, RECORDS_LEAVES)),
         insert=add,
         update=update,
     )
 
-    with Index(index_path) as index:
-        index.update_records(update_whash=[(name, new_root)])
+    with Path(dir_records, RECORDS_ROOT).open("w") as fo:
+        fo.write(new_root)

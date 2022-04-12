@@ -3,51 +3,50 @@ import shutil
 from collections import defaultdict
 from pathlib import Path
 
-from god.core.index import Index
 from god.records.configs import RecordsConfig, get_records_config
 from god.records.constants import RECORDS_INTERNALS, RECORDS_LEAVES
+from god.records.exceptions import RecordNotExisted, RecordParsingError
 from god.records.storage import get_internal_nodes, get_leaf_nodes
-from god.utils.exceptions import RecordNotExisted, RecordParsingError
 
 
-def copy_tree(root: str, dir_cache: str, dir_records: str) -> None:
-    """Copy the tree from cache directory to records directory
+def copy_tree(root: str, source: str, target: str) -> None:
+    """Copy the tree from `source` directory to `target` directory
 
     Args:
         root: the address of tree root
-        dir_cache: directory storing working records
-        dir_records: directory storing to-be-commited records
+        source: directory storing working records
+        target: directory storing to-be-commited records
     """
-    internal_nodes = get_internal_nodes(root, Path(dir_cache, RECORDS_INTERNALS))
+    source = str(Path(source).resolve())
+    source_internals = Path(source, RECORDS_INTERNALS)
+    source_leaves = Path(source, RECORDS_LEAVES)
+
+    target = str(Path(target).resolve())
+    target_internals = Path(target, RECORDS_INTERNALS)
+    target_leaves = Path(target, RECORDS_LEAVES)
+
+    internal_nodes = get_internal_nodes(root, str(Path(source, RECORDS_INTERNALS)))
     leaf_nodes = [
-        each[0] for each in get_leaf_nodes(root, Path(dir_cache, RECORDS_INTERNALS))
+        each[0] for each in get_leaf_nodes(root, str(Path(source, RECORDS_INTERNALS)))
     ]
-
-    dir_cache = Path(dir_cache).resolve()
-    dir_cache_internals = Path(dir_cache, RECORDS_INTERNALS)
-    dir_cache_leaves = Path(dir_cache, RECORDS_LEAVES)
-
-    dir_records = Path(dir_records).resolve()
-    dir_records_internals = Path(dir_records, RECORDS_INTERNALS)
-    dir_records_leaves = Path(dir_records, RECORDS_LEAVES)
 
     # copy internal nodes
     for node_hash in internal_nodes:
-        source = dir_cache_internals / node_hash
-        target = dir_records_internals / node_hash
-        if target.is_file():
+        source_file = source_internals / node_hash
+        target_file = target_internals / node_hash
+        if target_file.is_file():
             continue
-        shutil.copy(source, target)
-        target.chmod(0o440)
+        shutil.copy(source_file, target_file)
+        target_file.chmod(0o440)
 
     # copy leaf nodes
     for node_hash in leaf_nodes:
-        source = dir_cache_leaves / node_hash
-        target = dir_records_leaves / node_hash
-        if target.is_file():
+        source_file = source_leaves / node_hash
+        target_file = target_leaves / node_hash
+        if target_file.is_file():
             continue
-        shutil.copy(source, target)
-        target.chmod(0o440)
+        shutil.copy(source_file, target_file)
+        target_file.chmod(0o440)
 
 
 def parse(files: list, config: RecordsConfig) -> dict:
@@ -230,6 +229,8 @@ def validate_records(config: RecordsConfig, records: dict, files: list) -> tuple
 def check_records_conflict(index_path: str, dir_obj: str) -> bool:
     """Check for consistency between old configuration and new configuration
 
+    @TODO: Implement this logic as hook
+
     Inconsistency happens when:
         - Results after parsing files from old config and new config do not agree
         for path -> ids
@@ -241,6 +242,8 @@ def check_records_conflict(index_path: str, dir_obj: str) -> bool:
     Returns:
         True if there is conflict, False otherwise
     """
+    from god.index.base import Index
+
     with Index(index_path) as index:
         godconfig = index.get_files_info(files=".godconfig")
 
@@ -286,16 +289,3 @@ def check_records_conflict(index_path: str, dir_obj: str) -> bool:
     )
 
     return True
-
-
-def init(name: str, index_path: str, dir_cache_records: str):
-    """Initiate the records
-
-    Args:
-        name: the record name to initiate
-        index_path: path to index file
-    """
-    # construct empty records
-
-    # add entries to index
-    pass

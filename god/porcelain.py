@@ -6,10 +6,7 @@ cli right into porcelain.
 from pathlib import Path
 
 from rich import print as rprint
-from rich.console import Console
-from rich.table import Table
 
-from god.add import add
 from god.checkout import (
     checkout,
     checkout_new_branch,
@@ -19,13 +16,13 @@ from god.checkout import (
 )
 from god.commit import commit
 from god.commits.base import is_commit, read_commit
-from god.core.conf import read_local_config, settings, update_local_config
+from god.core.add import add
+from god.core.conf import read_local_config, settings
 from god.core.head import read_HEAD
 from god.core.refs import get_ref, is_ref, update_ref
+from god.core.status import status
 from god.init import init, repo_exists
 from god.merge import merge
-from god.records.operations import check_records_conflict
-from god.status import status
 from god.utils.exceptions import InvalidUserParams
 
 
@@ -40,37 +37,8 @@ def init_cmd(path):
     init(path)
 
 
-def config_cmd(op, **kwargs):
-    """Local config options
-
-    # Args:
-        op <str>: operation with config, can be `list`, `list-local` or `add`
-        **kwargs <{str: str}>: the config to add in case `op` is add
-    """
-    if op == "list":
-        return settings
-
-    if op == "list-local":
-        return read_local_config(settings.FILE_LOCAL_CONFIG)
-
-    if op == "add":
-        update_local_config(settings.FILE_LOCAL_CONFIG, kwargs)
-
-
-def status_cmd(paths):
+def status_cmd(paths, plugins):
     """Viewing repo status"""
-    paths = [str(Path(_).resolve()) for _ in paths]
-    (
-        stage_add,
-        stage_update,
-        stage_remove,
-        add,
-        update,
-        remove,
-        _,
-        unset_mhash,
-    ) = status(paths, settings.DIR_BASE)
-
     refs, snapshot, commits = read_HEAD(settings.FILE_HEAD)
 
     if refs:
@@ -80,34 +48,48 @@ def status_cmd(paths):
     if snapshot:
         rprint(f"\tUsing snapshot {snapshot}")
 
-    if stage_add or stage_update or stage_remove:
-        rprint("Changes to be commited:")
-        for each in stage_add:
-            rprint(f"\t[green]new file:\t{each}[/]")
-        for each in stage_update:
-            rprint(f"\t[green]updated:\t{each}[/]")
-        for each in stage_remove:
-            rprint(f"\t[green]deleted:\t{each}[/]")
-        rprint()
+    for plugin_name, (
+        stage_add,
+        stage_update,
+        stage_remove,
+        add_,
+        update,
+        remove,
+        _,
+        unset_mhash,
+    ) in status(paths, plugins).items():
 
-    if update or remove or unset_mhash:
-        rprint("Changes not staged for commit:")
-        for each, _, _ in update:
-            rprint(f"\t[red]updated:\t{each}[/]")
-        for each in unset_mhash:
-            rprint(f"\t[red]updated:\t{each[0]}[/]")
-        for each in remove:
-            rprint(f"\t[red]deleted:\t{each}[/]")
-        rprint()
+        if plugin_name == "files":
+            continue
+        rprint(f"Plugin {plugin_name}")
+        if stage_add or stage_update or stage_remove:
+            rprint("Changes to be commited:")
+            for each in stage_add:
+                rprint(f"\t[green]new file:\t{each}[/]")
+            for each in stage_update:
+                rprint(f"\t[green]updated:\t{each}[/]")
+            for each in stage_remove:
+                rprint(f"\t[green]deleted:\t{each}[/]")
+            rprint()
 
-    if add:
-        rprint("Untracked files:")
-        for each, _, _ in add:
-            rprint(f"\t[red]{each}[/]")
-        rprint()
+        if update or remove or unset_mhash:
+            rprint("Changes not staged for commit:")
+            for each, _, _ in update:
+                rprint(f"\t[red]updated:\t{each}[/]")
+            for each in unset_mhash:
+                rprint(f"\t[red]updated:\t{each[0]}[/]")
+            for each in remove:
+                rprint(f"\t[red]deleted:\t{each}[/]")
+            rprint()
+
+        if add_:
+            rprint("Untracked files:")
+            for each, _, _ in add_:
+                rprint(f"\t[red]{each}[/]")
+            rprint()
 
 
-def add_cmd(paths):
+def add_cmd(paths, plugin):
     """Move files in `paths` (recursively) to staging area, ready for commit
 
     # Args:
@@ -116,14 +98,10 @@ def add_cmd(paths):
     if not paths:
         raise InvalidUserParams("Must supply paths to files or directories")
 
-    paths = [str(Path(_).resolve()) for _ in paths]
     add(
         fds=paths,
-        base_dir=settings.DIR_BASE,
+        plugin=plugin,
     )
-    # from god.hooks.events import post_commit_hook
-
-    # post_commit_hook()
 
 
 def commit_cmd(message):
@@ -143,10 +121,6 @@ def commit_cmd(message):
 
     refs, _, _ = read_HEAD(settings.FILE_HEAD)
     prev_commit = get_ref(refs, settings.DIR_REFS_HEADS)
-    check_records_conflict(
-        index_path=settings.FILE_INDEX,
-        dir_obj=settings.DEFAULT_DIR_OBJECTS,
-    )
 
     current_commit = commit(
         user=config.USER.NAME,
@@ -159,12 +133,6 @@ def commit_cmd(message):
     )
 
     update_ref(refs, current_commit, settings.DIR_REFS_HEADS)
-    # ignite post-commit hooks: (1) collect hooks, (2) call hooks
-    # each by each for now, the post-commit only concern with the
-    # god-db command
-    from god.hooks.events import post_commit_hook
-
-    post_commit_hook()
 
 
 def log_cmd():

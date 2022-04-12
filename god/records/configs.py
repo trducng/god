@@ -9,39 +9,35 @@ following fields:
             - whether to store path?
             - conversion group?
 """
-import json
-import subprocess
 from collections import defaultdict
+from typing import Dict
 
-from god.core.conf import Settings, read_local_config
+from god.records.utils import communicate
 
 
-def get_records_config() -> Settings:
-    """Get records config"""
-    settings = Settings()
+def get_records_config() -> Dict:
+    """Get records config
 
-    result = subprocess.run(["god", "configs", "list", "--plugin", "records"], capture_output=True)
-    result = json.loads(result.stdout).get("RECORDS")
-    if not result:
-        return settings
-
-    settings.set_values(**result)
-    return settings
+    Returns:
+        The records configuration
+    """
+    result = communicate(["god", "configs", "list", "--plugin", "records"])
+    return result.get("RECORDS", {})  # type: ignore
 
 
 def get_path_columns(config):
     """Get columns that have paths
 
-    # Args:
+    Args:
         config <{}>: the configuration
 
-    # Returns:
+    Returns:
     """
     result = []
 
     COLUMNS = config.get("COLUMNS", {})
     for col_name, col_rule in COLUMNS.items():
-        if not isinstance(col_rule, (dict, Settings)):
+        if not isinstance(col_rule, dict):
             continue
         if col_rule.get("path", False) or col_rule.get("PATH", False):
             result.append(col_name)
@@ -52,17 +48,17 @@ def get_path_columns(config):
 def get_group_rule(config):
     """Get the group rule
 
-    # Args:
+    Args:
         config <{}>: the configuration
 
-    # Returns:
+    Returns:
         <{}>: {group_name: {match_value: col_name}}
     """
     result = defaultdict(dict)
 
     COLUMNS = config["COLUMNS"]
     for col_name, col_rule in COLUMNS.items():
-        if not isinstance(col_rule, (dict, Settings)):
+        if not isinstance(col_rule, dict):
             continue
         if "conversion_group" not in col_rule:
             continue
@@ -81,10 +77,10 @@ def get_group_rule(config):
 def get_columns_and_types(config):
     """Get columns and column types from config
 
-    # Args
+    Args:
         config <dict>: orge configuration file
 
-    # Returns
+    Returns:
         <[str]>: list of column names
         <[str]>: list of column types
     """
@@ -111,10 +107,10 @@ def get_primary_cols(config):
     """Get the primary column in table, if any of these columns is deleted, the entry
     is deleted.
 
-    # Args
+    Args:
         config <dict>: orge configuration file
 
-    # Returns
+    Returns:
         <[str]>: list of primary column names
     """
     if not config.get("COLUMNS", []):
@@ -160,7 +156,7 @@ class RecordsConfig:
     """
 
     def __init__(self, records_name: str) -> None:
-        self._config: Settings = get_records_config()[records_name]
+        self._config: Dict = get_records_config()[records_name]
 
     def get_path_columns(self):
         return get_path_columns(self._config)
@@ -182,7 +178,7 @@ class RecordsConfig:
             if col_name == "id":
                 continue
 
-            if not isinstance(col_rule, (dict, Settings)):
+            if not isinstance(col_rule, dict):
                 result.append(col_name)
                 continue
 

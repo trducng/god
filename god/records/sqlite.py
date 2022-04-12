@@ -1,31 +1,16 @@
 """Represent the record as sqlite database table
 
 This database reflects the working area of records, not the commit area.
-
-This component will be represented as hook. As a result, it does not assume the same
-knowledge about context as inner functions.
-
-At the moment, we aren't sure where the plugins code should reside, just assume that
-from perspective of the script, it is run inside the repository.
-
-We would like this operation to be performed inside a plugin in the future. So assume
-so.
 """
-import csv
 import re
 import sqlite3
 from collections import defaultdict
-from io import StringIO
 from pathlib import Path
+from typing import Dict, List, Tuple, Union
 
-import click
-
-from god.core.common import get_base_dir
-from god.core.index import Index
 from god.records.configs import RecordsConfig
 from god.records.constants import RECORDS_INTERNALS, RECORDS_LEAVES
 from god.records.storage import get_records
-from god.utils.constants import DIR_CACHE_DB, DIR_CACHE_RECORDS, FILE_CONFIG, FILE_INDEX
 
 
 class SQLiteTable:
@@ -36,7 +21,7 @@ class SQLiteTable:
         - migrate schema -> don't need to migrate schema. This operation is stateless.
         - query record database
 
-    # Args:
+    Args:
         dir_db: directory to store the cache database
         name: the name of the record, which is also the name of the database
     """
@@ -73,7 +58,14 @@ class SQLiteTable:
         root: str,
         dir_record: str,
     ) -> None:
-        """Construct record database based on the provided information"""
+        """Construct record database based on the provided information
+
+        Args:
+            config: the records config
+            files_hashes: the dictionary of {file-path: file-hash}
+            root: hash address of the root tree
+            dir_records: directory that store internal and leaf nodes
+        """
         # construct database
         self.create_record_db(config)
         # get information for each rows
@@ -88,11 +80,14 @@ class SQLiteTable:
             )
         self.con.commit()
 
-    def create_record_db(self, config: RecordsConfig):
+    def create_record_db(self, config: RecordsConfig) -> List[str]:
         """Create SQL database
 
-        # Returns:
-            <[str]>: list of column names
+        Args:
+            config: the records config
+
+        Returns:
+            List of column names
         """
         tables = self.cur.execute(
             "SELECT name FROM sqlite_master WHERE type='table'"
@@ -128,11 +123,22 @@ class SQLiteTable:
 
     def parse_records(
         self, config: RecordsConfig, files_hashes: dict, root: str, dir_record: str
-    ):
+    ) -> Dict:
+        """Parse from file paths and records to table entries
+
+        Args:
+            config: the records config
+            files_hashes: the dictionary of {file-path: file-hash}
+            root: hash address of the root tree
+            dir_records: directory that store internal and leaf nodes
+
+        Returns:
+            Table entries, with format: {id: {col1: val1, col2: val2}}
+        """
         records = get_records(
             root=root,
-            tree_dir=Path(dir_record, RECORDS_INTERNALS),
-            leaf_dir=Path(dir_record, RECORDS_LEAVES),
+            tree_dir=str(Path(dir_record, RECORDS_INTERNALS)),
+            leaf_dir=str(Path(dir_record, RECORDS_LEAVES)),
         )
         pattern = re.compile(config.get_pattern())
         conversion_groups = config.get_group_rule()
@@ -164,10 +170,14 @@ class SQLiteTable:
 
         return result_dict
 
-    def search(self, queries: list, columns: list) -> list:
+    def search(self, queries: List, columns: Union[List, Tuple]) -> List:
         """Get the commit hash that the index database points to
 
-        # Returns
+        Args:
+            queries: the user-supplied queries to run
+            columns: the columns to return
+
+        Returns:
             <str>: the commit hash that index database points to. None if nothing
         """
         return_cols = "*" if not columns else ", ".join(columns)
@@ -183,63 +193,3 @@ class SQLiteTable:
         result = self.cur.execute(sql)
         columns = tuple([_[0] for _ in result.description])
         return [columns] + result.fetchall()
-
-
-@click.group()
-def db():
-    pass
-
-
-@db.command("post-commit")
-def post_commit():
-    """Run this hook during post commit
-
-    In this command, it will:
-        - Get the current index file
-            + Obtain the list of records: name and root hash
-            + Obtain the list of files and hashes
-        - Construct the records according to that information for each record
-    """
-    base_dir = get_base_dir()
-    file_index = str(Path(base_dir, FILE_INDEX))
-    dir_db = str(Path(base_dir, DIR_CACHE_DB))
-    dir_record = Path(base_dir, DIR_CACHE_RECORDS)
-    file_config = Path(base_dir, FILE_CONFIG)
-
-    # get necessary records and files information
-    with Index(file_index) as index:
-        files_info = index.get_files_info()
-        records_info = index.get_records()
-    files_hashes = {_[0]: _[1] or _[2] for _ in files_info}
-
-    # construct the db
-    for record_info in records_info:
-        record_name = record_info[0]
-        root_hash = record_info[3]
-        with SQLiteTable(dir_db, record_name) as table:
-            table.construct_record(
-                config=RecordsConfig(records_name=record_name, config_path=file_config),
-                files_hashes=files_hashes,
-                root=root_hash,
-                dir_record=dir_record,
-            )
-
-
-@db.command("search")
-@click.argument("name")
-@click.option(
-    "-q", "--query", "queries", multiple=True, type=str, help="Search query (col=val)"
-)
-@click.option(
-    "-c", "--col", "columns", multiple=True, type=str, help="Column to return"
-)
-def search(name: str, queries: list, columns: list):
-    base_dir = get_base_dir()
-    dir_db = str(Path(base_dir, DIR_CACHE_DB))
-    with SQLiteTable(dir_db=dir_db, name=name) as table:
-        items = table.search(queries, columns)
-
-    buff = StringIO()
-    writer = csv.writer(buff)
-    writer.writerows(items)
-    print(buff.getvalue())

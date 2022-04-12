@@ -4,9 +4,10 @@ import subprocess
 from pathlib import Path
 
 import god.utils.constants as c
-from god.utils.exceptions import RepoExisted
-from god.configs.init import init as config_init
+from god.configs.init import init as configs_init
+from god.plugins.init import init as plugins_init
 from god.plugins.install import construct_working_directory, create_blank_index
+from god.utils.exceptions import RepoExisted
 
 
 def repo_exists(path):
@@ -62,7 +63,12 @@ def init(path):
     # Setup configs
     working_dir = construct_working_directory("configs")
     create_blank_index("configs")
-    config_init(str(working_dir), False)
+    configs_init(str(working_dir), False)
+
+    # Setup plugins
+    working_dir = construct_working_directory("plugins")
+    create_blank_index("plugins")
+    plugins_init(str(working_dir), False)
 
 
 if __name__ == "__main__":

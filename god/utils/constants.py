@@ -10,11 +10,10 @@ DIR_INDICES = str(Path(DIR_GOD, "indices"))
 DIR_HIDDEN_WORKING = str(Path(DIR_GOD, "workings"))
 DIR_HIDDEN_WORKING_PLUGINS = str(Path(DIR_HIDDEN_WORKING, "plugins"))
 
-DIR_RECORDS = str(Path(DIR_GOD, "records"))
+DIR_TEMP = str(Path(DIR_GOD, "temp"))
 
 DIR_CACHE = str(Path(DIR_GOD, "cache"))
 DIR_CACHE_DB = str(Path(DIR_CACHE, "db"))
-DIR_CACHE_RECORDS = str(Path(DIR_CACHE, "records"))
 
 DIR_REFS = str(Path(DIR_GOD, "refs"))
 DIR_REFS_HEADS = str(Path(DIR_REFS, "heads"))

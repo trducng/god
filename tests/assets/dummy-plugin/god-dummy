@@ -1,0 +1,5 @@
+#!/usr/bin/env python
+import logging
+import sys
+
+logging.warning(list(sys.argv))

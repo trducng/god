@@ -1,7 +1,8 @@
 import json
 from pathlib import Path
+from typing import List, Tuple, Union
 
-from god.utils.common import binary_search
+from god.records.utils import binary_search
 
 
 def get_root(root: str, node_dir: str) -> list:
@@ -84,7 +85,9 @@ def get_rightmost_leaf(root: str, node_dir: str, cache: dict = None) -> list:
     return [content[-1]]
 
 
-def get_next_sibling(key: str, parent: str, node_dir: str, cache: dict = None) -> list:
+def get_next_sibling(
+    key: str, parent: str, node_dir: str, cache: dict = None
+) -> Union[List, None]:
     """Get the next sibling from current child node that contains key `key`
 
     Args:
@@ -106,7 +109,7 @@ def get_next_sibling(key: str, parent: str, node_dir: str, cache: dict = None) -
         cache[parent] = content
 
     node_idx = binary_search(key, [_[2] for _ in content])
-    if node_idx == len(content) - 1:
+    if node_idx == len(content) - 1 or node_idx == -1:
         return None
     return content[node_idx + 1]
 
@@ -158,7 +161,7 @@ def get_next_leaf(nodes: list, node_dir: str, cache: dict = None) -> list:
     return None  # no match, must be end of tree
 
 
-def transform_dict(dict1: dict, dict2: dict) -> list:
+def transform_dict(dict1: dict, dict2: dict) -> Union[Tuple, None]:
     """Transform from dict1 to dict2
 
     Args:
@@ -186,7 +189,7 @@ def transform_dict(dict1: dict, dict2: dict) -> list:
     return None
 
 
-def compare_leaves(leaves1: list, leaves2: list, leaf_dir: str) -> list:
+def compare_leaves(leaves1: list, leaves2: list, leaf_dir: str) -> Tuple:
     """Compare 2 set of leaves. Create transformation from leaves1 -> leaves2
 
     This operation assumes `leaf1` comes from tree1 and `leaf2` comes from tree2.
@@ -226,7 +229,7 @@ def compare_leaves(leaves1: list, leaves2: list, leaf_dir: str) -> list:
 
 def skip_next_leaves(
     paths1: list, paths2: list, node_dir: str, cache: dict = None
-) -> list:
+) -> Tuple:
     """Skip to the next leaves in case there are common paths
 
     Example:
@@ -318,7 +321,7 @@ def skip_next_leaves(
     )
 
 
-def compare_tree(tree1: str, tree2: str, node_dir: str, leaf_dir: str) -> list:
+def compare_tree(tree1: str, tree2: str, node_dir: str, leaf_dir: str) -> Tuple:
     """Compare 2 trees. Get the transformation from tree1 to tree2
 
     Args:

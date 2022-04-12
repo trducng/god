@@ -91,9 +91,9 @@ def track_working_changes(fds, index_path, base_dir):
             if not result:  # not exist
                 index_unknowns.append(fd)
                 continue
-            if result[0][0] == fd:  # single file
-                index_files_dirs[str(Path(fd).parent)].append(result[0])
-                continue
+            # if result[0][0] == fd:  # single file
+            #     index_files_dirs[str(Path(fd).parent)].append(result[0])
+            #     continue
             for _ in result:  # directory of files
                 index_files_dirs[str(Path(_[0]).parent)].append(
                     (Path(_[0]).name, _[1], _[2], _[3], _[4], _[5])

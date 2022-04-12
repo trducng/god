@@ -12,6 +12,8 @@ COLUMNS = [
     "name text",
     "hash text",
     "mhash text",
+    "loc text",
+    "mloc text",
     "remove integer",
     "mtime real",
     "ignore integer",
@@ -142,9 +144,9 @@ class Index:
 
     def update(self, items: List[Tuple[str, str, float]]) -> None:
         """Update the index"""
-        for name, mhash, mtime in items:
+        for name, mhash, mtime, mloc in items:
             self.cur.execute(
-                f"UPDATE main SET mhash='{mhash}', mtime={mtime} WHERE name='{name}'"
+                f"UPDATE main SET mhash='{mhash}', mtime={mtime}, mloc='{mloc}' WHERE name='{name}'"
             )
         self.con.commit()
 
@@ -157,7 +159,7 @@ class Index:
         if mhash:
             for name, mtime in items:
                 self.cur.execute(
-                    f"UPDATE main SET mhash=NULL, mtime={mtime} WHERE name='{name}'",
+                    f"UPDATE main SET mhash=NULL, mloc=NULL, mtime={mtime} WHERE name='{name}'",
                 )
 
         if remove:
@@ -174,18 +176,19 @@ class Index:
 
         self.con.commit()
 
-    def add(self, items: List[Tuple[str, str, float]], staged: bool) -> None:
+    def add(self, items: List[Tuple[str, str, float, str]], staged: bool) -> None:
         """Add the entry to index
 
         Args:
-            items: Each item contains name, mhash and tstamp
+            items: Each item contains name, mhash, tstamp and mloc
             staged: if True, add hash to hash rather than mhash
         """
         h = "mhash" if staged else "hash"
-        for name, mhash, mtime in items:
+        l = "mloc" if staged else "loc"  # noqa: E741
+        for name, mhash, mtime, mloc in items:
             self.cur.execute(
-                f"INSERT INTO main (name, {h}, mtime) VALUES (?, ?, ?)",
-                (name, mhash, mtime),
+                f"INSERT INTO main (name, {h}, mtime, {l}) VALUES (?, ?, ?, ?)",
+                (name, mhash, mtime, mloc),
             )
         self.con.commit()
 

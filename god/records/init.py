@@ -1,9 +1,8 @@
 import json
-import shutil
 import subprocess
 from pathlib import Path
 
-from god.records.constants import RECORDS_INTERNALS, RECORDS_LEAVES, RECORDS_TRACKS
+from god.records.constants import RECORDS_INTERNALS, RECORDS_LEAVES, RECORDS_ROOT
 from god.records.storage import prolly_create
 
 
@@ -21,11 +20,11 @@ def init(name: str, base_dir: str, force: bool) -> None:
 
     Args:
         name: the name of the records
-        index_path: the path to index file
-        dir_cache_records: the path to store objects
-        dir_records: place to store records
+        base_dir: the directory to store this records
+        force: force recreate if the records already exists
     """
-    if Path(base_dir, RECORDS_TRACKS, name).exists():
+    track_dir = Path(base_dir, name)
+    if track_dir.is_dir():
         if not force:
             raise ValueError(
                 f'Record "{name}" already exists. To override, try again with `force`'
@@ -38,14 +37,19 @@ def init(name: str, base_dir: str, force: bool) -> None:
             )
             _, _ = p.communicate(input=json.dumps([name]).encode())
 
+    track_dir.mkdir(parents=True, exist_ok=True)
+    (track_dir / RECORDS_INTERNALS).mkdir()
+    (track_dir / RECORDS_LEAVES).mkdir()
+
+    # update the config
+    print("Please run `god configs edit --shared-tree --plugin records` to edit info")
+
     # create empty tree
     root: str = prolly_create(
         records={},  # empty records
-        tree_dir=str(Path(base_dir, RECORDS_INTERNALS)),
-        leaf_dir=str(Path(base_dir, RECORDS_LEAVES)),
+        tree_dir=str(track_dir / RECORDS_INTERNALS),
+        leaf_dir=str(track_dir / RECORDS_LEAVES),
     )
 
-    shutil.copy(
-        Path(base_dir, RECORDS_INTERNALS, root),
-        Path(base_dir, RECORDS_TRACKS, name),
-    )
+    with Path(track_dir, RECORDS_ROOT).open("w") as fo:
+        fo.write(root)

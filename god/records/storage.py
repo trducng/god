@@ -21,9 +21,10 @@ import json
 from collections import defaultdict
 from hashlib import sha256
 from pathlib import Path
+from typing import Dict, List
 
-from god.utils.common import binary_search, one_line_sorted_json
-from god.utils.exceptions import RecordEntryNotFound
+from god.records.exceptions import RecordEntryNotFound
+from god.records.utils import binary_search, one_line_sorted_json
 
 
 def construct_leaf_node(records: dict, node_dir: str) -> str:
@@ -44,7 +45,7 @@ def construct_leaf_node(records: dict, node_dir: str) -> str:
     return hash_value
 
 
-def construct_internal_node(node_contents: list, node_dir: str) -> str:
+def construct_internal_node(node_contents: List, node_dir: str) -> str:
     """Construct the node
 
     Args:
@@ -64,7 +65,7 @@ def construct_internal_node(node_contents: list, node_dir: str) -> str:
 
 
 def get_matching_child(
-    key: str, child_nodes: list, start: int = None, end: int = None
+    key: str, child_nodes: List, start: int = None, end: int = None
 ) -> str:
     """Locate child node that contain keys
 
@@ -98,7 +99,7 @@ def get_matching_child(
         return get_matching_child(key, child_nodes, middle, end)
 
 
-def get_keys_indices(keys: str, records: list) -> dict:
+def get_keys_indices(keys: str, records: List) -> dict:
     """Get the position of `keys` in `records`
 
     Args:
@@ -117,7 +118,7 @@ def get_keys_indices(keys: str, records: list) -> dict:
     return result
 
 
-def get_keys_values(keys: str, records: list) -> dict:
+def get_keys_values(keys: str, records: List) -> dict:
     """Search content in the leaf node
 
     Args:
@@ -136,12 +137,13 @@ def get_keys_values(keys: str, records: list) -> dict:
     return result
 
 
-def get_leaf_nodes(root: str, tree_dir: str, sort_keys: bool = False) -> list:
+def get_leaf_nodes(root: str, tree_dir: str, sort_keys: bool = False) -> List:
     """Get all leaf nodes that has `root` as parent
 
     Args:
         root: the hash of root node
         tree_dir: the directory storing root node and intermediate nodes
+        sort_keys: if True, sort the leaf nodes by end keys
 
     Returns:
         list of (leaf node hash, start key, end key), sorted by end key in increasing
@@ -167,12 +169,13 @@ def get_leaf_nodes(root: str, tree_dir: str, sort_keys: bool = False) -> list:
     return result
 
 
-def get_internal_nodes(root: str, tree_dir: str, sort_keys: bool = False) -> list:
+def get_internal_nodes(root: str, tree_dir: str, sort_keys: bool = False) -> List:
     """Get all internal nodes that have `root` as parent
 
     Args:
         root: the hash of root node
         tree_dir: the directory storing root node and intermediate nodes
+        sort_keys: if True, sort the leaf nodes by end keys
 
     Returns:
         List of node hash
@@ -213,7 +216,7 @@ def get_records(root: str, tree_dir: str, leaf_dir: str) -> dict:
     return result
 
 
-def build_tree_trunk(nodes: list, window: int, tree_dir: str) -> str:
+def build_tree_trunk(nodes: List, window: int, tree_dir: str) -> str:
     """Build intermediate nodes
 
     Args:
@@ -295,11 +298,11 @@ def prolly_create(records: dict, tree_dir: str, leaf_dir: str) -> str:
     return build_tree_trunk(nodes, 2, tree_dir)
 
 
-def get_paths_to_records(keys: list, root: str, tree_dir: str) -> dict:
+def get_paths_to_records(keys: List, root: str, tree_dir: str) -> dict:
     """Search for result inside a prolly tree
 
     Args:
-        items: each item is a string, denoting a key to search
+        keys: each item is a string, denoting a key to search
         root: the address of tree root
         tree_dir: the output directory to store the tree
 
@@ -334,11 +337,11 @@ def get_paths_to_records(keys: list, root: str, tree_dir: str) -> dict:
     return result
 
 
-def prolly_locate(keys: list, root: str, tree_dir: str, leaf_dir: str) -> dict:
+def prolly_locate(keys: List, root: str, tree_dir: str, leaf_dir: str) -> dict:
     """Search for result inside a prolly tree
 
     Args:
-        items: each item is a string, denoting a key to search
+        keys: each item is a string, denoting a key to search
         root: the address of tree root
         tree_dir: the output directory to store the tree
         leaf_dir: the directory containing leaf nodes
@@ -366,13 +369,14 @@ def prolly_locate(keys: list, root: str, tree_dir: str, leaf_dir: str) -> dict:
 
 
 def adjust_intermediate_nodes(
-    paths: list, tree_dir: str, resolved: dict = None
-) -> list:
+    paths: List, tree_dir: str, resolved: dict = None
+) -> List:
     """Adjust intermediate nodes to new hash values, assuming no bucketting changes
 
     Args:
         paths: list of list of nodes, each inner list is a path from high level to
             low level. Each item in the inner list is a node has value
+        tree_dir: the output directory to store the tree
         resolved: buffering to store, can has any of these formats:
             - update: {old_hash_value: new_hash_value}
 
@@ -453,7 +457,7 @@ def prolly_update(records: dict, root: str, tree_dir: str, leaf_dir: str) -> str
     return ""
 
 
-def prolly_insert(records: list, root: str, tree_dir: str, leaf_dir: str) -> str:
+def prolly_insert(records: List, root: str, tree_dir: str, leaf_dir: str) -> str:
     """Insert items into the tree
 
     Inserting items will be quick if it just inserts at the middle of the bucket. If
@@ -483,7 +487,7 @@ def prolly_insert(records: list, root: str, tree_dir: str, leaf_dir: str) -> str
     return prolly_create(all_records, tree_dir, leaf_dir)
 
 
-def prolly_delete(keys: list, root: str, tree_dir: str, leaf_dir: str) -> str:
+def prolly_delete(keys: List, root: str, tree_dir: str, leaf_dir: str) -> str:
     """Delete records from the tree that match `keys`
 
     Args:
@@ -506,13 +510,26 @@ def prolly_edit(
     root: str,
     tree_dir: str,
     leaf_dir: str,
-    insert: list = None,
-    update: dict = None,
-    delete: list = None,
+    insert: Dict = None,
+    update: Dict = None,
+    delete: List = None,
 ) -> str:
-    """Edit prolly tree with insert, update and delete"""
+    """Edit prolly tree with insert, update and delete
+
+    Args:
+        root: the address of tree root
+        tree_dir: the output directory to store the tree
+        leaf_dir: the directory containing leaf nodes
+        insert: keys and values to insert
+        update: keys and values to update
+        delete: keys to delete
+
+    Returns:
+        The new root hash
+    """
     delete_temp = []
-    delete = [] if delete is None else delete
+    delete = delete or []
+    insert = insert or {}
 
     # update records
     update_records = {}

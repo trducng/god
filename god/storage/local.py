@@ -61,6 +61,9 @@ class LocalStorage(BaseStorage):
             hash_value: the hash value of the file
         """
         hash_path = self._path / self._get_hash_path(hash_value)
+        if hash_path.exists():
+            return
+
         hash_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(file_path, hash_path)
         hash_path.chmod(0o440)

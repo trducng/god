@@ -1,0 +1,13 @@
+{
+  "name": "dummy",
+  "compatible": ">=0.1.0",
+  "description": "This is the description of the module",
+  "messages": {
+    "post-install": "This is a post-install message"
+  },
+  "index": true,
+  "config": {
+    "CONFIG1": "HAHA",
+    "CONFIG2": "HEHE"
+  }
+}

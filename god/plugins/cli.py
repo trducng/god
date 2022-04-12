@@ -1,10 +1,12 @@
 import json
+import sys
 from pathlib import Path
 
 import click
 
 from god.core.common import get_base_dir
 from god.index.base import Index
+from god.plugins.utils import plugin_endpoints
 
 
 @click.group()
@@ -35,11 +37,14 @@ def install_cmd(name: str, path: str, store: bool):
 
         # create working dir and structure in working dir (dev prepares sample folder)
         working_dir = Path(get_base_dir(), ".god", "workings", plugin_name)
+        working_dir.mkdir(exist_ok=True, parents=True)
+
+        untrack_dir = working_dir / "untracks"
         ori_untracks = Path(path, "untracks")
         if ori_untracks.is_dir():
-            shutil.copytree(ori_untracks, working_dir)
+            shutil.copytree(ori_untracks, untrack_dir)
         else:
-            working_dir.mkdir(exist_ok=True, parents=True)
+            untrack_dir.mkdir(exist_ok=True, parents=True)
 
         track_dir = working_dir / "tracks"
         ori_tracks = Path(path, "tracks")
@@ -114,13 +119,25 @@ def list_cmd():
 
 @main.command("info")
 @click.option("-n", "--name", type=str, help="Plugin name")
-def info_cmd(name):
+@click.option("--endpoints", is_flag=True, help="Return endpoints only")
+@click.option("--json", "json_", is_flag=True, help="Return in json format")
+def info_cmd(name, endpoints, json_):
     """Get plugin info"""
-    import json
+    info = {}
 
-    plugin_info = Path(get_base_dir(), ".god", "workings", "plugins", "tracks", name)
+    if endpoints:
+        info.update(plugin_endpoints(name))
+        if json_:
+            print(json.dumps(info))
+        sys.exit(0)
+
+    plugin_info = Path(plugin_endpoints("plugins")["tracks"], name)
     if not plugin_info.is_file():
         print(f'Plugin "{name}" does not exist')
-    else:
-        with plugin_info.open("r") as fi:
-            print(json.load(fi))
+        sys.exit(1)
+
+    with plugin_info.open("r") as fi:
+        info.update(json.load(fi))
+
+    if json_:
+        print(json.dumps(info))

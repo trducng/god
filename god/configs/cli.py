@@ -180,8 +180,10 @@ def list_(system, user, local_tree, shared_tree, plugin, no_plugin, pretty):
 
     if plugin:
         local_setting, shared_setting = Settings(), Settings()
-        shared_setting.set_values_from_yaml(shared_path / "plugins" / plugin)
-        local_setting.set_values_from_yaml(local_path / "plugins" / plugin)
+        if (shared_path / "plugins" / plugin).is_file():
+            shared_setting.set_values_from_yaml(shared_path / "plugins" / plugin)
+        if (local_path / "plugins" / plugin).is_file():
+            local_setting.set_values_from_yaml(local_path / "plugins" / plugin)
         if shared_tree:
             base_setting += shared_setting
         if local_tree:
