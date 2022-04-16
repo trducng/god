@@ -161,20 +161,19 @@ def add(fds, plugin):
 
     Args:
         fds <str>: the directory or files to add (relative path to base_dir)
-        base_dir <str>: project base directory
+        plugin <str>: the plugin to add
     """
-    # @TODO: this should be a binary process, rather than a Python import module
     # @TODO: should we supply the settings, or should we let the plugins figure out
     # the settings values?
     #   - It seems we have to expose the config as a component, like a plumbing-command
     # so that 3rd-party plugin can readily use it to extract information they need.
-    # @TODO: you need to define some standard config parameters so that your code can
-    # follow the same behavior across plugins.
     from god.core.common import get_base_dir
     from god.plugins.manifest import load_manifest
 
     if plugin == "files":
         base_dir = get_base_dir()
+        if not fds:
+            fds = ["."]
         fds = [str(Path(_).resolve()) for _ in fds]
         fds = resolve_paths(fds, base_dir)
         hooks = {}

@@ -59,8 +59,6 @@ def status_cmd(paths, plugins):
         unset_mhash,
     ) in status(paths, plugins).items():
 
-        if plugin_name == "files":
-            continue
         rprint(f"Plugin {plugin_name}")
         if stage_add or stage_update or stage_remove:
             rprint("Changes to be commited:")
