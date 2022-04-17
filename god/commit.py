@@ -104,7 +104,6 @@ def commit(user, email, message, prev_commit, commit_dir, commit_dirs_dir):
     for name in ["files", "configs", "plugins"] + installed_plugins():
         index_path = plugin_endpoints(name)["index"]
         with Index(index_path) as index:
-            # files
             index.step()
 
     return commit_hash

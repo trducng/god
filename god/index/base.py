@@ -6,19 +6,8 @@ import sqlite3
 from pathlib import Path
 from typing import List, Tuple
 
+from god.index.utils import COLUMNS
 from god.utils.exceptions import FileExisted
-
-COLUMNS = [
-    "name text",
-    "hash text",
-    "mhash text",
-    "loc text",
-    "mloc text",
-    "remove integer",
-    "mtime real",
-    "exe real",
-    "ignore integer",
-]
 
 
 class Index:
@@ -66,7 +55,9 @@ class Index:
         con = sqlite3.connect(str(self._index_path))
         cur = con.cursor()
 
-        cur.execute(f'CREATE TABLE main({", ".join(COLUMNS)})')
+        cur.execute(
+            f'CREATE TABLE main({", ".join(" ".join(each for each in COLUMNS))})'
+        )
         cur.execute("CREATE INDEX index_main ON main(name)")
 
         con.commit()
@@ -151,29 +142,29 @@ class Index:
             )
         self.con.commit()
 
-    def revert(self, items: List[Tuple[str, float]], mhash: bool, remove: bool):
+    def revert(self, items: List[str], mhash: bool, remove: bool):
         """Revert from staging
 
         @TODO: construct an auto solution where the method just need filename, and
         it can find the timestamp, whether to uncheck mhash or remove.
         """
         if mhash:
-            for name, mtime in items:
+            for name in items:
                 self.cur.execute(
-                    f"UPDATE main SET mhash=NULL, mloc=NULL, mtime={mtime} WHERE name='{name}'",
+                    f"UPDATE main SET mhash=NULL, mloc=NULL, mtime=NULL WHERE name='{name}'",
                 )
 
         if remove:
-            for name, mtime in items:
+            for name in items:
                 self.cur.execute(
-                    f"UPDATE main SET remove=NULL, mtime={mtime} WHERE name='{name}'",
+                    f"UPDATE main SET remove=NULL WHERE name='{name}'",
                 )
 
-        if not (mhash or remove):
-            for name, mtime in items:
-                self.cur.execute(
-                    f"UPDATE main SET mtime={mtime} WHERE name='{name}'",
-                )
+        # if not (mhash or remove):
+        #     for name in items:
+        #         self.cur.execute(
+        #             f"UPDATE main SET mtime={mtime} WHERE name='{name}'",
+        #         )
 
         self.con.commit()
 

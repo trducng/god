@@ -8,6 +8,7 @@ from god.core.files import (
     separate_paths_to_files_dirs,
 )
 from god.index.base import Index
+from god.index.utils import column_index
 
 
 def track_staging_changes(fds, index_path, base_dir):
@@ -31,18 +32,23 @@ def track_staging_changes(fds, index_path, base_dir):
 
     add, update, remove = [], [], []
 
+    iname = column_index("name")
+    iremove = column_index("remove")
+    ihash = column_index("hash")
+    imhash = column_index("mhash")
+
     with Index(index_path) as index:
         for fd in fds:
             result = index.get_folder(names=[fd], get_remove=True)
             for entry in result:
-                if entry[3]:  # marked as removed
-                    if entry[1]:
-                        remove.append(entry[0])
-                elif entry[2]:
-                    if entry[1] is None:
-                        add.append(entry[0])
-                    elif entry[2] != entry[1]:
-                        update.append(entry[0])
+                if entry[iremove]:  # marked as removed
+                    if entry[ihash]:
+                        remove.append(entry[iname])
+                elif entry[imhash]:
+                    if entry[ihash] is None:
+                        add.append(entry[iname])
+                    elif entry[imhash] != entry[ihash]:
+                        update.append(entry[iname])
 
     return add, update, remove
 
@@ -85,6 +91,13 @@ def track_working_changes(fds, index_path, base_dir):
     files_dirs = retrieve_files_info(files, dirs, base_dir)
 
     index_files_dirs, index_unknowns = defaultdict(list), []
+
+    iname = column_index("name")
+    ihash = column_index("hash")
+    imhash = column_index("mhash")
+    iremove = column_index("remove")
+    imtime = column_index("mtime")
+
     with Index(index_path) as index:
         for fd in fds:
             result = index.get_folder(names=[fd], get_remove=False)
@@ -95,8 +108,8 @@ def track_working_changes(fds, index_path, base_dir):
             #     index_files_dirs[str(Path(fd).parent)].append(result[0])
             #     continue
             for _ in result:  # directory of files
-                index_files_dirs[str(Path(_[0]).parent)].append(
-                    (Path(_[0]).name, _[1], _[2], _[3], _[4], _[5])
+                index_files_dirs[str(Path(_[iname]).parent)].append(
+                    (Path(_[iname]).name, _[ihash], _[imhash], _[iremove], _[imtime])
                 )
 
         add, update, remove, reset_tst, unset_mhash = [], [], [], [], []
