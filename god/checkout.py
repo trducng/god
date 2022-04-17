@@ -1,26 +1,23 @@
 """Add operation"""
 from pathlib import Path
+from typing import List
 
-from god.branches.trackchanges import (
+from god.commits.base import read_commit
+from god.commits.compare import transform_commit
+from god.core.files import copy_hashed_objects_to_files, get_files_tst, get_objects_tst
+from god.core.head import read_HEAD, update_HEAD
+from god.core.refs import get_ref, update_ref
+from god.index.base import Index
+from god.index.trackchanges import (
     track_files,
     track_staging_changes,
     track_working_changes,
 )
-from god.commits.base import read_commit
-from god.commits.compare import transform_commit
-from god.core.files import (
-    copy_hashed_objects_to_files,
-    copy_objects_with_hashes,
-    get_files_tst,
-    get_objects_tst,
-)
-from god.core.head import read_HEAD, update_HEAD
-from god.core.index import Index
-from god.core.refs import get_ref, update_ref
+from god.plugins.utils import installed_plugins, plugin_endpoints
 from god.utils.exceptions import OperationNotPermitted
 
 
-def restore_staged(fds, index_path, dir_obj, base_dir):
+def restore_staged_one(fds, index_path, base_dir):
     """Restore files from the staging area to the working area
 
     This operation will:
@@ -32,7 +29,6 @@ def restore_staged(fds, index_path, dir_obj, base_dir):
     # Args:
         fds <str>: the directory to add (absolute path)
         index_path <str>: path to index file
-        dir_obj <str>: the path to object directory
         base_dir <str>: project base directory
     """
     stage_add, stage_update, stage_remove = track_staging_changes(
@@ -40,17 +36,34 @@ def restore_staged(fds, index_path, dir_obj, base_dir):
     )
 
     with Index(index_path) as index:
+        index.revert(items=stage_update, mhash=True, remove=False)
+        index.revert(items=stage_remove, mhash=False, remove=True)
+        index.delete(items=stage_add, staged=False)
 
-        # get original time of files in staging areas
-        stage_hashes = [_[1] for _ in index.get_files_info(files=stage_update)]
-        tsts = get_objects_tst(stage_hashes, dir_obj)
-        reset_tst = list(zip(stage_update, tsts))
 
-        index.update(
-            reset_tst=reset_tst,
-            unset_mhash=stage_update,
-            unset_remove=stage_remove,
-            delete=stage_add,
+def restore_staged(fds: List[str], plugins: List[str]):
+    """Restore files from the staging area to the working area
+
+    This operation will:
+        - Delete index entries that are newly added
+        - Remove `mhash` in index for entries that are updated
+        - Revert `timestamp` to ones in the index
+        - Unmark `remove` to NULL for entries that are marked removed
+
+    # Args:
+        fds <str>: the directory to add (absolute path)
+        index_path <str>: path to index file
+        base_dir <str>: project base directory
+    """
+    if not fds and not plugins:
+        # assume restore all
+        fds = ["."]
+        plugins = ["files", "configs", "plugins"] + installed_plugins()
+
+    for name in plugins:
+        endpoints = plugin_endpoints(name)
+        restore_staged_one(
+            fds=fds, index_path=endpoints["index"], base_dir=endpoints["base_dir"]
         )
 
 

@@ -136,7 +136,7 @@ def commit_cmd(message):
 
 def log_cmd():
     """Print out repository history"""
-    refs, _, _ = read_HEAD(settings.FILE_HEAD)
+    refs, _ = read_HEAD(settings.FILE_HEAD)
     commit_id = get_ref(refs, settings.DIR_REFS_HEADS)
 
     while commit_id:
@@ -150,19 +150,14 @@ def log_cmd():
         commit_id = prev[0] if isinstance(prev, (list, int)) else prev
 
 
-def restore_staged_cmd(paths):
+def restore_staged_cmd(paths, plugins=None):
     """Restore files from the staging area to the working area
 
     # Args:
         paths <[str]>: list of paths
     """
-    if not paths:
-        raise InvalidUserParams("Must supply paths to files or directories")
-
-    paths = [str(Path(_).resolve()) for _ in paths]
-    restore_staged(
-        paths, settings.FILE_INDEX, settings.DEFAULT_DIR_OBJECTS, settings.DIR_BASE
-    )
+    plugins = [] if plugins is None else [plugins]
+    restore_staged(paths, plugins)
 
 
 def restore_working_cmd(paths):

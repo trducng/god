@@ -134,7 +134,7 @@ def log():
 
 
 @main.command("restore")
-@click.argument("paths", nargs=-1, type=click.Path(exists=True), required=True)
+@click.argument("paths", nargs=-1, type=click.Path(exists=True))
 @click.option(
     "-s",
     "--staged",
@@ -142,11 +142,12 @@ def log():
     help="Revert from staging to working area. Else, revert from working area to latest commit.",
     default=False,
 )
-def restore(paths, staged):
+@click.option("-p", "--plugin", help="The name of the module", default=None)
+def restore(paths, staged, plugin):
     """Restore modified files"""
     settings.set_global_settings()
     if staged:
-        restore_staged_cmd(paths)
+        restore_staged_cmd(paths, plugin)
     else:
         restore_working_cmd(paths)
 
