@@ -6,7 +6,7 @@ import click
 
 from god.core.common import get_base_dir
 from god.index.base import Index
-from god.plugins.utils import plugin_endpoints
+from god.plugins.utils import installed_plugins, plugin_endpoints
 
 
 @click.group()
@@ -111,10 +111,8 @@ def list_cmd():
     - show if a plugin is (1) installed or not, (2) is stored or not
     - list in such a way that allows piping
     """
-    plugin_dir = Path(get_base_dir(), ".god", "workings", "plugins", "tracks")
-    files = list(sorted(plugin_dir.glob("*")))
-    for each in files:
-        print(each.name)
+    for each in installed_plugins():
+        print(each)
 
 
 @main.command("info")

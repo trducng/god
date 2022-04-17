@@ -1,3 +1,6 @@
+"""
+@PRIORITY4: remove this file as we have dedicated configs module
+"""
 from dataclasses import dataclass
 from pathlib import Path
 

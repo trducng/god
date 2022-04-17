@@ -9,7 +9,7 @@ import click
 from god.core.common import get_base_dir
 from god.storage.base import BaseStorage
 
-DEFAULT_PATH = "storage"
+DEFAULT_PATH = "objects"
 DEFAULT_DIR_LEVEL = 2
 
 

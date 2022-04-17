@@ -16,6 +16,7 @@ COLUMNS = [
     "mloc text",
     "remove integer",
     "mtime real",
+    "exe real",
     "ignore integer",
 ]
 
@@ -210,5 +211,28 @@ class Index:
             self.cur.execute(
                 f"DELETE FROM main WHERE " f"name in ({','.join(['?'] * len(items))})",
                 items,
+            )
+        self.con.commit()
+
+    def step(self):
+        """Step from staging to committed
+
+        For non-ignore items, this method essentially:
+            - move mhash -> hash
+            - move mloc -> loc
+            - remove entries that are removed
+        """
+        # remove
+        self.cur.execute("DELETE FROM main WHERE remove  = 1")
+        self.con.commit()
+
+        # update
+        items = self.cur.execute(
+            "SELECT * FROM main WHERE mhash IS NOT NULL"
+        ).fetchall()
+        # @RUSH: the `items` below doesn't have exe
+        for name, _, mhash, _, mloc, _, _, _ in items:
+            self.cur.execute(
+                f"UPDATE main SET hash='{mhash}', mhash=NULL, loc='{mloc}', mloc=NULL WHERE name='{name}'"
             )
         self.con.commit()

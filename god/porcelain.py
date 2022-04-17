@@ -24,6 +24,7 @@ from god.core.status import status
 from god.init import init, repo_exists
 from god.merge import merge
 from god.utils.exceptions import InvalidUserParams
+from god.utils.process import communicate
 
 
 def init_cmd(path):
@@ -39,14 +40,12 @@ def init_cmd(path):
 
 def status_cmd(paths, plugins):
     """Viewing repo status"""
-    refs, snapshot, commits = read_HEAD(settings.FILE_HEAD)
+    refs, commits = read_HEAD(settings.FILE_HEAD)
 
     if refs:
         rprint(f"On branch {refs}")
     if commits:
         rprint(f"On detached commit {commits}")
-    if snapshot:
-        rprint(f"\tUsing snapshot {snapshot}")
 
     for plugin_name, (
         stage_add,
@@ -104,30 +103,32 @@ def add_cmd(paths, plugin):
 
 def commit_cmd(message):
     """Commit the changes in staging area to commit"""
-    config = read_local_config(settings.FILE_LOCAL_CONFIG)
+    config: dict = communicate(
+        ["god", "configs", "list", "--user", "--no-plugin"]
+    )  # type: ignore
+
     if config.get("USER", None) is None:
         print("Please config USER.NAME and USER.EMAIL")
         return
 
-    if config.USER.get("NAME", None) is None:
+    if config["USER"].get("NAME", None) is None:
         print("Please config user.name")
         return
 
-    if config.USER.get("EMAIL", None) is None:
+    if config["USER"].get("EMAIL", None) is None:
         print("Please config user.email")
         return
 
-    refs, _, _ = read_HEAD(settings.FILE_HEAD)
+    refs, _ = read_HEAD(settings.FILE_HEAD)
     prev_commit = get_ref(refs, settings.DIR_REFS_HEADS)
 
     current_commit = commit(
-        user=config.USER.NAME,
-        email=config.USER.EMAIL,
+        user=config["USER"]["NAME"],
+        email=config["USER"]["EMAIL"],
         message=message,
         prev_commit=prev_commit,
-        index_path=settings.FILE_INDEX,
         commit_dir=settings.DIR_COMMITS,
-        commit_dirs_dir=settings.DIR_COMMITS_DIRECTORY,
+        commit_dirs_dir=settings.DIR_DIRS,
     )
 
     update_ref(refs, current_commit, settings.DIR_REFS_HEADS)

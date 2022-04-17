@@ -16,7 +16,6 @@ def read_HEAD(file_head):
 
     return (
         config.get("REFS", None),
-        config.get("SNAPSHOTS", None),
         config.get("COMMITS", None),
     )
 

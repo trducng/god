@@ -1,13 +1,14 @@
 """
 Commit the data for hashing
 """
+import json
 import queue
 from pathlib import Path
 
 import yaml
 
-from god.utils.exceptions import InvalidUserParams
 from god.utils.common import get_string_hash
+from god.utils.exceptions import InvalidUserParams
 
 
 def calculate_commit_hash(commit_obj):
@@ -24,19 +25,9 @@ def calculate_commit_hash(commit_obj):
     # Returns:
         <str>: the hash value
     """
-    keys = sorted(list(commit_obj.keys()))
+    str_rep = json.dumps(commit_obj, sort_keys=True)
 
-    items = []
-    for key in keys:
-        if key == "objects":
-            dir_hashes = commit_obj[key]
-            dirs = sorted(list(commit_obj[key].keys()))
-            obj_hash = get_string_hash("\n".join(f"{d},{dir_hashes[d]}" for d in dirs))
-            items.append(f"{key},{obj_hash}")
-        else:
-            items.append(f"{key},{commit_obj[key]}")
-
-    return get_string_hash("\n".join(items))
+    return get_string_hash(str_rep)
 
 
 def read_commit(commit_id, commit_dir):

@@ -1,3 +1,4 @@
+import os
 import sys
 from pathlib import Path
 
@@ -187,7 +188,22 @@ main.add_command(config_cli, "configs")
 
 def entrypoint():
     """Exception handling"""
-    try:
-        main()
-    except Exception as e:
-        click.echo(e)
+    if os.environ.get("GOD_DEBUG", None) == "1":
+        import sys
+        import traceback
+        from pdb import Pdb
+
+        pdb = Pdb()
+
+        try:
+            main()
+        except Exception:
+            traceback.print_exc()
+            print("Uncaught exception. Entering post mortem debugging")
+            t = sys.exc_info()[2]
+            pdb.interaction(None, t)
+    else:
+        try:
+            main()
+        except Exception as e:
+            click.echo(e)
