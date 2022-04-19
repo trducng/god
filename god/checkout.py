@@ -13,6 +13,7 @@ from god.index.trackchanges import (
     track_staging_changes,
     track_working_changes,
 )
+from god.index.utils import column_index
 from god.plugins.utils import installed_plugins, plugin_endpoints
 from god.utils.exceptions import OperationNotPermitted
 
@@ -63,11 +64,11 @@ def restore_staged(fds: List[str], plugins: List[str]):
     for name in plugins:
         endpoints = plugin_endpoints(name)
         restore_staged_one(
-            fds=fds, index_path=endpoints["index"], base_dir=endpoints["base_dir"]
+            fds=fds, index_path=endpoints["index"], base_dir=endpoints["tracks"]
         )
 
 
-def restore_working(fds, index_path, dir_object, base_dir):
+def restore_working_one(fds, index_path, base_dir):
     """Revert modified and deleted files from working area to last commit
 
     This operation only applies to unstaged changes.
@@ -78,22 +79,60 @@ def restore_working(fds, index_path, dir_object, base_dir):
         timestamp
         - In case file is added, leave it untouched
 
-    # Args:
+    Args:
         fds <str>: the directory to add (absolute path)
         index_path <str>: path to index file
         dir_obj <str>: the path to object directory
         base_dir <str>: project base directory
     """
-    _, update, remove, _, _ = track_working_changes(
-        fds, index_path, base_dir, get_remove=False
-    )
+    _, update, remove, _, _ = track_working_changes(fds, index_path, base_dir)
 
     restore = [_[0] for _ in update] + remove
+    iname = column_index("name")
+    iloc = column_index("loc")
+    imloc = column_index("mloc")
     with Index(index_path) as index:
-        restore_hashes = [(_[0], _[1]) for _ in index.get_files_info(files=restore)]
-        copy_hashed_objects_to_files(restore_hashes, dir_object, base_dir)
-        tsts = get_files_tst(restore, base_dir)
-        index.update(reset_tst=list(zip(restore, tsts)))
+        # use latest staged or commited version
+        restore_hashes = [
+            (str(Path(base_dir, each[iname])), each[imloc] or each[iloc])
+            for each in index.get_files(names=restore, get_remove=False, not_in=False)
+        ]
+        from god.storage.local import LocalStorage
+
+        ls = LocalStorage({})
+        for file_path, hash_value in restore_hashes:
+            ls.get_file(hash_value=hash_value, file_path=file_path)
+        # tsts = get_files_tst(restore, base_dir)
+        # index.update(reset_tst=list(zip(restore, tsts)))
+
+
+def restore_working(fds: List[str], plugins: List[str]):
+    """Revert modified and deleted files from working area to last commit
+
+    This operation only applies to unstaged changes.
+    This operation will:
+        - In case file is modified, use the version from commit, and modify index
+        timestamp
+        - In case file is deleted, use the version from commit, and modify index
+        timestamp
+        - In case file is added, leave it untouched
+
+    Args:
+        fds <str>: the directory to add (absolute path)
+        index_path <str>: path to index file
+        dir_obj <str>: the path to object directory
+        base_dir <str>: project base directory
+    """
+    if not fds and not plugins:
+        # assume restore all
+        fds = ["."]
+        plugins = ["files", "configs", "plugins"] + installed_plugins()
+
+    for name in plugins:
+        endpoints = plugin_endpoints(name)
+        restore_working_one(
+            fds=fds, index_path=endpoints["index"], base_dir=endpoints["tracks"]
+        )
 
 
 def _checkout_between_commits(

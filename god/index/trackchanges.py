@@ -68,12 +68,12 @@ def track_working_changes(fds, index_path, base_dir):
 
     Also, items specific in fds can both exist and removed.
 
-    # Args:
+    Args:
         fds <str>: the directory to track (relative path)
         index_path <str>: path to index file
         base_dir <str>: project base directory
 
-    # Returns
+    Returns:
         <[str, str, float]>: add - files newly added
         <[str, str, float]>: update - files updated
         <[str]>: remove - files removed

@@ -149,7 +149,7 @@ def restore(paths, staged, plugin):
     if staged:
         restore_staged_cmd(paths, plugin)
     else:
-        restore_working_cmd(paths)
+        restore_working_cmd(paths, plugin)
 
 
 @main.command("reset")

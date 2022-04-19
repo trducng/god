@@ -160,19 +160,14 @@ def restore_staged_cmd(paths, plugins=None):
     restore_staged(paths, plugins)
 
 
-def restore_working_cmd(paths):
+def restore_working_cmd(paths, plugins=None):
     """Revert modfiied and deleted files from working area to last commit
 
     # Args:
         paths <[str]>: list of paths
     """
-    if not paths:
-        raise InvalidUserParams("Must supply paths to files or directories")
-
-    paths = [str(Path(_).resolve()) for _ in paths]
-    restore_working(
-        paths, settings.FILE_INDEX, settings.DEFAULT_DIR_OBJECTS, settings.DIR_BASE
-    )
+    plugins = [] if plugins is None else [plugins]
+    restore_working(paths, plugins)
 
 
 def checkout_cmd(branch, new=False):
