@@ -19,6 +19,7 @@ from god.porcelain import (
     restore_working_cmd,
     status_cmd,
 )
+from god.storage.cli import main as storages_cli
 
 
 class DynamicGroup(click.Group):
@@ -185,6 +186,7 @@ def merge(branch):
 
 main.add_command(plugin_cli, "plugins")
 main.add_command(config_cli, "configs")
+main.add_command(storages_cli, "storages")
 
 
 def entrypoint():

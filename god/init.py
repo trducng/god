@@ -29,6 +29,7 @@ def repo_exists(path):
 def init(path):
     """Initiate the repo
 
+    @PRIORITY2: refactor the docstring
     This operation construct the tracking .god directory. The `.god` repository
     structure is as follows:
         .god/
@@ -37,8 +38,6 @@ def init(path):
             - config - the config file
             - objects/ - store hashed objects for version control
             - commits/ - store the commits
-            - records/ - store the records
-            - snaps/ - store the snapshots
             - refs/ - store branch references for commits and records
             - .godconfig
         .godconfig - the common local config for everyone to follow

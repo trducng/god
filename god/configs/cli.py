@@ -10,8 +10,9 @@ from god.configs.base import Settings, update_config
 from god.configs.constants import SYSTEM_CONFIG, USER_CONFIG
 from god.configs.init import init
 from god.configs.status import status
-from god.configs.utils import edit_file
+from god.configs.utils import edit_file, get_config
 from god.core.common import get_base_dir
+from god.utils.process import error
 
 
 @click.group()
@@ -83,6 +84,13 @@ def status_():
 @click.option("--plugin", type=str, default=None, help="Specify plugins")
 def edit(system, user, local_tree, shared_tree, plugin):
     """Edit the config file in YAML format"""
+    if plugin == "storages":
+        # cannot change config here, because we would want to support data migration
+        # in case user changes storage information.
+        error(
+            "god configs cannot change storages. Use `god storage use` instead",
+            statuscode=1,
+        )
 
     if system:
         edit_file(SYSTEM_CONFIG)
@@ -179,22 +187,20 @@ def list_(system, user, local_tree, shared_tree, plugin, no_plugin, pretty):
     plugins_setting = defaultdict(lambda: Settings(level=2))
 
     if plugin:
-        local_setting, shared_setting = Settings(), Settings()
-        if (shared_path / "plugins" / plugin).is_file():
-            shared_setting.set_values_from_yaml(shared_path / "plugins" / plugin)
-        if (local_path / "plugins" / plugin).is_file():
-            local_setting.set_values_from_yaml(local_path / "plugins" / plugin)
-        if shared_tree:
-            base_setting += shared_setting
-        if local_tree:
-            base_setting += local_setting
         if not (shared_tree or local_tree):
-            base_setting += shared_setting
-            base_setting += local_setting
+            # for convenience, if user does not specify --shared-tree or --local-tree
+            # in the command line, assume the user wants all
+            shared_tree = True
+            local_tree = True
+
+        base_setting = get_config(
+            plugin=plugin, shared_tree=shared_tree, local_tree=local_tree
+        )
         if pretty:
             print(base_setting)
         else:
             print(json.dumps(base_setting.as_dict()))
+
         return
 
     if not (system or user or local_tree or shared_tree):

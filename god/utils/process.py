@@ -1,5 +1,6 @@
 import json
 import subprocess
+import sys
 from typing import Dict, List, Union
 
 _JSON = Union[Dict, List, None]
@@ -36,3 +37,14 @@ def communicate(command: List[str], stdin: _JSON = None) -> _JSON:
 
     if p.stdout:
         return json.loads(out)
+
+
+def error(message: str, statuscode: int):
+    """Print CLI error message and exit
+
+    Args:
+        message: the message to print to stderr
+        statuscode: the exit code
+    """
+    print(message, file=sys.stderr)
+    sys.exit(statuscode)

@@ -36,6 +36,9 @@ def init_cmd(path):
     path = Path(path).resolve()
     repo_exists(path)
     init(path)
+    print("Repo initialized")
+    print('By default, commited files are store locally with "local" storage. ')
+    print("To store them other places, consider `god storages use --help`")
 
 
 def status_cmd(paths, plugins):

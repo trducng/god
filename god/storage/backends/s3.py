@@ -1,17 +1,16 @@
-import json
 import posixpath
-import sys
 from pathlib import Path
 from typing import List
 
 import boto3
-import click
 from botocore.errorfactory import ClientError
 
-from god.storage.base import BaseStorage
+from god.storage.backends.base import BaseStorage
 
 DEFAULT_PATH = "storage"
 DEFAULT_DIR_LEVEL = 2
+BUCKET = ""
+PREFIX = ""
 
 
 class S3Storage(BaseStorage):
@@ -21,7 +20,10 @@ class S3Storage(BaseStorage):
         # TODO: decide the format for storage config
         # TODO: might only allow relative path (to avoid overwrite hacking)
         # self._bucket = config["BUCKET"]
-        self._bucket = "god-test-storage"
+        # @PRIORITY2: remove these default values, raise error if users do not
+        # supply these values
+        self._bucket = config.get("BUCKET", "god-test-storage")
+        self._prefix = config.get("PREFIX", "")
         self._dir_levels = config.get("DIR_LEVEL", DEFAULT_DIR_LEVEL)
 
     def _get_hash_path(self, hash_value: str) -> str:
@@ -31,58 +33,44 @@ class S3Storage(BaseStorage):
         ]
         return posixpath.join(*components, hash_value[self._dir_levels * 2 :])
 
-    def get_file(self, hash_value: str, file_path: str):
+    def get_files(self, hash_values: List[str], file_paths: List[str]):
         """Get the file and store that file in file_path
 
         Args:
             hash_value: the object hash value
             file_path: the file path to copy to
         """
-        Path(file_path).parent.mkdir(parents=True, exist_ok=True)
-
         s3r = boto3.resource("s3")
-        s3r.Object(self._bucket, self._get_hash_path(hash_value)).download_file(
-            file_path
-        )
+        # @PRIORITY3: use multiprocessing to speed up parallel downloads
+        for each_hash, each_path in zip(hash_values, file_paths):
+            Path(each_path).parent.mkdir(parents=True, exist_ok=True)
 
-    def get_object(self, hash_value: str) -> bytes:
-        """Get the file and store as bytes
+            s3r.Object(self._bucket, self._get_hash_path(each_hash)).download_file(
+                each_path
+            )
 
-        Args:
-            hash_value: the object hash value
-
-        Returns:
-            the object bytes
-        """
-        raise NotImplementedError("cannot get_object in a plugin model")
-
-    def store_file(self, file_path: str, hash_value: str):
+    def store_files(self, file_paths: List[str], hash_values: List[str]):
         """Store a file with a specific hash value
 
         Args:
             file_path: the file path
             hash_value: the hash value of the file
         """
-        s3_client = boto3.session.Session().client("s3")
-        s3_client.upload_file(file_path, self._bucket, self._get_hash_path(hash_value))
+        # PRIORITY3: make use of multiprocessing
+        client = boto3.session.Session().client("s3")
+        for each_hash, each_file in zip(hash_values, file_paths):
+            client.upload_file(each_file, self._bucket, self._get_hash_path(each_hash))
 
-    def store_object(self, obj: bytes, hash_value: str):
-        """Store an object with a specific hash value
-
-        Args:
-            obj: the object to store
-            file_path: the file path
-        """
-        raise NotImplementedError("cannot store_object in a plugin model")
-
-    def delete(self, hash_value: str):
+    def deletes(self, hash_values: List[str]):
         """Delete object that has specific hash value
 
         Args:
             hash_value: the hash value of the object
         """
+        # PRIORITY3: make use of bulk delete
         s3r = boto3.resource("s3")
-        s3r.Object(self._bucket, self._get_hash_path(hash_value)).delete()
+        for each_hash in hash_values:
+            s3r.Object(self._bucket, self._get_hash_path(each_hash)).delete()
 
     def exists(self, hash_values: List[str]) -> List[bool]:
         """Check whether an object or a file with a specific hash value exist
@@ -105,32 +93,3 @@ class S3Storage(BaseStorage):
                 result.append(False)
 
         return result
-
-
-ls = S3Storage({})
-
-
-@click.group()
-def main():
-    """Local storage manager"""
-    pass
-
-
-@main.command("store-file")
-@click.argument("file-path", type=str)
-@click.argument("file-hash", type=str)
-def store_file(file_path, file_hash):
-    ls.store_file(file_path, file_hash)
-
-
-@main.command("store-files")
-def store_files():
-    input_ = sys.stdin.read().strip()
-    for file_path, file_hash in json.loads(input_):
-        ls.store_file(file_path, file_hash)
-
-
-@main.command("exists")
-def exists_cmd():
-    input_ = json.loads(sys.stdin.read().strip())
-    print(ls.exists(input_))
