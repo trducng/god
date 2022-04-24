@@ -74,16 +74,15 @@ def commit(user, email, message, prev_commit, commit_dir, commit_dirs_dir):
         "email": email,
         "message": message,
         "prev": prev_commit,
-        "core": {},
-        "plugins": {},
+        "tracks": {},
     }
 
-    commit_obj["core"]["files"] = handle_one("files", commit_dirs_dir)
-    commit_obj["core"]["configs"] = handle_one("configs", commit_dirs_dir)
-    commit_obj["core"]["plugins"] = handle_one("plugins", commit_dirs_dir)
+    commit_obj["tracks"]["files"] = handle_one("files", commit_dirs_dir)
+    commit_obj["tracks"]["configs"] = handle_one("configs", commit_dirs_dir)
+    commit_obj["tracks"]["plugins"] = handle_one("plugins", commit_dirs_dir)
 
     for plugin in installed_plugins():
-        commit_obj["plugins"][plugin] = handle_one(plugin, commit_dirs_dir)
+        commit_obj["tracks"][plugin] = handle_one(plugin, commit_dirs_dir)
 
     # construct commit object
     # handle plugin

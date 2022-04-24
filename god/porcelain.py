@@ -181,13 +181,13 @@ def checkout_cmd(branch, new=False):
         new <bool>: whether to create new branch
     """
     if new:
-        refs, _, _ = read_HEAD(settings.FILE_HEAD)
+        refs, _ = read_HEAD(settings.FILE_HEAD)
         commit_id = get_ref(refs, settings.DIR_REFS_HEADS)
         checkout_new_branch(
             branch, commit_id, settings.DIR_REFS_HEADS, settings.FILE_HEAD
         )
     else:
-        refs, _, commit1 = read_HEAD(settings.FILE_HEAD)  # start
+        refs, commit1 = read_HEAD(settings.FILE_HEAD)  # start
 
         branch2 = branch if is_ref(branch, settings.DIR_REFS_HEADS) else None
         commit2 = is_commit(branch, settings.DIR_COMMITS)
@@ -199,11 +199,9 @@ def checkout_cmd(branch, new=False):
 
         checkout(
             settings.DIR_COMMITS,
-            settings.DIR_COMMITS_DIRECTORY,
-            settings.FILE_INDEX,
+            settings.DIR_DIRS,
             settings.DEFAULT_DIR_OBJECTS,
             settings.DIR_REFS_HEADS,
-            settings.DIR_BASE,
             settings.FILE_HEAD,
             commit1=commit1,
             commit2=commit2,
@@ -224,11 +222,9 @@ def reset_cmd(head_past, hard=False):
         head_past,
         hard,
         settings.DIR_COMMITS,
-        settings.DIR_COMMITS_DIRECTORY,
-        settings.FILE_INDEX,
+        settings.DIR_DIRS,
         settings.DEFAULT_DIR_OBJECTS,
         settings.DIR_REFS_HEADS,
-        settings.DIR_BASE,
         settings.FILE_HEAD,
     )
 
@@ -239,7 +235,7 @@ def merge_cmd(branch):
     # Args:
         branch <str>: name of the branch
     """
-    refs, _, commit1 = read_HEAD(settings.FILE_HEAD)
+    refs, commit1 = read_HEAD(settings.FILE_HEAD)
     config = read_local_config(settings.FILE_LOCAL_CONFIG)
     merge(
         refs,

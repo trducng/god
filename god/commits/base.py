@@ -47,7 +47,7 @@ def read_commit(commit_id, commit_dir):
     return commit_obj
 
 
-def get_files_hashes_in_commit_dir(dir_id, commit_dirs_dir, prefix=None):
+def get_files_hashes_in_commit_dir(dir_id, commit_dirs_dir, prefix):
     """Get files and hashes in a commit
 
     # Args:
@@ -61,17 +61,26 @@ def get_files_hashes_in_commit_dir(dir_id, commit_dirs_dir, prefix=None):
     with Path(commit_dirs_dir, dir_id).open("r") as f_in:
         lines = f_in.read().splitlines()
 
-    prefix = Path(".") if prefix is None else Path(prefix)
     result = {}
     for each_line in lines:
         components = each_line.split(",")
-        fn = ",".join(components[:-1])
-        result[str(Path(prefix, fn))] = components[-1]
+        # @PRIORITY2: don't assume no ',' in filename -> more robust `dirs`
+        fn = components[0]  # assume no ',' in filename
+        if components[1] == "d":
+            result.update(
+                get_files_hashes_in_commit_dir(
+                    dir_id=components[-1],
+                    commit_dirs_dir=commit_dirs_dir,
+                    prefix=str(Path(prefix, fn)),
+                )
+            )
+        else:
+            result[str(Path(prefix, fn))] = components[-1]
 
     return result
 
 
-def get_files_hashes_in_commit(commit_id, commit_dir, commit_dirs_dir):
+def get_files_hashes_in_commit(commit_id, commit_dir, commit_dirs_dir, plugin):
     """Get files and hashes in a commit
 
     # Args:
@@ -83,11 +92,10 @@ def get_files_hashes_in_commit(commit_id, commit_dir, commit_dirs_dir):
         <{str: str}>: fn and hashes
     """
     commit_obj = read_commit(commit_id, commit_dir)
-    result = {}
-    for prefix, dir_id in commit_obj["objects"].items():
-        result.update(
-            get_files_hashes_in_commit_dir(dir_id, commit_dirs_dir, prefix=prefix)
-        )
+    # @PRIORITY1: use the correct commit
+    result = get_files_hashes_in_commit_dir(
+        commit_obj["tracks"][plugin], commit_dirs_dir, prefix="."
+    )
 
     return result
 

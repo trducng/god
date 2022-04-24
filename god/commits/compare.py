@@ -2,7 +2,7 @@ from god.commits.base import get_files_hashes_in_commit
 from god.core.files import compare_files_states
 
 
-def transform_commit(commit1, commit2, commit_dir, commit_dirs_dir):
+def transform_commit(commit1, commit2, commit_dir, commit_dirs_dir, plugin="files"):
     """Get add and remove operations to transform from state1 to state2
 
     The files from state1 to state2 are as follow:
@@ -28,8 +28,10 @@ def transform_commit(commit1, commit2, commit_dir, commit_dirs_dir):
     files_hashes1 = (
         {}
         if commit1 is None
-        else get_files_hashes_in_commit(commit1, commit_dir, commit_dirs_dir)
+        else get_files_hashes_in_commit(commit1, commit_dir, commit_dirs_dir, plugin)
     )
-    files_hashes2 = get_files_hashes_in_commit(commit2, commit_dir, commit_dirs_dir)
+    files_hashes2 = get_files_hashes_in_commit(
+        commit2, commit_dir, commit_dirs_dir, plugin
+    )
 
     return compare_files_states(files_hashes1, files_hashes2)

@@ -175,6 +175,9 @@ class Index:
             items: Each item contains name, mhash, tstamp and mloc
             staged: if True, add hash to hash rather than mhash
         """
+        if not items:
+            return
+
         h = "mhash" if staged else "hash"
         l = "mloc" if staged else "loc"  # noqa: E741
         for name, mhash, mtime, mloc in items:

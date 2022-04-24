@@ -51,7 +51,6 @@ class LocalStorage(BaseStorage):
 
             hash_path.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy(each_path, hash_path)
-            hash_path.chmod(0o440)
 
     def deletes(self, hash_values: List[str]):
         """Delete object that has specific hash value

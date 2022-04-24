@@ -35,7 +35,7 @@ def communicate(command: List[str], stdin: _JSON = None) -> _JSON:
     if p.returncode != 0:
         raise RuntimeError(f"{' '.join(command)} fails with {err}")
 
-    if p.stdout:
+    if out:
         return json.loads(out)
 
 

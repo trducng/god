@@ -100,9 +100,9 @@ def _add(fds: List[str], base_dir: str, index_name: str, hooks: Dict[str, List[s
     # move the objects to storage
     # @TODO: suppose that we get the storage implementation from config, but we
     # should get this knowledge from some place like plugins manager and config
-    storage_cmd = "god-storage-local"
+    storage_cmd = ["god", "storages"]
     child = subprocess.Popen(
-        args=[storage_cmd, "store-files"],
+        args=storage_cmd + ["store-files"],
         stdout=subprocess.PIPE,
         stdin=subprocess.PIPE,
     )
