@@ -15,7 +15,7 @@ from god.checkout import (
     restore_working,
 )
 from god.commit import commit
-from god.commits.base import is_commit, read_commit
+from god.commits.base import read_commit
 from god.core.add import add
 from god.core.conf import read_local_config, settings
 from god.core.head import read_HEAD
@@ -130,8 +130,6 @@ def commit_cmd(message):
         email=config["USER"]["EMAIL"],
         message=message,
         prev_commit=prev_commit,
-        commit_dir=settings.DIR_COMMITS,
-        commit_dirs_dir=settings.DIR_DIRS,
     )
 
     update_ref(refs, current_commit, settings.DIR_REFS_HEADS)
@@ -143,7 +141,7 @@ def log_cmd():
     commit_id = get_ref(refs, settings.DIR_REFS_HEADS)
 
     while commit_id:
-        commit_obj = read_commit(commit_id, settings.DIR_COMMITS)
+        commit_obj = read_commit(commit_id)
         rprint(f"[yellow]commit {commit_id}[/]")
         rprint(f"Author: {commit_obj['user']} <{commit_obj['email']}>")
         rprint()
@@ -190,21 +188,18 @@ def checkout_cmd(branch, new=False):
         refs, commit1 = read_HEAD(settings.FILE_HEAD)  # start
 
         branch2 = branch if is_ref(branch, settings.DIR_REFS_HEADS) else None
-        commit2 = is_commit(branch, settings.DIR_COMMITS)
+        # commit2 = is_commit(branch, settings.DIR_COMMITS)
 
-        if commit2 is None and branch2 is None:
+        if branch2 is None:
             raise InvalidUserParams(
                 f"Cannot find branch or commit that match '{branch}'"
             )
 
         checkout(
-            settings.DIR_COMMITS,
-            settings.DIR_DIRS,
-            settings.DEFAULT_DIR_OBJECTS,
             settings.DIR_REFS_HEADS,
             settings.FILE_HEAD,
             commit1=commit1,
-            commit2=commit2,
+            commit2=None,
             branch1=refs,
             branch2=branch2,
         )
@@ -221,9 +216,6 @@ def reset_cmd(head_past, hard=False):
     reset(
         head_past,
         hard,
-        settings.DIR_COMMITS,
-        settings.DIR_DIRS,
-        settings.DEFAULT_DIR_OBJECTS,
         settings.DIR_REFS_HEADS,
         settings.FILE_HEAD,
     )

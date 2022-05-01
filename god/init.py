@@ -7,6 +7,7 @@ import god.utils.constants as c
 from god.configs.init import init as configs_init
 from god.plugins.init import init as plugins_init
 from god.plugins.install import construct_working_directory, create_blank_index
+from god.storage.utils import DEFAULT_STORAGE
 from god.utils.exceptions import RepoExisted
 
 
@@ -68,6 +69,10 @@ def init(path):
     working_dir = construct_working_directory("plugins")
     create_blank_index("plugins")
     plugins_init(str(working_dir), False)
+
+    # Setup default local storage
+    with open(c.FILE_LINK, "w") as fo:
+        json.dump({"STORAGE": DEFAULT_STORAGE, "REMOTES": []}, fo)
 
 
 if __name__ == "__main__":

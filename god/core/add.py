@@ -102,10 +102,11 @@ def _add(fds: List[str], base_dir: str, index_name: str, hooks: Dict[str, List[s
     # should get this knowledge from some place like plugins manager and config
     storage_cmd = ["god", "storages"]
     child = subprocess.Popen(
-        args=storage_cmd + ["store-files"],
+        args=storage_cmd + ["store-objects"],
         stdout=subprocess.PIPE,
         stdin=subprocess.PIPE,
     )
+    print(new_objs)
     _, _ = child.communicate(input=json.dumps(new_objs).encode())
     if child.returncode:
         raise RuntimeError(f"Cannot run {storage_cmd}")

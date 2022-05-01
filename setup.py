@@ -18,8 +18,6 @@ setuptools.setup(
     entry_points={
         "console_scripts": [
             "god=god.cli:entrypoint",
-            "god-storage-local=god.storage.local:main",
-            "god-storage-s3=god.storage.s3:main",
             "god-files=god.files:main",
             "god-descriptor=god.descriptors.base:main",
             "god-index=god.index.cli:main",

@@ -1,10 +1,9 @@
-"""Add operation"""
 from pathlib import Path
 from typing import List
 
 from god.commits.base import read_commit
 from god.commits.compare import transform_commit
-from god.core.files import get_files_tst, get_objects_tst
+from god.core.files import get_files_tst
 from god.core.head import read_HEAD, update_HEAD
 from god.core.refs import get_ref, update_ref
 from god.index.base import Index
@@ -14,7 +13,7 @@ from god.plugins.utils import installed_plugins, plugin_endpoints
 from god.utils.exceptions import OperationNotPermitted
 
 
-def restore_staged_one(fds, index_path, base_dir):
+def restore_staged_one(fds: List[str], index_path: str, base_dir: str):
     """Restore files from the staging area to the working area
 
     This operation will:
@@ -23,10 +22,10 @@ def restore_staged_one(fds, index_path, base_dir):
         - Revert `timestamp` to ones in the index
         - Unmark `remove` to NULL for entries that are marked removed
 
-    # Args:
-        fds <str>: the directory to add (absolute path)
-        index_path <str>: path to index file
-        base_dir <str>: project base directory
+    Args:
+        fds: the directory to add (absolute path)
+        index_path: path to index file
+        base_dir: project base directory
     """
     stage_add, stage_update, stage_remove = track_staging_changes(
         fds, index_path, base_dir
@@ -48,9 +47,8 @@ def restore_staged(fds: List[str], plugins: List[str]):
         - Unmark `remove` to NULL for entries that are marked removed
 
     # Args:
-        fds <str>: the directory to add (absolute path)
-        index_path <str>: path to index file
-        base_dir <str>: project base directory
+        fds: the directory to add (absolute path)
+        plugins: list of plugin names that will be restored
     """
     if not fds and not plugins:
         # assume restore all
@@ -93,7 +91,7 @@ def restore_working_one(fds, index_path, base_dir):
             (str(Path(base_dir, each[iname])), each[imloc] or each[iloc])
             for each in index.get_files(names=restore, get_remove=False, not_in=False)
         ]
-        from god.storage.local import LocalStorage
+        from god.storage.backends.local import LocalStorage
 
         ls = LocalStorage({})
         for file_path, hash_value in restore_hashes:
@@ -131,7 +129,7 @@ def restore_working(fds: List[str], plugins: List[str]):
         )
 
 
-def compare_plugins(commit1, commit2, commit_dir):
+def compare_plugins(commit1, commit2):
     """Compare the state of plugins between commit1, commit2.
     It returns:
         - new_plugs: plugins not in commit1 but in commit2
@@ -139,8 +137,8 @@ def compare_plugins(commit1, commit2, commit_dir):
         - remove_plugs: plugins in commit2 but not in commit1
         - unchanged_plugs: same plugins, same value between commit1 and commit2
     """
-    tracks1 = read_commit(commit1, commit_dir)["tracks"]
-    tracks2 = read_commit(commit2, commit_dir)["tracks"]
+    tracks1 = read_commit(commit1)["tracks"]
+    tracks2 = read_commit(commit2)["tracks"]
 
     new_plugs = list(sorted(set(tracks2.keys()).difference(tracks1.keys())))
     remove_plugs = list(sorted(set(tracks1.keys()).difference(tracks2.keys())))
@@ -163,10 +161,6 @@ def compare_plugins(commit1, commit2, commit_dir):
 def _checkout_between_commits(
     commit1,
     commit2,
-    commit_dir,
-    commit_dirs_dir,
-    obj_dir,
-    move_files=True,
 ):
     """Perform checkout from commit1 to commit2
 
@@ -185,8 +179,6 @@ def _checkout_between_commits(
     # Args
         commit1 <str>: the commit id 1 (from)
         commit2 <str>: the commit id 2 (to)
-        commit_dir <str|Path>: the path to commit directory
-        commit_dirs_dir <str|Path>: the path to dirs directory
         obj_dir <str>: the path to object directory
         move_files <bool>: if true, move files in working directory to match index
     """
@@ -197,9 +189,7 @@ def _checkout_between_commits(
     from god.plugins.utils import plugin_endpoints
     from god.utils.process import communicate
 
-    new_plugs, update_plugs, remove_plugs, _ = compare_plugins(
-        commit1, commit2, commit_dir
-    )
+    new_plugs, update_plugs, remove_plugs, _ = compare_plugins(commit1, commit2)
 
     # plugins = ["files", "configs", "plugins"] + installed_plugins()
     statuses = status(["."], update_plugs)
@@ -226,37 +216,31 @@ def _checkout_between_commits(
         endpoints = plugin_endpoints(plugin_name)
 
         # calculate add & remove operations from 2 commits
-        add_ops, remove_ops = transform_commit(
-            commit1, commit2, commit_dir, commit_dirs_dir, plugin_name
-        )
+        add_ops, remove_ops = transform_commit(commit1, commit2, plugin_name)
 
         # ignore operations involving unstaged files
         # skips = set([_[0] for _ in add] + [_[0] for _ in update] + remove)
         skips = {}
 
-        if move_files:
-            # remove files
-            for fp in remove_ops.keys():
-                if fp in skips:
-                    continue
-                Path(endpoints["tracks"], fp).unlink()
+        # remove files
+        for fp in remove_ops.keys():
+            if fp in skips:
+                continue
+            Path(endpoints["tracks"], fp).unlink()
 
-            # add files
-            add = [
-                (str(Path(endpoints["tracks"], fp)), fh)
-                for fp, fh in add_ops.items()
-                if fp not in skips
-            ]
-            if add:
-                communicate(command=["god", "storages", "get-files"], stdin=add)
+        # add files
+        add = [
+            (str(Path(endpoints["tracks"], fp)), fh)
+            for fp, fh in add_ops.items()
+            if fp not in skips
+        ]
+        if add:
+            communicate(command=["god", "storages", "get-objects"], stdin=add)
 
         # construct index
         add_fps = list(add_ops.keys())
         add_fhs = list(add_ops.values())
-        if move_files:
-            tsts = get_files_tst(add_fps, endpoints["tracks"])
-        else:
-            tsts = get_objects_tst(add_fhs, obj_dir)
+        tsts = get_files_tst(add_fps, endpoints["tracks"])
         add = [
             (name, hash, tstmp, hash)
             for name, hash, tstmp in zip(add_fps, add_fhs, tsts)
@@ -270,15 +254,10 @@ def _checkout_between_commits(
         # copy all files
         # create index
         endpoints = plugin_endpoints(plugin_name)
-        add_ops, _ = transform_commit(
-            None, commit2, commit_dir, commit_dirs_dir, plugin_name
-        )
+        add_ops, _ = transform_commit(None, commit2, plugin_name)
         add_fps = list(add_ops.keys())
         add_fhs = list(add_ops.values())
-        if move_files:
-            tsts = get_files_tst(add_fps, endpoints["tracks"])
-        else:
-            tsts = get_objects_tst(add_fhs, obj_dir)
+        tsts = get_files_tst(add_fps, endpoints["tracks"])
         add = [
             (name, hash, tstmp, hash)
             for name, hash, tstmp in zip(add_fps, add_fhs, tsts)
@@ -297,9 +276,6 @@ def _checkout_between_commits(
 
 
 def checkout(
-    commit_dir,
-    commit_dirs_dir,
-    obj_dir,
     ref_dir,
     head_file,
     commit1=None,
@@ -337,10 +313,6 @@ def checkout(
     _checkout_between_commits(
         commit1=commit1,
         commit2=commit2,
-        commit_dir=commit_dir,
-        commit_dirs_dir=commit_dirs_dir,
-        obj_dir=obj_dir,
-        move_files=True,
     )
 
     if branch2:
@@ -368,9 +340,6 @@ def checkout_new_branch(branch, commit_id, ref_dir, head_file):
 def reset(
     head_past,
     hard,
-    commit_dir,
-    commit_dirs_dir,
-    obj_dir,
     ref_dir,
     head_file,
 ):
@@ -393,7 +362,7 @@ def reset(
     commit1 = get_ref(refs, ref_dir)
     commit2 = commit1
     for _ in range(head_past):
-        commit_obj = read_commit(commit2, commit_dir)
+        commit_obj = read_commit(commit2)
         prev = commit_obj["prev"]
         commit2 = prev[0] if isinstance(prev, (list, tuple)) else prev
 
@@ -401,10 +370,6 @@ def reset(
     _checkout_between_commits(
         commit1=commit1,
         commit2=commit2,
-        commit_dir=commit_dir,
-        commit_dirs_dir=commit_dirs_dir,
-        obj_dir=obj_dir,
-        move_files=True,
     )
 
     # update branch ref

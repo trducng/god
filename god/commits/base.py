@@ -2,13 +2,16 @@
 Commit the data for hashing
 """
 import json
+import os
 import queue
+import tempfile
 from pathlib import Path
 
 import yaml
 
 from god.utils.common import get_string_hash
 from god.utils.exceptions import InvalidUserParams
+from god.utils.process import communicate
 
 
 def calculate_commit_hash(commit_obj):
@@ -30,7 +33,7 @@ def calculate_commit_hash(commit_obj):
     return get_string_hash(str_rep)
 
 
-def read_commit(commit_id, commit_dir):
+def read_commit(commit_id):
     """Read commit information
 
     # Args:
@@ -40,14 +43,20 @@ def read_commit(commit_id, commit_dir):
     # Returns:
         <{}>: commit information
     """
-    path = Path(commit_dir, commit_id)
-    with path.open("r") as f_in:
+    fd, temp_path = tempfile.mkstemp()
+    communicate(
+        command=["god", "storages", "get-commits"], stdin=[[temp_path, commit_id]]
+    )
+    with open(temp_path, "r") as f_in:
         commit_obj = yaml.safe_load(f_in)
+
+    os.close(fd)
+    os.unlink(temp_path)
 
     return commit_obj
 
 
-def get_files_hashes_in_commit_dir(dir_id, commit_dirs_dir, prefix):
+def get_files_hashes_in_commit_dir(dir_id, prefix):
     """Get files and hashes in a commit
 
     # Args:
@@ -58,8 +67,13 @@ def get_files_hashes_in_commit_dir(dir_id, commit_dirs_dir, prefix):
     # Returns:
         <{str: str}> fn and hashes
     """
-    with Path(commit_dirs_dir, dir_id).open("r") as f_in:
+    fd, temp_path = tempfile.mkstemp()
+    communicate(command=["god", "storages", "get-dirs"], stdin=[[temp_path, dir_id]])
+    with open(temp_path, "r") as f_in:
         lines = f_in.read().splitlines()
+
+    os.close(fd)
+    os.unlink(temp_path)
 
     result = {}
     for each_line in lines:
@@ -70,7 +84,6 @@ def get_files_hashes_in_commit_dir(dir_id, commit_dirs_dir, prefix):
             result.update(
                 get_files_hashes_in_commit_dir(
                     dir_id=components[-1],
-                    commit_dirs_dir=commit_dirs_dir,
                     prefix=str(Path(prefix, fn)),
                 )
             )
@@ -80,22 +93,19 @@ def get_files_hashes_in_commit_dir(dir_id, commit_dirs_dir, prefix):
     return result
 
 
-def get_files_hashes_in_commit(commit_id, commit_dir, commit_dirs_dir, plugin):
+def get_files_hashes_in_commit(commit_id, plugin):
     """Get files and hashes in a commit
 
     # Args:
         commit_id <str>: commit id
-        commit_dir <str|Path>: the path to commit directory
         commit_dirs_dir <str|Path>: the path to dirs directory
 
     # Returns:
         <{str: str}>: fn and hashes
     """
-    commit_obj = read_commit(commit_id, commit_dir)
+    commit_obj = read_commit(commit_id)
     # @PRIORITY1: use the correct commit
-    result = get_files_hashes_in_commit_dir(
-        commit_obj["tracks"][plugin], commit_dirs_dir, prefix="."
-    )
+    result = get_files_hashes_in_commit_dir(commit_obj["tracks"][plugin], prefix=".")
 
     return result
 
@@ -124,7 +134,7 @@ def exists_in_commit(files, commit_id, commit_dir, commit_dirs_dir):
     return exists
 
 
-def get_latest_parent_commit(commit1, commit2, commit_dir):
+def get_latest_parent_commit(commit1, commit2):
     """Get parrent commit of both commit1 and commit2
 
     # Args:
@@ -150,7 +160,7 @@ def get_latest_parent_commit(commit1, commit2, commit_dir):
             return commit_id
 
         checked.add(commit_id)
-        commit_obj = read_commit(commit_id, commit_dir)
+        commit_obj = read_commit(commit_id)
         if isinstance(commit_obj["prev"], (list, tuple)):
             for _ in commit_obj["prev"]:
                 to_check.put(_)

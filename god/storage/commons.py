@@ -1,22 +1,21 @@
-from god.configs.utils import get_config
+import json
+
 from god.storage.backends.base import BaseStorage
 from god.storage.backends.local import LocalStorage
 from god.storage.backends.s3 import S3Storage
+from god.utils.constants import FILE_LINK
 
 STORAGE = {
-    "local": LocalStorage,
+    "file": LocalStorage,
     "s3": S3Storage,
 }
 
 
-def get_backend(plugin: str) -> BaseStorage:
+def get_backend(path: str = None) -> BaseStorage:
     """Get corresponding backend"""
-    settings = get_config("storages")
+    if path is None:
+        with open(FILE_LINK, "r") as fi:
+            path = json.load(fi)["STORAGE"]
+    mode = path.split("://")[0]  # type: ignore
 
-    if plugin == "configs":
-        return STORAGE["local"]({})
-
-    default = settings.get("DEFAULT", {"STORAGE": "local"})
-    plugin_storage = settings.get("PLUGINS", {}).get(plugin, default)
-
-    return STORAGE[plugin_storage["STORAGE"]](plugin_storage)
+    return STORAGE[mode](path)

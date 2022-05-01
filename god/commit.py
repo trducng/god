@@ -1,6 +1,8 @@
 """
 Commit the data for hashing
 """
+import os
+import tempfile
 from collections import defaultdict
 from pathlib import Path
 
@@ -10,14 +12,21 @@ from god.commits.base import calculate_commit_hash
 from god.index.base import Index
 from god.plugins.utils import installed_plugins, plugin_endpoints
 from god.utils.common import get_string_hash
+from god.utils.process import communicate
 
 
-def save_dir(items: list, commit_dirs_dir: str) -> str:
+def save_dir(items: list) -> str:
     items = list(sorted(items, key=lambda obj: obj[0]))
     w = "\n".join(",".join(each) for each in items)
     h = get_string_hash(w)
-    with Path(commit_dirs_dir, h).open("w") as fo:
+
+    fd, temp_path = tempfile.mkstemp()
+    with open(temp_path, "w") as fo:
         fo.write(w)
+    print("Dirs", temp_path, h)
+    communicate(command=["god", "storages", "store-dirs"], stdin=[[temp_path, h]])
+    os.close(fd)
+    os.unlink(temp_path)
     return h
 
 
@@ -28,18 +37,18 @@ def expand_dir(dirs):
     return list(set(result))
 
 
-def store_dir(index_files_dirs: defaultdict, commit_dirs_dir):
+def store_dir(index_files_dirs: defaultdict):
     dirs = list(index_files_dirs.keys())
     dirs = expand_dir(dirs)
     h = ""
     for d in sorted(dirs, reverse=True):
-        h = save_dir(index_files_dirs[d], commit_dirs_dir)
+        h = save_dir(index_files_dirs[d])
         if d != ".":
             index_files_dirs[str(Path(d).parent)].append((Path(d).name, "d", h))
     return h
 
 
-def handle_one(name, commit_dirs_dir):
+def handle_one(name):
     index_path = plugin_endpoints(name)["index"]
     with Index(index_path) as index:
         files_info = index.get_folder(["."], get_remove=False)
@@ -52,10 +61,10 @@ def handle_one(name, commit_dirs_dir):
         # can add exe bit here
         index_files_dirs[str(fp.parent)].append((fp.name, "f", fh))
 
-    return store_dir(index_files_dirs, commit_dirs_dir)
+    return store_dir(index_files_dirs)
 
 
-def commit(user, email, message, prev_commit, commit_dir, commit_dirs_dir):
+def commit(user, email, message, prev_commit):
     """Commit from staging area
 
     # Args:
@@ -63,8 +72,6 @@ def commit(user, email, message, prev_commit, commit_dir, commit_dirs_dir):
         user_email <str>: user email address
         message <str>: commit message
         prev_commit <str>: previous commit id
-        commit_dir <str>: path to store commit
-        commit_dirs_dir <str>: path to store commit info
 
     # Returns:
         <str>: the commit hash
@@ -77,27 +84,37 @@ def commit(user, email, message, prev_commit, commit_dir, commit_dirs_dir):
         "tracks": {},
     }
 
-    commit_obj["tracks"]["files"] = handle_one("files", commit_dirs_dir)
-    commit_obj["tracks"]["configs"] = handle_one("configs", commit_dirs_dir)
-    commit_obj["tracks"]["plugins"] = handle_one("plugins", commit_dirs_dir)
+    commit_obj["tracks"]["files"] = handle_one("files")
+    commit_obj["tracks"]["configs"] = handle_one("configs")
+    commit_obj["tracks"]["plugins"] = handle_one("plugins")
 
     for plugin in installed_plugins():
-        commit_obj["tracks"][plugin] = handle_one(plugin, commit_dirs_dir)
+        commit_obj["tracks"][plugin] = handle_one(plugin)
 
     # construct commit object
     # handle plugin
     commit_hash = calculate_commit_hash(commit_obj)
-    commit_file = Path(commit_dir, commit_hash)
-    # if commit_file.is_file():
-    #     print("Commit already exists.")
-    #     # TODO: require a stricter check for "objects" & "records" because the
-    #     # commit hash will always be different because of diff in `prev_commit`
-    #     return commit_hash
+    # commit_file = Path(commit_dir, commit_hash)
+    # # if commit_file.is_file():
+    # #     print("Commit already exists.")
+    # #     # TODO: require a stricter check for "objects" & "records" because the
+    # #     # commit hash will always be different because of diff in `prev_commit`
+    # #     return commit_hash
 
-    with commit_file.open("w") as f_out:
-        yaml.dump(commit_obj, f_out)
+    # with commit_file.open("w") as f_out:
+    #     yaml.dump(commit_obj, f_out)
 
-    commit_file.chmod(0o440)
+    # commit_file.chmod(0o440)
+
+    fd, temp_path = tempfile.mkstemp()
+    with open(temp_path, "w") as fo:
+        yaml.dump(commit_obj, fo)
+    print("Commits", temp_path, commit_hash)
+    communicate(
+        command=["god", "storages", "store-commits"], stdin=[[temp_path, commit_hash]]
+    )
+    os.close(fd)
+    os.unlink(temp_path)
 
     # reconstruct index
     for name in ["files", "configs", "plugins"] + installed_plugins():
