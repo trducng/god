@@ -1,28 +1,10 @@
 import json
 import sys
-from io import TextIOWrapper
 
 import click
 
 from god.storage.commons import get_backend
-
-
-def str_stdin(x) -> str:
-    """click type check to support both `echo "string" | exe` and `exe --opt "string"`
-
-    Args:
-        x: the object passed from command line
-
-    Returns:
-        String representation
-    """
-    if isinstance(x, TextIOWrapper):
-        return x.read().strip()
-
-    if x is None:
-        return ""
-
-    return str(x)
+from god.utils.process import str_stdin_option
 
 
 @click.group()
@@ -58,7 +40,7 @@ def use(config):
 @main.command("get-objects")
 @click.option(
     "--files",
-    type=str_stdin,
+    type=str_stdin_option,
     default=sys.stdin,
     required=True,
     help="JSON format [[abspath1, hash1], [abspath2, hash2]...]",
@@ -72,7 +54,7 @@ def get_objects(ctx, files):
 @main.command("store-objects")
 @click.option(
     "--files",
-    type=str_stdin,
+    type=str_stdin_option,
     default=sys.stdin,
     required=True,
     help="JSON format [[abspath1, hash1], [abspath2, hash2]...]",
@@ -87,7 +69,7 @@ def store_objects(ctx, files):
 @main.command("have-objects")
 @click.option(
     "--files",
-    type=str_stdin,
+    type=str_stdin_option,
     default=sys.stdin,
     required=True,
     help="JSON format [hash1, hash2...]",
@@ -101,7 +83,7 @@ def have_objects(ctx, files):
 @main.command("get-dirs")
 @click.option(
     "--files",
-    type=str_stdin,
+    type=str_stdin_option,
     default=sys.stdin,
     required=True,
     help="JSON format [[abspath1, hash1], [abspath2, hash2]...]",
@@ -115,7 +97,7 @@ def get_dirs(ctx, files):
 @main.command("store-dirs")
 @click.option(
     "--files",
-    type=str_stdin,
+    type=str_stdin_option,
     default=sys.stdin,
     required=True,
     help="JSON format [[abspath1, hash1], [abspath2, hash2]...]",
@@ -130,7 +112,7 @@ def store_dirs(ctx, files):
 @main.command("have-dirs")
 @click.option(
     "--files",
-    type=str_stdin,
+    type=str_stdin_option,
     default=sys.stdin,
     required=True,
     help="JSON format [hash1, hash2...]",
@@ -144,7 +126,7 @@ def have_dirs(ctx, files):
 @main.command("get-commits")
 @click.option(
     "--files",
-    type=str_stdin,
+    type=str_stdin_option,
     default=sys.stdin,
     required=True,
     help="JSON format [[abspath1, hash1], [abspath2, hash2]...]",
@@ -158,7 +140,7 @@ def get_commits(ctx, files):
 @main.command("store-commits")
 @click.option(
     "--files",
-    type=str_stdin,
+    type=str_stdin_option,
     default=sys.stdin,
     required=True,
     help="JSON format [[abspath1, hash1], [abspath2, hash2]...]",
@@ -173,7 +155,7 @@ def store_commits(ctx, files):
 @main.command("have-commits")
 @click.option(
     "--files",
-    type=str_stdin,
+    type=str_stdin_option,
     default=sys.stdin,
     required=True,
     help="JSON format [hash1, hash2...]",

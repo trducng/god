@@ -14,7 +14,7 @@ setuptools.setup(
     url="https://github.com/johntd54/god/",
     packages=setuptools.find_packages(exclude=("tests", "tests.*")),
     install_requires=["pyyaml", "click", "rich", "tqdm"],
-    extra_requires=["ipython", "pdbpp"],
+    extra_requires=["ipython", "pdbpp", "pytest"],
     entry_points={
         "console_scripts": [
             "god=god.cli:entrypoint",

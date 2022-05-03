@@ -1,6 +1,7 @@
 import json
 import subprocess
 import sys
+from io import TextIOWrapper
 from typing import Dict, List, Union
 
 _JSON = Union[Dict, List, None]
@@ -48,3 +49,21 @@ def error(message: str, statuscode: int):
     """
     print(message, file=sys.stderr)
     sys.exit(statuscode)
+
+
+def str_stdin_option(x) -> str:
+    """click type check to support both `echo "string" | exe` and `exe --opt "string"`
+
+    Args:
+        x: the object passed from command line
+
+    Returns:
+        String representation
+    """
+    if isinstance(x, TextIOWrapper):
+        return x.read().strip()
+
+    if x is None:
+        return ""
+
+    return str(x)
