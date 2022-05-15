@@ -9,12 +9,13 @@ from rich.console import Console
 from rich.table import Table
 
 from god.records.configs import RecordsConfig
-from god.records.hooks import poststatus, preadd, prestatus
+from god.records.hooks import diff, poststatus, preadd, prestatus
 from god.records.init import init
 from god.records.operations import path_to_record_id
 from god.records.sqlite import SQLiteTable
 from god.records.update import update
 from god.records.utils import communicate, error, get_endpoints, resolve_paths
+from god.utils.process import str_stdin_option
 
 
 @click.group()
@@ -156,6 +157,16 @@ def hook_preadd_cmd():
         preadd(base_dir)
 
     print(input_)
+
+
+@hook.command("diff")
+@click.option("--changes", "changes_in", type=str_stdin_option, default=sys.stdin)
+def hook_diff_cmd(changes_in):
+    """Perform diff
+    @PRIORITY2: rewrite after prototype
+    """
+    changes = json.loads(changes_in)
+    diff(changes["add"], changes["update"], changes["remove"])
 
 
 @main.command("build")

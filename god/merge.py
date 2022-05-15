@@ -1,5 +1,41 @@
+"""
+Diff requirements:
+    - The diff should be able to show that there is a conflict. So that during merge:
+        + if there is a conflict, we will let user knows to resolve.
+        + if there isn't a conflict, we proceed with automatically building the
+        new complete entry.
+    - `god` does not know the optimal way to show diff for (1) a text file or (2) a
+    plugin.
+    - `god` does not know the optimal way to merge generally, because the diff
+    instruction can come from a single or multiple files
+    - `god` should be flexible to show diff for multiple file types -> Seems important
+    to store the diff locally, and then having each content rendered
+
+If there is a conflict, `god` will guide the user through the process of handling that
+conflict.
+
+If there is no conflict, `god` will have to be sure that it is *exactly* no conflict,
+and `god` will work with each respective plugin to handle that.
+
+Standardized format representing longest common blocks for 2 files (JSON format):
+    [
+        [(start1a, stop1a), (start1b, stop1b)],
+        [(start2a, stop2a), (start2b, stop2b)],
+        [(start3a, stop3a), (start3b, stop3b)],
+        ...
+    ]
+
+`god` shows diff on the console. `god` will by default treat every file as binary. It
+will relies on the plugin to show semantically meaningful diff. Also, it relies on the
+plugins to unfold the appropriate merge strategy. Otherwise, it will resort back to
+the default code conflict handler.
+
+@PRIORITY0: remove the "Seems important...", and put this rationale into technical
+document.
+"""
 import shutil
 from pathlib import Path
+from typing import List
 
 import yaml
 
@@ -14,6 +50,21 @@ from god.commits.compare import transform_commit
 from god.core.files import copy_hashed_objects_to_files, get_files_tst
 from god.core.index import Index
 from god.core.refs import get_ref, update_ref
+from god.utils.process import delegate
+
+
+def diff(commit1: str, commit2: str, plugins: List[str]):
+    """Show the diff between commit1 and commit2"""
+    for plugin in plugins:
+        add, remove = transform_commit(commit1, commit2, plugin)
+        update_fn = set(add.keys()).intersection(remove.keys())
+        update = {}
+        for each in update_fn:
+            update[each] = [remove.pop(each), add.pop(each)]
+        delegate(
+            ["god", plugin, "hook", "diff"],
+            stdin={"add": add, "update": update, "remove": remove},
+        )
 
 
 def merge(
@@ -45,7 +96,7 @@ def merge(
     # get commit information
     commit1 = get_ref(branch1, ref_dir)
     commit2 = get_ref(branch2, ref_dir)
-    parent_commit = get_latest_parent_commit(commit1, commit2, commit_dir)
+    parent_commit = get_latest_parent_commit(commit1, commit2)
 
     # get operations
     add_ops1, remove_ops1 = transform_commit(
@@ -174,3 +225,17 @@ def merge(
 
     if conflicts:
         shutil.rmtree(conflict_path)
+
+
+if __name__ == "__main__":
+    # diff(
+    #     commit1="d83d11f2e46e8ae88ab6c81b3f8c6e271a72bca46d81440c2d77b983be47fecb",
+    #     commit2="18bd5e9b3b096cc0aee69acadc8963f794f54db0da2a991379ef566c60f3eed9",
+    #     plugins=["records", "files"]
+    # )
+
+    diff(
+        commit1="77b95c6ca0e02bb0b01812dbaca9d4ac124ecb9df8d5cbcfb8336a663d8b82a1",
+        commit2="18bd5e9b3b096cc0aee69acadc8963f794f54db0da2a991379ef566c60f3eed9",
+        plugins=["records"],
+    )

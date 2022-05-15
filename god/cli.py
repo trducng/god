@@ -6,6 +6,7 @@ import click
 
 from god.configs.cli import main as config_cli
 from god.core.conf import settings
+from god.files.cli import main as files_cli
 from god.plugins.cli import main as plugin_cli
 from god.porcelain import (
     add_cmd,
@@ -187,6 +188,7 @@ def merge(branch):
 main.add_command(plugin_cli, "plugins")
 main.add_command(config_cli, "configs")
 main.add_command(storages_cli, "storages")
+main.add_command(files_cli, "files")
 
 
 def entrypoint():

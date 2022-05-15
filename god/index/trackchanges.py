@@ -1,5 +1,6 @@
 from collections import defaultdict
 from pathlib import Path
+from typing import List
 
 from god.core.files import (
     filter_common_parents,
@@ -53,7 +54,7 @@ def track_staging_changes(fds, index_path, base_dir):
     return add, update, remove
 
 
-def track_working_changes(fds, index_path, base_dir):
+def track_working_changes(fds: List[str], index_path, base_dir):
     """Track changes from working area compared to staging and commit area
 
     This function handles add, update and removal of existing files
@@ -87,7 +88,7 @@ def track_working_changes(fds, index_path, base_dir):
 
     fds = filter_common_parents(fds)  # list of relative directory paths to `base_dir`
 
-    files, dirs, unknowns = separate_paths_to_files_dirs(fds, base_dir)
+    files, dirs, _ = separate_paths_to_files_dirs(fds, base_dir)
     files_dirs = retrieve_files_info(files, dirs, base_dir)
 
     index_files_dirs, index_unknowns = defaultdict(list), []
@@ -120,6 +121,8 @@ def track_working_changes(fds, index_path, base_dir):
         remove_dirs = list(dirs_idx.difference(dirs))
         remain_dirs = list(dirs.intersection(dirs_idx))
 
+        # @PRIORITY2: don't neeed to iterate each file in added folder, as the get
+        # hash will be time-consuming
         for each_dir in add_dirs:
             for fn, tst in files_dirs[each_dir]:
                 add.append(

@@ -13,7 +13,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/johntd54/god/",
     packages=setuptools.find_packages(exclude=("tests", "tests.*")),
-    install_requires=["pyyaml", "click", "rich", "tqdm"],
+    install_requires=["pyyaml", "click", "rich", "tqdm", "binaryornot"],
     extra_requires=["ipython", "pdbpp", "pytest"],
     entry_points={
         "console_scripts": [

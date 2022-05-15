@@ -109,3 +109,118 @@ def preadd(base_dir: str):
     not_needed = set([_.name for _ in ldir.glob("*")]).difference(leaf_nodes)
     for each in list(not_needed):
         (ldir / each).unlink()
+
+
+def diff(add, update, remove):
+    """Perform diff
+
+    @PRIORITY2: this is prototype
+    """
+    import difflib
+    import json
+    import os
+    import tempfile
+
+    from god.utils.process import communicate
+
+    def _get_leaf_nodes(root: str, sort_keys: bool = False) -> List:
+        """Get all leaf nodes that has `root` as parent
+
+        Args:
+            root: the hash of root node
+            tree_dir: the directory storing root node and intermediate nodes
+            sort_keys: if True, sort the leaf nodes by end keys
+
+        Returns:
+            list of (leaf node hash, start key, end key), sorted by end key in increasing
+                order
+        """
+        fd1, temp_path1 = tempfile.mkstemp()
+        communicate(
+            command=["god", "storages", "get-objects"], stdin=[[temp_path1, root]]
+        )
+        # @PRIORITY2: root is the record hash, but it might not be equal to storage
+        # hash. In this test it works because record hash == god hash
+        with Path(temp_path1).open("r") as f_in:
+            child_nodes = json.load(f_in)
+        os.close(fd1)
+        os.unlink(temp_path1)
+
+        result = []
+        if isinstance(child_nodes, dict):
+            return result
+
+        for child_hash, start_key, end_key in child_nodes:
+            temp = _get_leaf_nodes(child_hash)
+            if temp:
+                result += temp
+            else:
+                result.append([child_hash, start_key, end_key])
+
+        if sort_keys:
+            result = sorted(result, key=lambda obj: obj[2])
+
+        return result
+
+    def _get_records(pointer: str) -> dict:
+        """Get records from `root`
+
+        Args:
+            root: the hash of root node
+            tree_dir: the directory storing root node and intermediate nodes
+            leaf_dir: the directory containing leaf nodes
+
+        Returns:
+            All records with format {"id": {"col": "val"}}
+        """
+        fd1, temp_path1 = tempfile.mkstemp()
+        communicate(
+            command=["god", "storages", "get-objects"], stdin=[[temp_path1, pointer]]
+        )
+        with Path(temp_path1).open("r") as f_in:
+            root = f_in.read().strip()
+        os.close(fd1)
+        os.unlink(temp_path1)
+
+        leaf_nodes = _get_leaf_nodes(root, sort_keys=True)
+
+        result = {}
+        for leaf_hash, _, _ in leaf_nodes:
+            fd1, temp_path1 = tempfile.mkstemp()
+            communicate(
+                command=["god", "storages", "get-objects"],
+                stdin=[[temp_path1, leaf_hash]],
+            )
+            with Path(temp_path1).open("r") as fi:
+                result.update(json.load(fi))
+            os.close(fd1)
+            os.unlink(temp_path1)
+
+        return result
+
+    for fn, _ in add.items():
+        fn = Path(fn)
+        if fn.name != "root":
+            continue
+        print(f"==== Add: {fn.parent.name}")
+
+    for fn, (fh1, fh2) in update.items():
+        fn = Path(fn)
+        if fn.name != "root":
+            continue
+        records1 = [
+            json.dumps({key: value}) for key, value in _get_records(fh1).items()
+        ]
+        records2 = [
+            json.dumps({key: value}) for key, value in _get_records(fh2).items()
+        ]
+        for line in difflib.unified_diff(records1, records2, fromfile=fh1, tofile=fh2):
+            print(line)
+
+    for fn, _ in remove.items():
+        fn = Path(fn)
+        if fn.name != "root":
+            continue
+        print(f"==== Remove: {fn.parent.name}")
+
+    pass

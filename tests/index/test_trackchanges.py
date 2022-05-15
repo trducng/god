@@ -112,13 +112,15 @@ def construct_test_folder(output_folder):
 
 
 class TrackChangesTest(unittest.TestCase):
-    def setUpClass():
+    @classmethod
+    def setUpClass(cls):
         """Setup a fake scenario"""
         if Path(WORKING_DIR).is_dir():
             shutil.rmtree(WORKING_DIR)
         construct_test_folder(WORKING_DIR)
 
-    def tearDownClass():
+    @classmethod
+    def tearDownClass(cls):
         if Path(WORKING_DIR).is_dir():
             shutil.rmtree(WORKING_DIR)
 

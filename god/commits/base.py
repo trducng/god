@@ -140,7 +140,6 @@ def get_latest_parent_commit(commit1, commit2):
     # Args:
         commit1 <str>: the hash of commit 1
         commit2 <str>: the hash of commit 2
-        commit_dir <str|Path>: the path to commit directory
 
     # Returns:
         <str>: commit id of parent, or None

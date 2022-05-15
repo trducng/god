@@ -235,7 +235,6 @@ def list_(system, user, local_tree, shared_tree, plugin, no_plugin, pretty):
     if plugins_setting:
         base_setting.set_values(PLUGINS=plugins_setting)
 
-    # import pdb; pdb.set_trace()
     if pretty:
         print(base_setting)
     else:

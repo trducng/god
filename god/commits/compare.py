@@ -20,8 +20,8 @@ def transform_commit(commit1, commit2, plugin="files"):
         commit2 <str>: the hash of commit 2.
 
     # Returns
-        <{}>: files newly added (recursively)
-        <{}>: files newly removed (recursively)
+        <{fn: fh}>: files newly added (recursively)
+        <{fn: fh}>: files newly removed (recursively)
     """
     files_hashes1 = (
         {} if commit1 is None else get_files_hashes_in_commit(commit1, plugin)
