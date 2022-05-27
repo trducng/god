@@ -56,7 +56,7 @@ class Index:
         cur = con.cursor()
 
         cur.execute(
-            f'CREATE TABLE main({", ".join(" ".join(each for each in COLUMNS))})'
+            f'CREATE TABLE main({", ".join(" ".join(each) for each in COLUMNS)})'
         )
         cur.execute("CREATE INDEX index_main ON main(name)")
 

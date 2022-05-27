@@ -10,4 +10,4 @@ STORAGE:
     BUCKET: "XYZ"
     PREFIX: "ABC"
 """
-DEFAULT_STORAGE = "file:///.god"
+DEFAULT_STORAGE = "file://"

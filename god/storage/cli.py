@@ -28,12 +28,16 @@ def migrate_cmd(ctx, path):
 @main.command("use")
 @click.argument("config")
 def use(config):
+    from pathlib import Path
+
+    from god.core.common import get_base_dir
     from god.utils.constants import FILE_LINK
 
-    with open(FILE_LINK, "r") as fi:
+    file_link = Path(get_base_dir(), FILE_LINK)
+    with file_link.open("r") as fi:
         data = json.load(fi)
     data["STORAGE"] = config
-    with open(FILE_LINK, "w") as fo:
+    with file_link.open("w") as fo:
         json.dump(data, fo)
 
 

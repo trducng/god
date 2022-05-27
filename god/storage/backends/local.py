@@ -147,8 +147,8 @@ class LocalStorage(BaseStorage):
     def delete_commits(self, hash_values: List[str]):
         return self._delete(self._commit_path, hash_values)
 
-    def comits_exist(self, hash_values: List[str]) -> List[bool]:
+    def have_commits(self, hash_values: List[str]) -> List[bool]:
         return self._have(self._commit_path, hash_values)
 
-    def have_commits(self) -> List[str]:
+    def list_commits(self) -> List[str]:
         return self._list(self._commit_path)

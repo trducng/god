@@ -1,6 +1,5 @@
 """Inititate the repo"""
 import json
-import subprocess
 from pathlib import Path
 
 import god.utils.constants as c
@@ -58,7 +57,7 @@ def init(path):
     # Create file
     with Path(path, c.FILE_HEAD).open("w") as f_out:
         json.dump({"REFS": "main"}, f_out)
-    subprocess.run(["god-index", "build", "files"])
+    create_blank_index("files")
 
     # Setup configs
     working_dir = construct_working_directory("configs")
