@@ -6,8 +6,9 @@ COLUMNS = [
     ("mloc", "text"),
     ("remove", "integer"),
     ("mtime", "real"),
-    # ("exe", "real"),
+    ("exe", "real"),
     ("ignore", "integer"),
+    ("conflict", "text"),
 ]
 
 

@@ -179,10 +179,24 @@ def checkout(branch, new):
 
 @main.command("merge")
 @click.argument("branch")
-def merge(branch):
+@click.option(
+    "--include",
+    "-i",
+    type=str,
+    multiple=True,
+    help="Plugins that will be included in the merge in case of inconsistency",
+)
+@click.option(
+    "--exclude",
+    "-e",
+    type=str,
+    multiple=True,
+    help="Plugins that will be excluded in the merge in case of inconsistency",
+)
+def merge(branch, include, exclude):
     """Merge current branch to branch BRANCH"""
     settings.set_global_settings()
-    merge_cmd(branch)
+    merge_cmd(branch, include=include, exclude=exclude)
 
 
 main.add_command(plugin_cli, "plugins")

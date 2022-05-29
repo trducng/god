@@ -33,9 +33,8 @@ the default code conflict handler.
 @PRIORITY0: remove the "Seems important...", and put this rationale into technical
 document.
 """
-import shutil
 from pathlib import Path
-from typing import List
+from typing import Dict, List, Tuple
 
 import yaml
 
@@ -45,12 +44,12 @@ from god.branches.conflicts import (
     verify_conflict_resolution,
 )
 from god.commit import commit
-from god.commits.base import get_latest_parent_commit
+from god.commits.base import get_latest_parent_commit, read_commit
 from god.commits.compare import transform_commit
-from god.core.files import copy_hashed_objects_to_files, get_files_tst
+from god.core.files import get_files_tst
 from god.core.index import Index
 from god.core.refs import get_ref, update_ref
-from god.utils.process import delegate
+from god.utils.process import communicate, delegate
 
 
 def diff(commit1: str, commit2: str, plugins: List[str]):
@@ -67,17 +66,59 @@ def diff(commit1: str, commit2: str, plugins: List[str]):
         )
 
 
+def check_merge_plugins(
+    commit_obj1: Dict,  # our commit object
+    commit_obj2: Dict,  # their commit object
+    commit_obj_parent: Dict,  # shared parrent commit object
+) -> Tuple[List[str], List[str]]:
+    """Check for inconsistent plugins in a 3-way merge
+
+    A plugin becomes inconsistent when it is removed in 1 branch, and updated in
+    another. When a plugin is inconsistent, it's unclear whether the resulting merged
+    commit should contain that plugin or not.
+
+    Args:
+        commit_obj1: our commit object
+        commit_obj2: their commit object
+        commot_obj_parent: shared parrent commit object
+
+    Returns:
+        List[str]: shared valid plugins
+        List[str]: inconsistent plugins
+    """
+    plugins1 = set(commit_obj1["tracks"].keys())
+    plugins2 = set(commit_obj2["tracks"].keys())
+    parent_plugins = set(commit_obj_parent["tracks"].keys())
+
+    removed_plugins1 = parent_plugins.difference(plugins1)
+    removed_plugins2 = parent_plugins.difference(plugins2)
+
+    updated_plugins1 = [
+        each
+        for each in list(parent_plugins.intersection(plugins1))
+        if commit_obj1["tracks"][each] != commit_obj_parent["tracks"][each]
+    ]
+    updated_plugins2 = [
+        each
+        for each in list(parent_plugins.intersection(plugins2))
+        if commit_obj1["tracks"][each] != commit_obj_parent["tracks"][each]
+    ]
+
+    inconsistence = removed_plugins1.intersection(updated_plugins2)
+    inconsistence.update(removed_plugins2.intersection(updated_plugins1))
+
+    return list(plugins1.union(plugins2).difference(inconsistence)), list(inconsistence)
+
+
 def merge(
     branch1,
     branch2,
     ref_dir,
-    commit_dir,
-    commit_dirs_dir,
-    index_path,
-    obj_dir,
     base_dir,
     user,
     email,
+    include,
+    exclude,
 ):
     """Pull changes from `branch2` to `branch1`
 
@@ -85,108 +126,92 @@ def merge(
         branch1 <str>: the name of source branch
         branch2 <str>: the name of target branch to pull from
         ref_dir <str>: the path to refs directory
-        commit_dir <str|Path>: the path to commit directory
-        commit_dirs_dir <str|Path>: the path to dirs directory
-        index_path <str>: the path to index file
-        obj_dir <str>: the path to directory containing object hashes
         base_dir <str>: the repository directory
         user <str>: the commiter username
         email <str>: the committer email
     """
-    # get commit information
+    # get 3-way commit information
     commit1 = get_ref(branch1, ref_dir)
     commit2 = get_ref(branch2, ref_dir)
     parent_commit = get_latest_parent_commit(commit1, commit2)
+    if not parent_commit:
+        raise RuntimeError(
+            f'No shared history between branches "{branch1}" and "{branch2}"'
+        )
+    commit_obj1, commit_obj2 = read_commit(commit1), read_commit(commit2)
+    commit_obj_parent = read_commit(parent_commit)
 
-    # get operations
-    add_ops1, remove_ops1 = transform_commit(
-        parent_commit, commit1, commit_dir, commit_dirs_dir
+    # collect plugins
+    plugins, inconsistence = check_merge_plugins(
+        commit_obj1, commit_obj2, commit_obj_parent
     )
-    add_ops2, remove_ops2 = transform_commit(
-        parent_commit, commit2, commit_dir, commit_dirs_dir
-    )
+    inconsistence = set(inconsistence).difference(include).difference(exclude)
+    if inconsistence:
+        raise RuntimeError(
+            f"Inconsistent used plugins: {inconsistence}. "
+            "Please use --include and --exclude to specify plugins to use in the "
+            "merged commit."
+        )
+    plugins = list(set(plugins).union(include))
 
-    # check for conflicts
-    fp_add_ops1, fp_remove_ops1 = set(add_ops1.keys()), set(remove_ops1.keys())
-    fp_add_ops2, fp_remove_ops2 = set(add_ops2.keys()), set(remove_ops2.keys())
-    conflicts = []
-
-    for fp in list(fp_add_ops1.intersection(fp_add_ops2)):
-        # both commit add/edit the same file
-        conflicts.append((fp, "+", add_ops1[fp], "+", add_ops2[fp]))
-    for fp in list(fp_add_ops1.intersection(fp_remove_ops2.difference(fp_add_ops2))):
-        # our commit adds, while the other removes
-        conflicts.append((fp, "+", add_ops1[fp], "-", remove_ops2[fp]))
-    for fp in list(fp_add_ops2.intersection(fp_remove_ops1.difference(fp_add_ops1))):
-        # our commit removes, while the other adds
-        conflicts.append((fp, "-", remove_ops1[fp], "+", add_ops2[fp]))
-
-    # handle conflict resolution
-    if conflicts:
-        conflict_dir = get_conflict_dir(commit1, commit2)
-        conflict_path = Path(base_dir, conflict_dir)
-
-        if not conflict_path.exists():
-            # if there are no conflict reso folder
-            create_conflict_dir(conflicts, conflict_dir, obj_dir, base_dir)
-            print(f"Conflict data is saved in {conflict_path}. Please resolve.")
-            print("Run `god merge <branch>` again after resolution to continue.")
-            return
-
-        # read conflict reso folder
-        with (conflict_path / "conflicts.yml").open("r") as f_in:
-            conflict_resolution = yaml.safe_load(f_in)
-
-        # verify if it satisfy
-        add_ops2, remove_ops2 = verify_conflict_resolution(
-            conflict_resolution,
-            conflicts,
-            commit1,
-            commit2,
-            commit_dir,
-            commit_dirs_dir,
-            add_ops2,
-            remove_ops2,
+    has_conflict = False
+    for plugin in plugins:
+        # get operations
+        add_ops1, remove_ops1 = transform_commit(
+            parent_commit, commit1, plugin  # @PRIORITY0
+        )
+        add_ops2, remove_ops2 = transform_commit(
+            parent_commit, commit2, plugin  # @PRIORITY0
         )
 
-        # Possible representation: construct a stand-alone, reserved folder
-        # Each conflict is represented as a text file (e.g. 1 - fn)
-        # . orihash - name
-        # +/- our hash (or empty if -)
-        # name1 (if change name)
-        # +/- their hash (or empty if -)
-        # name2 (if change name)
+        # check for conflicts
+        fp_add_ops1, fp_remove_ops1 = set(add_ops1.keys()), set(remove_ops1.keys())
+        fp_add_ops2, fp_remove_ops2 = set(add_ops2.keys()), set(remove_ops2.keys())
+        conflicts = []
 
-        # The conflict resolution should be written in an extensible manner
-        # because of the large amount of filetypes, and you want to present
-        # these conflicts in a way that users can tell the difference.
-        # and then, they can pick the ones on the left, or on the right, or both, and
-        # if both, how to change the filename appropriately.
+        for fp in list(fp_add_ops1.intersection(fp_add_ops2)):
+            # both commit add/edit the same file
+            conflicts.append((fp, "+", add_ops1[fp], "+", add_ops2[fp]))
+        for fp in list(
+            fp_add_ops1.intersection(fp_remove_ops2.difference(fp_add_ops2))
+        ):
+            # our commit adds, while the other removes
+            conflicts.append((fp, "+", add_ops1[fp], "-", remove_ops2[fp]))
+        for fp in list(
+            fp_add_ops2.intersection(fp_remove_ops1.difference(fp_add_ops1))
+        ):
+            # our commit removes, while the other adds
+            conflicts.append((fp, "-", remove_ops1[fp], "+", add_ops2[fp]))
 
-        # Conflict resolution is an independent process. When there is a conflict,
-        # layout the `.god` in a way that independent script can support resolution.
-        # After that, when the conflict is resolved, the `commit` can pick up
-        # and finish
+        # handle conflict resolution, show this inside the `index` file
+        if conflicts:
+            conflict_dir = get_conflict_dir(commit1, commit2)
+            conflict_path = Path(base_dir, conflict_dir)
 
-        # Also, the conflict resolution should be extensible because there can be
-        # conflicted text file, which is natural to support vim-like conflict
-        # resolution mechanism
+            if not conflict_path.exists():
+                # if there are no conflict reso folder
+                create_conflict_dir(conflicts, conflict_dir, obj_dir, base_dir)
+                print(f"Conflict data is saved in {conflict_path}. Please resolve.")
+                print("Run `god merge <branch>` again after resolution to continue.")
+                return
 
-        # The solution should be file-type independent, there can be numpy, npz...
-        # conflict files
+            # read conflict reso folder
+            with (conflict_path / "conflicts.yml").open("r") as f_in:
+                conflict_resolution = yaml.safe_load(f_in)
 
-        # Autocomplete, local WebUI, or interactive terminal is a good option for this
-
-        # Good source:
-        # https://docs.github.com/en/github/managing-files-in-a-repository/working-with-non-code-files
-        # https://github.com/ewanmellor/git-diff-image/blob/master/diff-image
-        # think about it, vimdiff is just something that takes a git conflict
-        # output, render it, and organize by itself in a way that allow for conflict
-        # resolution
-        # Sound: ffplay -nodisp harry.mp3
-        # Video: DISPLAY= mplayer -quiet -vo caca pirates.mp4
-        # Over ssh: ssh x@y cat file.mp4 | mplayer -quiet -vo caca -
-        # https://www.systutorials.com/mplayer-over-ssh-to-play-movie-from-remote-host/
+            # verify if it satisfy
+            add_ops2, remove_ops2 = verify_conflict_resolution(
+                conflict_resolution,
+                conflicts,
+                commit1,
+                commit2,
+                commit_dir,
+                commit_dirs_dir,
+                add_ops2,
+                remove_ops2,
+            )
+    if has_conflict:
+        raise RuntimeError("Conflict, please resolve")
 
     # without conflict, apply the change of `branch2` to `branch1`
     # remove files
@@ -197,9 +222,13 @@ def merge(
 
     # add files
     # add = [(fp, fh) for fp, fh in add_ops2.items() if fp not in skips]
-    add = [(fp, fh) for fp, fh in add_ops2.items()]
-    copy_hashed_objects_to_files(add, obj_dir, base_dir)
+    add = [(str(Path(base_dir, fp)), fh) for fp, fh in add_ops2.items()]
+    if add:
+        communicate(command=["god", "storages", "get-objects"], stdin=add)
 
+    import pdb
+
+    pdb.set_trace()
     # construct index
     add_fps = list(add_ops2.keys())
     add_fhs = list(add_ops2.values())
@@ -216,15 +245,10 @@ def merge(
         email=email,
         message=f"Merge from {branch2} to {branch1}",
         prev_commit=[commit1, commit2],
-        index_path=index_path,
-        commit_dir=commit_dir,
-        commit_dirs_dir=commit_dirs_dir,
     )
 
     update_ref(branch1, current_commit, ref_dir)
-
-    if conflicts:
-        shutil.rmtree(conflict_path)
+    return current_commit
 
 
 if __name__ == "__main__":

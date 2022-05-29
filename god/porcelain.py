@@ -17,7 +17,7 @@ from god.checkout import (
 from god.commit import commit
 from god.commits.base import read_commit
 from god.core.add import add
-from god.core.conf import read_local_config, settings
+from god.core.conf import settings
 from god.core.head import read_HEAD
 from god.core.refs import get_ref, is_ref, update_ref
 from god.core.status import status
@@ -221,23 +221,20 @@ def reset_cmd(head_past, hard=False):
     )
 
 
-def merge_cmd(branch):
+def merge_cmd(branch, include, exclude):
     """Perform a merge operation
 
     # Args:
         branch <str>: name of the branch
     """
     refs, commit1 = read_HEAD(settings.FILE_HEAD)
-    config = read_local_config(settings.FILE_LOCAL_CONFIG)
     merge(
         refs,
         branch,
         settings.DIR_REFS_HEADS,
-        settings.DIR_COMMITS,
-        settings.DIR_COMMITS_DIRECTORY,
-        settings.FILE_INDEX,
-        settings.DEFAULT_DIR_OBJECTS,
         settings.DIR_BASE,
-        user=config.USER.NAME,
-        email=config.USER.EMAIL,
+        user="some email",  # @PRIORITY0
+        email="some password",
+        include=include,
+        exclude=exclude,
     )

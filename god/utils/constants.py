@@ -16,5 +16,4 @@ DIR_REFS_HEADS = str(Path(DIR_REFS, "heads"))
 FILE_HEAD = str(Path(DIR_GOD, "HEAD"))
 FILE_INDEX = str(Path(DIR_GOD, "index"))
 FILE_CONFIG = "godconfig"
-FILE_LOCAL_CONFIG = str(Path(DIR_GOD, FILE_CONFIG))
 FILE_LINK = str(Path(DIR_GOD, "links"))

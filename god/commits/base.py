@@ -134,15 +134,15 @@ def exists_in_commit(files, commit_id, commit_dir, commit_dirs_dir):
     return exists
 
 
-def get_latest_parent_commit(commit1, commit2):
+def get_latest_parent_commit(commit1: str, commit2: str) -> str:
     """Get parrent commit of both commit1 and commit2
 
     # Args:
-        commit1 <str>: the hash of commit 1
-        commit2 <str>: the hash of commit 2
+        commit1: the hash of commit 1
+        commit2: the hash of commit 2
 
     # Returns:
-        <str>: commit id of parent, or None
+        <str>: commit id of parent, or empty string if there's no shared parent commit
     """
     to_check = queue.Queue()
     to_check.put(commit1)
@@ -152,8 +152,8 @@ def get_latest_parent_commit(commit1, commit2):
     while not to_check.empty():
         commit_id = to_check.get()
 
-        if commit_id is None:
-            return
+        if commit_id == "":
+            continue
 
         if commit_id in checked:
             return commit_id
@@ -163,8 +163,11 @@ def get_latest_parent_commit(commit1, commit2):
         if isinstance(commit_obj["prev"], (list, tuple)):
             for _ in commit_obj["prev"]:
                 to_check.put(_)
-        else:
+        elif isinstance(commit_obj["prev"], str) and commit_obj["prev"]:
             to_check.put(commit_obj["prev"])
+
+    # no commit
+    return ""
 
 
 def is_commit(start, commit_dir):

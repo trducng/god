@@ -162,11 +162,6 @@ class Settings(object):
         if project_config.exists():
             self.set_values_from_yaml(project_config)
 
-        # set the project-local-level settings
-        project_config = Path(dir_base, c.FILE_LOCAL_CONFIG)
-        if project_config.exists():
-            self.set_values_from_yaml(project_config)
-
         # set the params settings
         for key, value in kwargs.items():
             if key in self._PARAM_ALLOWED_SETTINGS:

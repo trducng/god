@@ -225,7 +225,7 @@ class Index:
             "SELECT * FROM main WHERE mhash IS NOT NULL"
         ).fetchall()
         # @RUSH: the `items` below doesn't have exe
-        for name, _, mhash, _, mloc, _, _, _ in items:
+        for name, _, mhash, _, mloc, _, _, _, _, _ in items:
             self.cur.execute(
                 f"UPDATE main SET hash='{mhash}', mhash=NULL, loc='{mloc}', mloc=NULL WHERE name='{name}'"
             )

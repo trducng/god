@@ -91,11 +91,11 @@ def restore_working_one(fds, index_path, base_dir):
             (str(Path(base_dir, each[iname])), each[imloc] or each[iloc])
             for each in index.get_files(names=restore, get_remove=False, not_in=False)
         ]
-        from god.storage.backends.local import LocalStorage
+        from god.storage.commons import get_backend
 
-        ls = LocalStorage({})
-        for file_path, hash_value in restore_hashes:
-            ls.get_file(hash_value=hash_value, file_path=file_path)
+        ls = get_backend()
+        file_path, hash_value = zip(*restore_hashes)
+        ls.get_objects(list(hash_value), list(file_path))
         # tsts = get_files_tst(restore, base_dir)
         # index.update(reset_tst=list(zip(restore, tsts)))
 
