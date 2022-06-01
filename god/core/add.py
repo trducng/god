@@ -81,18 +81,14 @@ def _add(fds: List[str], base_dir: str, index_name: str, hooks: Dict[str, List[s
         # assume that add_ and update_ will change
         for idx, (_, path) in enumerate(add_):
             with open(path, "rb") as fi:
-                add[idx].append(sha256(fi.read()).hexdigest())
                 new_objs.append([path, add[idx][-1]])
         for idx, (_, path) in enumerate(update_):
             with open(path, "rb") as fi:
-                update[idx].append(sha256(fi.read()).hexdigest())
                 new_objs.append([path, update[idx][-1]])
     else:
         for idx, item in enumerate(add):
-            item.append(item[1])
             new_objs.append([add_[idx][1], item[1]])
         for idx, item in enumerate(update):
-            item.append(item[1])
             new_objs.append([update_[idx][1], item[1]])
 
     # new_objs = [[e[1], e[0]] for e in add_ + update_]     # [path, hash]

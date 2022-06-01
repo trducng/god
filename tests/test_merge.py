@@ -1,7 +1,7 @@
 """Test merge"""
 import unittest
 
-from god.merge import check_merge_plugins
+from god.merge import are_plugins_valid_for_merge
 
 
 def _fake_commit(**kwargs):
@@ -18,7 +18,7 @@ class CheckMergePluginsTest(unittest.TestCase):
         commit1 = _fake_commit(files="commit_obj1-hash")
         commit2 = _fake_commit(files="commit_obj2-hash")
 
-        valid, invalid = check_merge_plugins(commit1, commit2, commitp)
+        valid, invalid = are_plugins_valid_for_merge(commit1, commit2, commitp)
         self.assertEqual(valid, ["files"])
         self.assertEqual(len(invalid), 0)
 
@@ -28,7 +28,7 @@ class CheckMergePluginsTest(unittest.TestCase):
         commit1 = _fake_commit(files="commit_obj1-hash", plug1="plug1")
         commit2 = _fake_commit(files="commit_obj2-hash", plug2="plug2")
 
-        valid, invalid = check_merge_plugins(commit1, commit2, commitp)
+        valid, invalid = are_plugins_valid_for_merge(commit1, commit2, commitp)
         self.assertCountEqual(valid, ["files", "plug1", "plug2"])
         self.assertEqual(len(invalid), 0)
 
@@ -38,6 +38,6 @@ class CheckMergePluginsTest(unittest.TestCase):
         commit1 = _fake_commit(files="commit1-hash")
         commit2 = _fake_commit(config="files-not-exist")
 
-        valid, invalid = check_merge_plugins(commit1, commit2, commitp)
+        valid, invalid = are_plugins_valid_for_merge(commit1, commit2, commitp)
         self.assertEqual(invalid, ["files"])
         self.assertEqual(valid, ["config"])

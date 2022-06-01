@@ -40,7 +40,7 @@ def track_staging_changes(fds, index_path, base_dir):
 
     with Index(index_path) as index:
         for fd in fds:
-            result = index.get_folder(names=[fd], get_remove=True)
+            result = index.get_folder(names=[fd], get_remove=True, conflict=False)
             for entry in result:
                 if entry[iremove]:  # marked as removed
                     if entry[ihash]:
@@ -101,7 +101,7 @@ def track_working_changes(fds: List[str], index_path, base_dir):
 
     with Index(index_path) as index:
         for fd in fds:
-            result = index.get_folder(names=[fd], get_remove=False)
+            result = index.get_folder(names=[fd], get_remove=False, conflict=False)
             if not result:  # not exist
                 index_unknowns.append(fd)
                 continue

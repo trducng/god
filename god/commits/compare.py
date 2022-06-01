@@ -1,8 +1,12 @@
-from god.commits.base import get_files_hashes_in_commit
+from typing import Dict, Tuple, Union
+
+from god.commits.base import get_files_hashes_in_commit_dir, read_commit
 from god.core.files import compare_files_states
 
 
-def transform_commit(commit1, commit2, plugin="files"):
+def transform_commit_obj(
+    commit_obj1: Union[Dict, None], commit_obj2: Dict, plugin: str = "files"
+) -> Tuple[Dict, Dict]:
     """Get add and remove operations to transform from state1 to state2
 
     The files from state1 to state2 are as follow:
@@ -24,8 +28,25 @@ def transform_commit(commit1, commit2, plugin="files"):
         <{fn: fh}>: files newly removed (recursively)
     """
     files_hashes1 = (
-        {} if commit1 is None else get_files_hashes_in_commit(commit1, plugin)
+        {}
+        if commit_obj1 is None
+        else get_files_hashes_in_commit_dir(commit_obj1["tracks"][plugin], prefix=".")
     )
-    files_hashes2 = get_files_hashes_in_commit(commit2, plugin)
+    files_hashes2 = get_files_hashes_in_commit_dir(
+        commit_obj2["tracks"][plugin], prefix="."
+    )
 
     return compare_files_states(files_hashes1, files_hashes2)
+
+
+def transform_commit_id(
+    commit_id1: Union[str, None], commit_id2: str, plugin: str = "files"
+) -> Tuple[Dict, Dict]:
+    """Get add and remove operations to transform from commit_id1 to commit_id2"""
+    commit_obj1: Union[None, Dict] = None
+    if isinstance(commit_id1, str):
+        commit_obj1 = read_commit(commit_id1)
+
+    commit_obj2 = read_commit(commit_id2)
+
+    return transform_commit_obj(commit_obj1, commit_obj2, plugin)

@@ -232,7 +232,6 @@ def merge_cmd(branch, include, exclude):
         refs,
         branch,
         settings.DIR_REFS_HEADS,
-        settings.DIR_BASE,
         user="some email",  # @PRIORITY0
         email="some password",
         include=include,

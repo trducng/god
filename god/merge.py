@@ -45,17 +45,19 @@ from god.branches.conflicts import (
 )
 from god.commit import commit
 from god.commits.base import get_latest_parent_commit, read_commit
-from god.commits.compare import transform_commit
+from god.commits.compare import transform_commit_id, transform_commit_obj
 from god.core.files import get_files_tst
-from god.core.index import Index
 from god.core.refs import get_ref, update_ref
+from god.index.base import Index
+from god.index.utils import column_index
+from god.plugins.utils import plugin_endpoints
 from god.utils.process import communicate, delegate
 
 
 def diff(commit1: str, commit2: str, plugins: List[str]):
     """Show the diff between commit1 and commit2"""
     for plugin in plugins:
-        add, remove = transform_commit(commit1, commit2, plugin)
+        add, remove = transform_commit_id(commit1, commit2, plugin)
         update_fn = set(add.keys()).intersection(remove.keys())
         update = {}
         for each in update_fn:
@@ -66,7 +68,7 @@ def diff(commit1: str, commit2: str, plugins: List[str]):
         )
 
 
-def check_merge_plugins(
+def are_plugins_valid_for_merge(
     commit_obj1: Dict,  # our commit object
     commit_obj2: Dict,  # their commit object
     commit_obj_parent: Dict,  # shared parrent commit object
@@ -110,16 +112,126 @@ def check_merge_plugins(
     return list(plugins1.union(plugins2).difference(inconsistence)), list(inconsistence)
 
 
+def merge_plugin(
+    our_commit: Dict,
+    their_commit: Dict,
+    parent_commit: Dict,
+    plugin: str,
+    index_path: str,
+    track_dir: str,
+) -> List[str]:
+    """Perform a three-way merge for a plugin
+
+    Returns:
+        List[str]: list of conflicted files
+    """
+    # check for unresolved conflict entries
+    with Index(index_path) as index:
+        col_name, col_mhash = column_index("name"), column_index("mhash")
+        current_conflicts = [
+            each[col_name]
+            for each in index.get_folder(names=["."], get_remove=False, conflict=True)
+            if not each[col_mhash]
+        ]
+        if current_conflicts:
+            return current_conflicts
+
+    import pdb
+
+    pdb.set_trace()
+    # get operations
+    add_ops1, remove_ops1 = transform_commit_obj(
+        parent_commit, our_commit, plugin  # @PRIORITY0: should reuse commit obj
+    )
+    add_ops2, remove_ops2 = transform_commit_obj(
+        parent_commit, their_commit, plugin  # @PRIORITY0
+    )
+
+    # check for conflicts
+    fp_add_ops1, fp_remove_ops1 = set(add_ops1.keys()), set(remove_ops1.keys())
+    fp_add_ops2, fp_remove_ops2 = set(add_ops2.keys()), set(remove_ops2.keys())
+
+    # update the working directory and index for valid files in the plugin
+    valid_remove = list(fp_remove_ops2.difference(fp_add_ops2).difference(fp_add_ops1))
+    for fp in valid_remove:
+        Path(track_dir, fp).unlink()
+    if valid_remove:
+        with Index(index_path) as index:
+            index.delete(items=valid_remove, staged=True)
+
+    valid_add = [
+        (fp, add_ops2[fp])
+        for fp in list(
+            fp_add_ops2.difference(fp_remove_ops2).difference(
+                fp_remove_ops1.difference(fp_add_ops1)
+            )
+        )
+    ]
+    if valid_add:
+        communicate(command=["god", "storages", "get-objects"], stdin=valid_add)
+        tsts = get_files_tst([_[0] for _ in valid_add], track_dir)
+        with Index(index_path) as index:
+            index.add(
+                items=[
+                    (valid_add[_][0], valid_add[_][1], tsts[_])
+                    for _ in range(len(tsts))
+                ],
+                staged=True,
+            )
+
+    valid_update = [
+        (fp, add_ops2[fp])
+        for fp in list(
+            fp_add_ops2.intersection(fp_remove_ops2)  # updated in #2
+            .difference(fp_remove_ops1)
+            .difference(fp_add_ops1)  # untouched in #1
+        )
+    ]
+    if valid_update:
+        communicate(command=["god", "storages", "get-objects"], stdin=valid_update)
+        tsts = get_files_tst([_[0] for _ in valid_update], track_dir)
+        with Index(index_path) as index:
+            index.update(
+                items=[
+                    (valid_update[_][0], valid_update[_][1], tsts[_])
+                    for _ in range(len(tsts))
+                ]
+            )
+
+    # look for conflicts
+    conflicts = {}
+    for fp in list(fp_add_ops1.intersection(fp_add_ops2)):
+        # both commit add/edit the same file
+        conflicts[fp] = add_ops2[fp]
+    for fp in list(fp_add_ops1.intersection(fp_remove_ops2.difference(fp_add_ops2))):
+        # our commit adds, while the other removes
+        conflicts[fp] = ""
+    for fp in list(fp_add_ops2.intersection(fp_remove_ops1.difference(fp_add_ops1))):
+        # our commit removes, while the other adds
+        conflicts[fp] = add_ops2[fp]
+
+    # handle conflict resolution, show this inside the `index` file
+    if conflicts:
+        # update the conflict information to the index
+        with Index(index_path) as index:
+            index.conflict(items=conflicts)
+
+        # TODO: send the conflict information to respective plugin
+
+        # TODO: check index validity
+
+    return list(conflicts.keys())
+
+
 def merge(
     branch1,
     branch2,
     ref_dir,
-    base_dir,
     user,
     email,
     include,
     exclude,
-):
+) -> str:
     """Pull changes from `branch2` to `branch1`
 
     # Args:
@@ -142,7 +254,7 @@ def merge(
     commit_obj_parent = read_commit(parent_commit)
 
     # collect plugins
-    plugins, inconsistence = check_merge_plugins(
+    plugins, inconsistence = are_plugins_valid_for_merge(
         commit_obj1, commit_obj2, commit_obj_parent
     )
     inconsistence = set(inconsistence).difference(include).difference(exclude)
@@ -154,91 +266,23 @@ def merge(
         )
     plugins = list(set(plugins).union(include))
 
-    has_conflict = False
+    # run merge for each plugin
+    has_conflicts = False
     for plugin in plugins:
-        # get operations
-        add_ops1, remove_ops1 = transform_commit(
-            parent_commit, commit1, plugin  # @PRIORITY0
-        )
-        add_ops2, remove_ops2 = transform_commit(
-            parent_commit, commit2, plugin  # @PRIORITY0
-        )
-
-        # check for conflicts
-        fp_add_ops1, fp_remove_ops1 = set(add_ops1.keys()), set(remove_ops1.keys())
-        fp_add_ops2, fp_remove_ops2 = set(add_ops2.keys()), set(remove_ops2.keys())
-        conflicts = []
-
-        for fp in list(fp_add_ops1.intersection(fp_add_ops2)):
-            # both commit add/edit the same file
-            conflicts.append((fp, "+", add_ops1[fp], "+", add_ops2[fp]))
-        for fp in list(
-            fp_add_ops1.intersection(fp_remove_ops2.difference(fp_add_ops2))
+        if plugin != "files":  # PRIORITY0: remove this debug
+            continue
+        endpoints = plugin_endpoints(plugin)
+        if merge_plugin(
+            our_commit=commit_obj1,
+            their_commit=commit_obj2,
+            parent_commit=commit_obj_parent,
+            plugin=plugin,
+            index_path=endpoints["index"],
+            track_dir=endpoints["tracks"],
         ):
-            # our commit adds, while the other removes
-            conflicts.append((fp, "+", add_ops1[fp], "-", remove_ops2[fp]))
-        for fp in list(
-            fp_add_ops2.intersection(fp_remove_ops1.difference(fp_add_ops1))
-        ):
-            # our commit removes, while the other adds
-            conflicts.append((fp, "-", remove_ops1[fp], "+", add_ops2[fp]))
-
-        # handle conflict resolution, show this inside the `index` file
-        if conflicts:
-            conflict_dir = get_conflict_dir(commit1, commit2)
-            conflict_path = Path(base_dir, conflict_dir)
-
-            if not conflict_path.exists():
-                # if there are no conflict reso folder
-                create_conflict_dir(conflicts, conflict_dir, obj_dir, base_dir)
-                print(f"Conflict data is saved in {conflict_path}. Please resolve.")
-                print("Run `god merge <branch>` again after resolution to continue.")
-                return
-
-            # read conflict reso folder
-            with (conflict_path / "conflicts.yml").open("r") as f_in:
-                conflict_resolution = yaml.safe_load(f_in)
-
-            # verify if it satisfy
-            add_ops2, remove_ops2 = verify_conflict_resolution(
-                conflict_resolution,
-                conflicts,
-                commit1,
-                commit2,
-                commit_dir,
-                commit_dirs_dir,
-                add_ops2,
-                remove_ops2,
-            )
-    if has_conflict:
-        raise RuntimeError("Conflict, please resolve")
-
-    # without conflict, apply the change of `branch2` to `branch1`
-    # remove files
-    for fp in remove_ops2.keys():
-        # if fp in skips:
-        #     continue
-        Path(base_dir, fp).unlink()
-
-    # add files
-    # add = [(fp, fh) for fp, fh in add_ops2.items() if fp not in skips]
-    add = [(str(Path(base_dir, fp)), fh) for fp, fh in add_ops2.items()]
-    if add:
-        communicate(command=["god", "storages", "get-objects"], stdin=add)
-
-    import pdb
-
-    pdb.set_trace()
-    # construct index
-    add_fps = list(add_ops2.keys())
-    add_fhs = list(add_ops2.values())
-    tsts = get_files_tst(add_fps, base_dir)
-
-    with Index(index_path) as index:
-        index.update(
-            new_entries=list(zip(add_fps, add_fhs, tsts)),
-            delete=list(remove_ops2.keys()),
-        )
+            has_conflicts = True
+    if has_conflicts:
+        raise RuntimeError(f"Has conflicts")
 
     current_commit = commit(
         user=user,

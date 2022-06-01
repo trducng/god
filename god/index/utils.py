@@ -2,8 +2,6 @@ COLUMNS = [
     ("name", "text"),
     ("hash", "text"),
     ("mhash", "text"),
-    ("loc", "text"),
-    ("mloc", "text"),
     ("remove", "integer"),
     ("mtime", "real"),
     ("exe", "real"),

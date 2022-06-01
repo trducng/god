@@ -138,12 +138,13 @@ def get_files(name: str, names_in: str, get_remove: bool, not_in: bool):
 @click.argument("name", type=str)
 @click.option("--names", "names_in", type=str_stdin_option, default=sys.stdin)
 @click.option("--get-remove", is_flag=True, default=False)
-def get_folder(name: str, names_in: str, get_remove: bool):
+@click.option("--conflict", is_flag=True, default=False)
+def get_folder(name: str, names_in: str, get_remove: bool, conflict: bool):
     """Get entries as folder"""
     index_path = get_index_path_temp(name)
     names = json.loads(names_in)
     with Index(index_path) as index:
-        result = index.get_folder(names=names, get_remove=get_remove)
+        result = index.get_folder(names=names, get_remove=get_remove, conflict=conflict)
     print(json.dumps(result))
 
 

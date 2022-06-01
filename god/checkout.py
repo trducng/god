@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import List
 
 from god.commits.base import read_commit
-from god.commits.compare import transform_commit
+from god.commits.compare import transform_commit_id
 from god.core.files import get_files_tst
 from god.core.head import read_HEAD, update_HEAD
 from god.core.refs import get_ref, update_ref
@@ -83,12 +83,12 @@ def restore_working_one(fds, index_path, base_dir):
 
     restore = [_[0] for _ in update] + remove
     iname = column_index("name")
-    iloc = column_index("loc")
-    imloc = column_index("mloc")
+    ihash = column_index("hash")
+    imhash = column_index("mhash")
     with Index(index_path) as index:
         # use latest staged or commited version
         restore_hashes = [
-            (str(Path(base_dir, each[iname])), each[imloc] or each[iloc])
+            (str(Path(base_dir, each[iname])), each[imhash] or each[ihash])
             for each in index.get_files(names=restore, get_remove=False, not_in=False)
         ]
         from god.storage.commons import get_backend
@@ -216,7 +216,7 @@ def _checkout_between_commits(
         endpoints = plugin_endpoints(plugin_name)
 
         # calculate add & remove operations from 2 commits
-        add_ops, remove_ops = transform_commit(commit1, commit2, plugin_name)
+        add_ops, remove_ops = transform_commit_id(commit1, commit2, plugin_name)
 
         # ignore operations involving unstaged files
         # skips = set([_[0] for _ in add] + [_[0] for _ in update] + remove)
@@ -241,10 +241,7 @@ def _checkout_between_commits(
         add_fps = list(add_ops.keys())
         add_fhs = list(add_ops.values())
         tsts = get_files_tst(add_fps, endpoints["tracks"])
-        add = [
-            (name, hash, tstmp, hash)
-            for name, hash, tstmp in zip(add_fps, add_fhs, tsts)
-        ]
+        add = list(zip(add_fps, add_fhs, tsts))
 
         with Index(endpoints["index"]) as index:
             index.delete(items=list(remove_ops.keys()), staged=False)
@@ -254,14 +251,11 @@ def _checkout_between_commits(
         # copy all files
         # create index
         endpoints = plugin_endpoints(plugin_name)
-        add_ops, _ = transform_commit(None, commit2, plugin_name)
+        add_ops, _ = transform_commit_id(None, commit2, plugin_name)
         add_fps = list(add_ops.keys())
         add_fhs = list(add_ops.values())
         tsts = get_files_tst(add_fps, endpoints["tracks"])
-        add = [
-            (name, hash, tstmp, hash)
-            for name, hash, tstmp in zip(add_fps, add_fhs, tsts)
-        ]
+        add = list(zip(add_fps, add_fhs, tsts))
 
         with Index(endpoints["index"]) as index:
             index.build()

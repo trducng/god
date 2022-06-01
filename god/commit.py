@@ -51,7 +51,7 @@ def store_dir(index_files_dirs: defaultdict):
 def handle_one(name):
     index_path = plugin_endpoints(name)["index"]
     with Index(index_path) as index:
-        files_info = index.get_folder(["."], get_remove=False)
+        files_info = index.get_folder(["."], get_remove=False, conflict=False)
         files_info = sorted(files_info, key=lambda obj: obj[0], reverse=True)
 
     index_files_dirs = defaultdict(list)

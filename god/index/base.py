@@ -4,7 +4,7 @@ Create plugin manifest.
 """
 import sqlite3
 from pathlib import Path
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 from god.index.utils import COLUMNS
 from god.utils.exceptions import FileExisted
@@ -16,7 +16,8 @@ class Index:
     def __init__(self, index_path):
         """Initialize the index path"""
         self._index_path = index_path
-        self.con, self.cur = None, None
+        self.con: sqlite3.Connection = None  # type: ignore
+        self.cur: sqlite3.Cursor = None  # type: ignore
 
     def start(self):
         """Start sqlite3 connection"""
@@ -28,7 +29,7 @@ class Index:
         """Stop sqlite3 connection"""
         if self.con is not None:
             self.con.close()
-            self.con, self.cur = None, None
+            self.con, self.cur = None, None  # type: ignore
 
     def __enter__(self):
         self.start()
@@ -105,12 +106,13 @@ class Index:
 
         return result.fetchall()
 
-    def get_folder(self, names: List[str], get_remove: bool):
+    def get_folder(self, names: List[str], get_remove: bool, conflict: bool):
         """Get files inside folder in an index
 
         Args:
             names: folder name
-            get_remove <bool>: whether to get entries marked as remove
+            get_remove: whether to get entries marked as remove
+            conflict: whether files should be conflicted
 
         Returns:
             <[(str, str, str, int, float, int)]>: name, hash, mhash, remove, mtime,
@@ -119,6 +121,9 @@ class Index:
         conditions = []
         if not get_remove:
             conditions.append("(NOT remove=1 OR remove IS NULL)")
+
+        if conflict:
+            conditions.append("conflict IS NOT NULL")
 
         if "." not in names:
             name_conditions = []
@@ -136,9 +141,9 @@ class Index:
 
     def update(self, items: List[Tuple[str, str, float]]) -> None:
         """Update the index"""
-        for name, mhash, mtime, mloc in items:
+        for name, mhash, mtime in items:
             self.cur.execute(
-                f"UPDATE main SET mhash='{mhash}', mtime={mtime}, mloc='{mloc}' WHERE name='{name}'"
+                f"UPDATE main SET mhash='{mhash}', mtime={mtime} WHERE name='{name}'"
             )
         self.con.commit()
 
@@ -151,7 +156,7 @@ class Index:
         if mhash:
             for name in items:
                 self.cur.execute(
-                    f"UPDATE main SET mhash=NULL, mloc=NULL, mtime=NULL WHERE name='{name}'",
+                    f"UPDATE main SET mhash=NULL, mtime=NULL WHERE name='{name}'",
                 )
 
         if remove:
@@ -168,22 +173,21 @@ class Index:
 
         self.con.commit()
 
-    def add(self, items: List[Tuple[str, str, float, str]], staged: bool) -> None:
+    def add(self, items: List[Tuple[str, str, float]], staged: bool) -> None:
         """Add the entry to index
 
         Args:
-            items: Each item contains name, mhash, tstamp and mloc
+            items: Each item contains name, mhash, tstamp
             staged: if True, add hash to hash rather than mhash
         """
         if not items:
             return
 
         h = "mhash" if staged else "hash"
-        l = "mloc" if staged else "loc"  # noqa: E741
-        for name, mhash, mtime, mloc in items:
+        for name, mhash, mtime in items:
             self.cur.execute(
-                f"INSERT INTO main (name, {h}, mtime, {l}) VALUES (?, ?, ?, ?)",
-                (name, mhash, mtime, mloc),
+                f"INSERT INTO main (name, {h}, mtime) VALUES (?, ?, ?)",
+                (name, mhash, mtime),
             )
         self.con.commit()
 
@@ -208,12 +212,43 @@ class Index:
             )
         self.con.commit()
 
+    def conflict(self, items: Dict[str, str]):
+        """Change index according to conflict
+
+        If an entry does not already exist in the index, that entry will be created
+        new.
+
+        Args:
+            items: each item contains name and conflict hash. If the conflict hash
+                is an empty string, it means the file is deleted
+        """
+        if not items:
+            return
+
+        names = list(items.keys())
+        existing_entries = [
+            each[0]
+            for each in self.get_files(names=names, get_remove=True, not_in=False)
+        ]
+        non_existing_entries = list(set(names).difference(existing_entries))
+
+        for name in existing_entries:
+            self.cur.execute(
+                f"UPDATE main SET conflict='{items[name]}' WHERE name='{name}'"
+            )
+
+        for name in non_existing_entries:
+            self.cur.execute(
+                "INSERT INTO main (name, conflict) VALUES (?, ?)",
+                (name, items[name]),
+            )
+        self.con.commit()
+
     def step(self):
         """Step from staging to committed
 
         For non-ignore items, this method essentially:
             - move mhash -> hash
-            - move mloc -> loc
             - remove entries that are removed
         """
         # remove
@@ -225,8 +260,8 @@ class Index:
             "SELECT * FROM main WHERE mhash IS NOT NULL"
         ).fetchall()
         # @RUSH: the `items` below doesn't have exe
-        for name, _, mhash, _, mloc, _, _, _, _, _ in items:
+        for name, _, mhash, _, _, _, _, _ in items:
             self.cur.execute(
-                f"UPDATE main SET hash='{mhash}', mhash=NULL, loc='{mloc}', mloc=NULL WHERE name='{name}'"
+                f"UPDATE main SET hash='{mhash}', mhash=NULL WHERE name='{name}'"
             )
         self.con.commit()
