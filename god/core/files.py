@@ -3,7 +3,9 @@ import os
 import shutil
 from collections import defaultdict
 from pathlib import Path
-from typing import List
+from typing import List, Union
+
+import magic
 
 from god.core.conf import settings
 
@@ -383,3 +385,15 @@ def compare_files_states(state1, state2):
             remove[fn] = h1
 
     return add, remove
+
+
+check = magic.Magic(mime_encoding=True)
+
+
+def is_binary(path: Union[str, Path]) -> bool:
+    """Check file type"""
+    return check.from_file(path) == "binary"
+
+
+def resolve(parent, ours, theirs) -> bool:
+    pass

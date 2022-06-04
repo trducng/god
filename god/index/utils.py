@@ -6,7 +6,8 @@ COLUMNS = [
     ("mtime", "real"),
     ("exe", "real"),
     ("ignore", "integer"),
-    ("conflict", "text"),
+    ("ctheirs", "text"),
+    ("cbase", "text"),
 ]
 
 

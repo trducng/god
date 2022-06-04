@@ -2,11 +2,11 @@
 import json
 import logging
 import subprocess
-from hashlib import sha256
 from pathlib import Path
 from typing import Dict, List
 
 from god.core.files import resolve_paths
+from god.utils.process import communicate
 
 
 def _add(fds: List[str], base_dir: str, index_name: str, hooks: Dict[str, List[str]]):
@@ -20,13 +20,7 @@ def _add(fds: List[str], base_dir: str, index_name: str, hooks: Dict[str, List[s
     # HOOK: ADD-PRE-RUN
     preadd = hooks.get("preadd", [])
     if preadd:
-        p = subprocess.Popen(
-            preadd,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-        )
-        result, _ = p.communicate(input=json.dumps(fds).encode())
-        fds = json.loads(result)
+        fds = communicate(command=preadd, stdin=fds)  # type: ignore
 
     p = subprocess.Popen(
         ["god-index", "track", index_name, "--working"],
@@ -80,11 +74,9 @@ def _add(fds: List[str], base_dir: str, index_name: str, hooks: Dict[str, List[s
     if plugins:
         # assume that add_ and update_ will change
         for idx, (_, path) in enumerate(add_):
-            with open(path, "rb") as fi:
-                new_objs.append([path, add[idx][-1]])
+            new_objs.append([path, add[idx][-1]])
         for idx, (_, path) in enumerate(update_):
-            with open(path, "rb") as fi:
-                new_objs.append([path, update[idx][-1]])
+            new_objs.append([path, update[idx][-1]])
     else:
         for idx, item in enumerate(add):
             new_objs.append([add_[idx][1], item[1]])

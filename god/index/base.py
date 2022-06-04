@@ -1,5 +1,4 @@
 """Index-related functionality
-
 Create plugin manifest.
 """
 import sqlite3
@@ -37,6 +36,16 @@ class Index:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.stop()
+
+    def save(self, name, **kwargs):
+        keys = ["name"] + list(kwargs.keys())
+        values = [name] + list(kwargs.values())
+        self.cur.execute(
+            f"INSERT INTO main ({', '.join(keys)}) "
+            f"VALUES ({', '.join(['?'] * len(keys))})",
+            values,
+        )
+        self.con.commit()
 
     def build(self, force: bool = False) -> None:
         """Create the blank index
@@ -123,7 +132,7 @@ class Index:
             conditions.append("(NOT remove=1 OR remove IS NULL)")
 
         if conflict:
-            conditions.append("conflict IS NOT NULL")
+            conditions.append("ctheirs IS NOT NULL")
 
         if "." not in names:
             name_conditions = []
@@ -212,15 +221,16 @@ class Index:
             )
         self.con.commit()
 
-    def conflict(self, items: Dict[str, str]):
+    def conflict(self, items: Dict[str, Tuple[str, str]]):
         """Change index according to conflict
 
         If an entry does not already exist in the index, that entry will be created
         new.
 
         Args:
-            items: each item contains name and conflict hash. If the conflict hash
-                is an empty string, it means the file is deleted
+            items: each item contains name and 2 conflicts hashes (their hash and
+                base hash). If the conflict hash is an empty string, it means the
+                file is deleted
         """
         if not items:
             return
@@ -234,15 +244,95 @@ class Index:
 
         for name in existing_entries:
             self.cur.execute(
-                f"UPDATE main SET conflict='{items[name]}' WHERE name='{name}'"
+                f"UPDATE main SET ctheirs='{items[name][0]}', cbase='{items[name][1]}' "
+                f"WHERE name='{name}'"
             )
 
         for name in non_existing_entries:
             self.cur.execute(
-                "INSERT INTO main (name, conflict) VALUES (?, ?)",
-                (name, items[name]),
+                "INSERT INTO main (name, ctheirs, cbase) VALUES (?, ?)",
+                (name, items[name][0], items[name][1]),
             )
         self.con.commit()
+
+    def get_conflict_add_add(self, case: int) -> List:
+        """Get entries that are updated in both ours and theirs
+
+        Args:
+            case: 1 = all, 2 = unresolved, 3 = resolved
+        """
+        if case == 1:
+            return self.cur.execute(
+                "SELECT * FROM main WHERE hash IS NOT NULL AND "
+                "ctheirs IS NOT NULL AND ctheirs != ''"
+            ).fetchall()
+        elif case == 2:
+            return self.cur.execute(
+                "SELECT * FROM main WHERE hash IS NOT NULL AND "
+                "ctheirs IS NOT NULL AND ctheirs != '' AND mhash IS NULL"
+            ).fetchall()
+        elif case == 3:
+            return self.cur.execute(
+                "SELECT * FROM main WHERE hash IS NOT NULL AND "
+                "ctheirs IS NOT NULL AND ctheirs != '' AND "
+                "mhash IS NOT NULL AND mhash != ''"
+            ).fetchall()
+
+        raise AttributeError(f"Unknown case: {case}")
+
+    def get_conflict_add_remove(self, case: int) -> List:
+        """Get entries that are updated in ours but removed in theirs
+
+        Args:
+            case: 1 = all, 2 = unresolved, 3 = unresolved ours, 4 = resolved theirs
+        """
+        if case == 1:
+            return self.cur.execute(
+                "SELECT * FROM main WHERE hash IS NOT NULL AND ctheirs = ''"
+            ).fetchall()
+        elif case == 2:
+            return self.cur.execute(
+                "SELECT * FROM main WHERE hash IS NOT NULL AND ctheirs = '' AND "
+                "mhash IS NULL AND remove IS NULL"
+            ).fetchall()
+        elif case == 3:
+            return self.cur.execute(
+                "SELECT * FROM main WHERE hash IS NOT NULL AND ctheirs = '' AND "
+                "mhash IS NOT NULL"
+            ).fetchall()
+        elif case == 4:
+            return self.cur.execute(
+                "SELECT * FROM main WHERE hash IS NOT NULL AND ctheirs = '' AND "
+                "remove = 1"
+            ).fetchall()
+
+        raise AttributeError(f"Unknown case: {case}")
+
+    def get_conflict_remove_add(self, case: int) -> List:
+        """Get entries that are removed in ours, but updated in theirs"""
+        if case == 1:
+            return self.cur.execute(
+                "SELECT * FROM main WHERE hash IS NULL AND "
+                "ctheirs IS NOT NULL AND ctheirs != ''"
+            ).fetchall()
+        elif case == 2:
+            return self.cur.execute(
+                "SELECT * FROM main WHERE hash IS NULL AND "
+                "ctheirs IS NOT NULL AND ctheirs != '' AND "
+                "remove IS NULL AND mhash IS NULL"
+            ).fetchall()
+        elif case == 3:
+            return self.cur.execute(
+                "SELECT * FROM main WHERE hash IS NULL AND "
+                "ctheirs IS NOT NULL AND ctheirs != '' AND remove = 1"
+            ).fetchall()
+        elif case == 4:
+            return self.cur.execute(
+                "SELECT * FROM main WHERE hash IS NULL AND "
+                "ctheirs IS NOT NULL AND ctheirs != '' AND mhash IS NOT NULL"
+            ).fetchall()
+
+        raise AttributeError(f"Unknown case: {case}")
 
     def step(self):
         """Step from staging to committed
@@ -252,7 +342,7 @@ class Index:
             - remove entries that are removed
         """
         # remove
-        self.cur.execute("DELETE FROM main WHERE remove  = 1")
+        self.cur.execute("DELETE FROM main WHERE remove = 1")
         self.con.commit()
 
         # update
@@ -260,8 +350,9 @@ class Index:
             "SELECT * FROM main WHERE mhash IS NOT NULL"
         ).fetchall()
         # @RUSH: the `items` below doesn't have exe
-        for name, _, mhash, _, _, _, _, _ in items:
+        for name, _, mhash, _, _, _, _, _, _ in items:
             self.cur.execute(
-                f"UPDATE main SET hash='{mhash}', mhash=NULL WHERE name='{name}'"
+                f"UPDATE main SET hash='{mhash}', mhash=NULL, ctheirs=NULL, "
+                f"cbase=NULL WHERE name='{name}'"
             )
         self.con.commit()

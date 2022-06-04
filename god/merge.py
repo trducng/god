@@ -33,24 +33,22 @@ the default code conflict handler.
 @PRIORITY0: remove the "Seems important...", and put this rationale into technical
 document.
 """
+import os
+import shutil
+import tempfile
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-import yaml
-
-from god.branches.conflicts import (
-    create_conflict_dir,
-    get_conflict_dir,
-    verify_conflict_resolution,
-)
 from god.commit import commit
 from god.commits.base import get_latest_parent_commit, read_commit
 from god.commits.compare import transform_commit_id, transform_commit_obj
-from god.core.files import get_files_tst
+from god.core.files import get_file_hash, get_files_tst, is_binary
 from god.core.refs import get_ref, update_ref
 from god.index.base import Index
 from god.index.utils import column_index
+from god.plugins.manifest import load_manifest
 from god.plugins.utils import plugin_endpoints
+from god.utils.merge_text import Merge3
 from god.utils.process import communicate, delegate
 
 
@@ -112,20 +110,15 @@ def are_plugins_valid_for_merge(
     return list(plugins1.union(plugins2).difference(inconsistence)), list(inconsistence)
 
 
-def merge_plugin(
-    our_commit: Dict,
-    their_commit: Dict,
-    parent_commit: Dict,
-    plugin: str,
-    index_path: str,
-    track_dir: str,
-) -> List[str]:
-    """Perform a three-way merge for a plugin
+def get_conflicts(index_path: str) -> List[str]:
+    """Get conflict files from index
+
+    Args:
+        index_path: path to index file
 
     Returns:
-        List[str]: list of conflicted files
+        List[str]: filepath of conflicted files
     """
-    # check for unresolved conflict entries
     with Index(index_path) as index:
         col_name, col_mhash = column_index("name"), column_index("mhash")
         current_conflicts = [
@@ -135,10 +128,81 @@ def merge_plugin(
         ]
         if current_conflicts:
             return current_conflicts
+    return []
 
-    import pdb
 
-    pdb.set_trace()
+def handle_conflicts(index_path, track_dir, temp_dir):
+    """Attempt to automatically resolve conflict files"""
+    with Index(index_path) as index:
+        unresolved_add_add = index.get_conflict_add_add(case=2)
+
+    for name, _, _, _, _, _, _, ctheirs, cbase in unresolved_add_add:
+        # retrieve base, ours and theirs
+        fd_theirs, theirs = tempfile.mkstemp(dir=temp_dir)
+        fd_base, base = tempfile.mkstemp(dir=temp_dir)
+        communicate(
+            command=["god", "storages", "get-objects"],
+            stdin=[[theirs, ctheirs], [base, cbase]],
+        )
+        os.close(fd_theirs)
+        os.close(fd_base)
+
+        # check if any of the 3 files are binary
+        binary = False
+        for path in (theirs, base, str(Path(track_dir, name))):
+            if is_binary(path):
+                binary = True
+
+        # if yes, copy to current working directory and continue next iteration
+        if binary:
+            shutil.copy(theirs, Path(track_dir, f"{name}.theirs.godconfig"))
+            shutil.copy(base, Path(track_dir, f"{name}.base.godconfig"))
+            continue
+
+        # if no, attempt to fix the text file
+        line_base, line_ours, line_theirs = [], [], []
+        with open(base) as fi:
+            line_base = fi.read().splitlines()
+        with Path(track_dir, name).open("r") as fi:
+            line_ours = fi.read().splitlines()
+        with open(theirs) as fi:
+            line_theirs = fi.read().splitlines()
+
+        merge = Merge3(base=line_base, a=line_ours, b=line_theirs)
+        merged, conflict = merge.merge_lines(
+            name_a="ours", name_b="theirs", name_base="base"
+        )
+
+        with Path(track_dir, name).open("w") as fo:
+            fo.writelines(merged)
+        tsts = get_files_tst([name], track_dir)[0]
+        hash = get_file_hash(Path(track_dir, name))
+
+        if not conflict:
+            # if fixing the text file ok, resolve in the index
+            with Index(index_path) as index:
+                index.add(items=[(name, hash, tsts)], staged=True)
+
+
+def merge_plugin(
+    our_commit: Dict,
+    their_commit: Dict,
+    parent_commit: Dict,
+    plugin: str,
+    index_path: str,
+    track_dir: str,
+    hooks: Dict,
+) -> List[str]:
+    """Perform a three-way merge for a plugin
+
+    Returns:
+        List[str]: list of conflicted files
+    """
+    # check for unresolved conflict entries
+    current_conflicts: List[str] = get_conflicts(index_path)
+    if current_conflicts:
+        return current_conflicts
+
     # get operations
     add_ops1, remove_ops1 = transform_commit_obj(
         parent_commit, our_commit, plugin  # @PRIORITY0: should reuse commit obj
@@ -202,13 +266,13 @@ def merge_plugin(
     conflicts = {}
     for fp in list(fp_add_ops1.intersection(fp_add_ops2)):
         # both commit add/edit the same file
-        conflicts[fp] = add_ops2[fp]
+        conflicts[fp] = [add_ops2[fp], remove_ops2.get(fp, "")]
     for fp in list(fp_add_ops1.intersection(fp_remove_ops2.difference(fp_add_ops2))):
         # our commit adds, while the other removes
-        conflicts[fp] = ""
+        conflicts[fp] = ["", remove_ops1.get(fp, "")]
     for fp in list(fp_add_ops2.intersection(fp_remove_ops1.difference(fp_add_ops1))):
         # our commit removes, while the other adds
-        conflicts[fp] = add_ops2[fp]
+        conflicts[fp] = [add_ops2[fp], remove_ops2[fp]]
 
     # handle conflict resolution, show this inside the `index` file
     if conflicts:
@@ -216,11 +280,19 @@ def merge_plugin(
         with Index(index_path) as index:
             index.conflict(items=conflicts)
 
-        # TODO: send the conflict information to respective plugin
+        # send the conflict information to respective plugin
+        merge_conflict = hooks.get("merge-conflict", [])
+        if merge_conflict:
+            communicate(command=merge_conflict)
+        else:
+            handle_conflicts(
+                index_path=index_path,
+                track_dir=track_dir,
+                temp_dir="/tmp",  # @PRIORITY2: build the cache system
+            )
+        current_conflicts = get_conflicts(index_path)
 
-        # TODO: check index validity
-
-    return list(conflicts.keys())
+    return current_conflicts
 
 
 def merge(
@@ -238,7 +310,6 @@ def merge(
         branch1 <str>: the name of source branch
         branch2 <str>: the name of target branch to pull from
         ref_dir <str>: the path to refs directory
-        base_dir <str>: the repository directory
         user <str>: the commiter username
         email <str>: the committer email
     """
@@ -279,10 +350,76 @@ def merge(
             plugin=plugin,
             index_path=endpoints["index"],
             track_dir=endpoints["tracks"],
+            hooks=load_manifest(plugin).get("commands", {}).get("merge", {}),
         ):
             has_conflicts = True
     if has_conflicts:
-        raise RuntimeError(f"Has conflicts")
+        raise RuntimeError("Has conflicts")
+
+    current_commit = commit(
+        user=user,
+        email=email,
+        message=f"Merge from {branch2} to {branch1}",
+        prev_commit=[commit1, commit2],
+    )
+
+    update_ref(branch1, current_commit, ref_dir)
+    return current_commit
+
+
+def merge_continue(
+    branch1,
+    branch2,
+    ref_dir,
+    user,
+    email,
+    include,
+    exclude,
+) -> str:
+    """Pull changes from `branch2` to `branch1`
+
+    # Args:
+        branch1 <str>: the name of source branch
+        branch2 <str>: the name of target branch to pull from
+        ref_dir <str>: the path to refs directory
+        user <str>: the commiter username
+        email <str>: the committer email
+    """
+    # get 3-way commit information
+    commit1 = get_ref(branch1, ref_dir)
+    commit2 = get_ref(branch2, ref_dir)
+    parent_commit = get_latest_parent_commit(commit1, commit2)
+    if not parent_commit:
+        raise RuntimeError(
+            f'No shared history between branches "{branch1}" and "{branch2}"'
+        )
+    commit_obj1, commit_obj2 = read_commit(commit1), read_commit(commit2)
+    commit_obj_parent = read_commit(parent_commit)
+
+    # collect plugins
+    plugins, inconsistence = are_plugins_valid_for_merge(
+        commit_obj1, commit_obj2, commit_obj_parent
+    )
+    inconsistence = set(inconsistence).difference(include).difference(exclude)
+    if inconsistence:
+        raise RuntimeError(
+            f"Inconsistent used plugins: {inconsistence}. "
+            "Please use --include and --exclude to specify plugins to use in the "
+            "merged commit."
+        )
+    plugins = list(set(plugins).union(include))
+
+    # run merge for each plugin
+    has_conflicts = False
+    for plugin in plugins:
+        if plugin != "files":  # PRIORITY0: remove this debug
+            continue
+        endpoints = plugin_endpoints(plugin)
+        if get_conflicts(endpoints["index"]):
+            has_conflicts = True
+
+    if has_conflicts:
+        raise RuntimeError("Has conflicts")
 
     current_commit = commit(
         user=user,

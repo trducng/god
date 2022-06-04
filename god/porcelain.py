@@ -3,6 +3,7 @@
 # @TODO: porcelain might be moved to cli, because we don't use it anywhere, or make
 cli right into porcelain.
 """
+import json
 from pathlib import Path
 
 from rich import print as rprint
@@ -22,7 +23,7 @@ from god.core.head import read_HEAD
 from god.core.refs import get_ref, is_ref, update_ref
 from god.core.status import status
 from god.init import init, repo_exists
-from god.merge import merge
+from god.merge import merge, merge_continue
 from god.utils.exceptions import InvalidUserParams
 from god.utils.process import communicate
 
@@ -221,19 +222,70 @@ def reset_cmd(head_past, hard=False):
     )
 
 
-def merge_cmd(branch, include, exclude):
+def merge_cmd(branch, include, exclude, continue_, abort):
     """Perform a merge operation
 
     # Args:
         branch <str>: name of the branch
     """
-    refs, commit1 = read_HEAD(settings.FILE_HEAD)
-    merge(
-        refs,
-        branch,
-        settings.DIR_REFS_HEADS,
-        user="some email",  # @PRIORITY0
-        email="some password",
-        include=include,
-        exclude=exclude,
-    )
+    if continue_ and abort:
+        raise AttributeError("Cannot --continue and --abort at the same time")
+
+    merge_file = Path(settings.DIR_GOD, "MERGE")
+    if continue_:
+        if not merge_file.is_file():
+            raise RuntimeError("Not in the middle of merge process")
+        with merge_file.open("r") as fi:
+            merge_progress = json.load(fi)
+        refs, commit1 = read_HEAD(settings.FILE_HEAD)
+        if merge_progress["ours"]["name"] != refs:
+            raise RuntimeError(f"Not in branch {refs}")
+        if merge_progress["ours"]["commit"] != commit1:
+            raise RuntimeError(
+                f"Not in original commit {merge_progress['ours']['commit']}"
+            )
+        merge_continue(
+            merge_progress["ours"]["name"],
+            # PRIORITY1: should use commit hash rather than branch name, because
+            # the theirs branch might have new commit during the conflict resolution
+            merge_progress["theirs"]["name"],
+            settings.DIR_REFS_HEADS,
+            user="some email",  # @PRIORITY0
+            email="some password",
+            include=include,
+            exclude=exclude,
+        )
+        merge_file.unlink()
+    elif abort:
+        if not merge_file.is_file():
+            raise RuntimeError("Not in the middle of merge process")
+        merge_file.unlink()
+        restore_staged(fds=[], plugins=[])
+        restore_working(fds=[], plugins=[])
+    else:
+        refs, commit1 = read_HEAD(settings.FILE_HEAD)
+        if merge_file.is_file():
+            raise RuntimeError(
+                "Seems to be in middle of merge, please 'god merge --abort' first"
+            )
+        with merge_file.open("w") as fo:
+            json.dump(
+                {
+                    "ours": {"name": refs, "commit": commit1},
+                    "theirs": {
+                        "name": branch,
+                        "commit": get_ref(branch, settings.DIR_REFS_HEADS),
+                    },
+                },
+                fo,
+            )
+        merge(
+            refs,
+            branch,
+            settings.DIR_REFS_HEADS,
+            user="some email",  # @PRIORITY0
+            email="some password",
+            include=include,
+            exclude=exclude,
+        )
+        merge_file.unlink()

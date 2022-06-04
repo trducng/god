@@ -26,7 +26,7 @@ def track_staging_changes(fds, index_path, base_dir):
         <[str]>: remove - list of removed files
     """
     base_dir = Path(base_dir).resolve()
-    if not isinstance(fds, (list, int)):
+    if not isinstance(fds, (list, tuple)):
         fds = [fds]
 
     fds = filter_common_parents(fds)  # list of relative paths to `base_dir`
