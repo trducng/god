@@ -12,6 +12,7 @@ from god.porcelain import (
     add_cmd,
     checkout_cmd,
     commit_cmd,
+    fetch_cmd,
     init_cmd,
     log_cmd,
     merge_cmd,
@@ -20,6 +21,7 @@ from god.porcelain import (
     restore_working_cmd,
     status_cmd,
 )
+from god.remote.cli import main as remote_cli
 from god.storage.cli import main as storages_cli
 
 
@@ -205,10 +207,19 @@ def merge(branch, include, exclude, continue_, abort):
     )
 
 
+@main.command("fetch")
+@click.argument("branch", required=False, type=str, default="")
+@click.option("--remote", type=str, default="")
+def fetch(branch, remote):
+    settings.set_global_settings()
+    fetch_cmd(branch, remote)
+
+
 main.add_command(plugin_cli, "plugins")
 main.add_command(config_cli, "configs")
 main.add_command(storages_cli, "storages")
 main.add_command(files_cli, "files")
+main.add_command(remote_cli, "remote")
 
 
 def entrypoint():

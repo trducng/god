@@ -71,7 +71,7 @@ def init(path):
 
     # Setup default local storage
     with open(c.FILE_LINK, "w") as fo:
-        json.dump({"STORAGE": DEFAULT_STORAGE, "REMOTES": []}, fo)
+        json.dump({"STORAGE": DEFAULT_STORAGE, "REMOTES": {}, "DEFAULT_REMOTE": ""}, fo)
 
 
 if __name__ == "__main__":

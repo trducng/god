@@ -12,6 +12,7 @@ DIR_CACHE = str(Path(DIR_GOD, "cache"))
 
 DIR_REFS = str(Path(DIR_GOD, "refs"))
 DIR_REFS_HEADS = str(Path(DIR_REFS, "heads"))
+DIR_REFS_REMOTES = str(Path(DIR_REFS, "remotes"))
 
 FILE_HEAD = str(Path(DIR_GOD, "HEAD"))
 FILE_INDEX = str(Path(DIR_GOD, "index"))
