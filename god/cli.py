@@ -10,6 +10,7 @@ from god.files.cli import main as files_cli
 from god.plugins.cli import main as plugin_cli
 from god.porcelain import (
     add_cmd,
+    apply_cmd,
     checkout_cmd,
     clone_cmd,
     commit_cmd,
@@ -17,6 +18,7 @@ from god.porcelain import (
     init_cmd,
     log_cmd,
     merge_cmd,
+    pull_cmd,
     reset_cmd,
     restore_staged_cmd,
     restore_working_cmd,
@@ -214,6 +216,22 @@ def merge(branch, include, exclude, continue_, abort):
 def fetch(branch, remote):
     settings.set_global_settings()
     fetch_cmd(branch, remote)
+
+
+@main.command("apply")
+@click.argument("branch", required=False, type=str, default="")
+@click.option("--remote", type=str, default="")
+def apply(branch, remote):
+    settings.set_global_settings()
+    apply_cmd(branch, remote)
+
+
+@main.command("pull")
+@click.argument("branch", required=False, type=str, default="")
+@click.option("--remote", type=str, default="")
+def pull(branch, remote):
+    settings.set_global_settings()
+    pull_cmd(branch, remote)
 
 
 @main.command("clone")

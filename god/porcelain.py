@@ -333,6 +333,39 @@ def fetch_cmd(branch: str, remote: str):
         print(f'"Fetched latest commit of "{branch}". Run `god apply` to merge')
 
 
+def apply_cmd(branch: str, remote: str):
+    """Apply the change from remote branch to current local branch
+
+    Args:
+        branch: the name of the branch to apply changes
+    """
+    from god.checkout import _checkout_between_commits
+    from god.remote.base import get_default_remote
+
+    if not remote:
+        remote = get_default_remote(link_path=settings.FILE_LINK)
+        if not remote:
+            raise RuntimeError(
+                "Default remote not found. Please set default remote with:\n"
+                "    god remote set [name] --defailt\n"
+            )
+
+    if not branch:
+        branch, _ = read_HEAD(settings.FILE_HEAD)
+
+    commit1 = get_ref(branch, settings.DIR_REFS_HEADS)
+    commit2 = get_ref(branch, Path(settings.DIR_REFS_REMOTES, remote))
+    _checkout_between_commits(commit1, commit2)
+    update_ref(branch, commit2, settings.DIR_REFS_HEADS)
+    print("Applied")
+
+
+def pull_cmd(branch: str, remote: str):
+    """Combine fetch and apply in 1 command"""
+    fetch_cmd(branch, remote)
+    apply_cmd(branch, remote)
+
+
 def clone_cmd(path, from_: str, location: str):
     """Clone from remote storage to current storage"""
     import json
