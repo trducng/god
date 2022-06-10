@@ -137,7 +137,7 @@ def compare_plugins(commit1, commit2):
         - remove_plugs: plugins in commit2 but not in commit1
         - unchanged_plugs: same plugins, same value between commit1 and commit2
     """
-    tracks1 = read_commit(commit1)["tracks"]
+    tracks1 = read_commit(commit1)["tracks"] if commit1 else {}
     tracks2 = read_commit(commit2)["tracks"]
 
     new_plugs = list(sorted(set(tracks2.keys()).difference(tracks1.keys())))
@@ -248,21 +248,26 @@ def _checkout_between_commits(
             index.add(items=add, staged=False)
 
     for plugin_name in new_plugs:
-        # copy all files
-        # create index
         endpoints = plugin_endpoints(plugin_name)
         add_ops, _ = transform_commit_id(None, commit2, plugin_name)
         add_fps = list(add_ops.keys())
         add_fhs = list(add_ops.values())
+
+        add = [(str(Path(endpoints["tracks"], fp)), fh) for fp, fh in add_ops.items()]
+        if add:
+            communicate(command=["god", "storages", "get-objects"], stdin=add)
+        # copy all files
+        # create index
         tsts = get_files_tst(add_fps, endpoints["tracks"])
         add = list(zip(add_fps, add_fhs, tsts))
 
+        index = Index(endpoints["index"])
+        index.build(force=True)
         with Index(endpoints["index"]) as index:
-            index.build()
             index.add(items=add, staged=False)
 
     for plugin_name in remove_plugs:
-        # remove all files
+        # @PRIORITY2: remove all files
         # remove index
         endpoints = plugin_endpoints(plugin_name)
         Path(endpoints["index"]).unlink()

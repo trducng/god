@@ -67,6 +67,8 @@ def get_files_hashes_in_commit_dir(dir_id, prefix):
     # Returns:
         <{str: str}> fn and hashes
     """
+    if not dir_id:
+        return {}
     fd, temp_path = tempfile.mkstemp()
     # @PRIORITY3: revamp god storages to act as proxy with cache
     communicate(command=["god", "storages", "get-dirs"], stdin=[[temp_path, dir_id]])

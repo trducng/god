@@ -336,8 +336,11 @@ def fetch_cmd(branch: str, remote: str):
 def clone_cmd(path, from_: str, location: str):
     """Clone from remote storage to current storage"""
     import json
+    import os
 
     import god.utils.constants as c
+    from god.checkout import _checkout_between_commits
+    from god.core.refs import get_ref, update_ref
     from god.fetch import fetch_object_storage
     from god.remote.base import set_default_remote, set_remote
 
@@ -377,3 +380,10 @@ def clone_cmd(path, from_: str, location: str):
         remote_path=from_,
         local_path=new_location,
     )
+
+    # apply
+    os.chdir(path)
+    commit1 = None
+    commit2 = get_ref("main", path / c.DIR_REFS_REMOTES / "origin")
+    _checkout_between_commits(commit1, commit2)
+    update_ref("main", commit2, path / c.DIR_REFS_HEADS)
