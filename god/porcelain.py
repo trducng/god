@@ -289,3 +289,43 @@ def merge_cmd(branch, include, exclude, continue_, abort):
             exclude=exclude,
         )
         merge_file.unlink()
+
+
+def fetch_cmd(branch: str, remote: str):
+    """Fetch commits from remote to local
+
+    Args:
+        branch: the target branch name for us to fetch. If blank, fetch the branch
+            has the same branch name as current active local branch
+        remote: the specific remote repository that we will fetch from. If blank, use
+            the default remote. If default remote has not been set, raise error
+    """
+    import json
+    from pathlib import Path
+
+    from god.fetch import fetch_object_storage
+    from god.remote.base import get_default_remote, get_remote
+
+    if not remote:
+        remote = get_default_remote(link_path=settings.FILE_LINK)
+        if not remote:
+            raise RuntimeError(
+                "Default remote not found. Please set default remote with:\n"
+                "    god remote set [name] --defailt\n"
+            )
+
+    if not branch:
+        branch, _ = read_HEAD(settings.FILE_HEAD)
+
+    if not branch:
+        raise RuntimeError("Please specify branch, or get back from detached mode")
+
+    with open(settings.FILE_LINK, "r") as fi:
+        local_path = json.load(fi)["STORAGE"]
+    remote_loc = get_remote(link_path=settings.FILE_LINK, name=remote)
+    fetch_object_storage(
+        branch=branch,
+        ref_remotes_dir=Path(settings.DIR_REFS_REMOTES, remote),
+        remote_path=remote_loc[remote],
+        local_path=local_path,
+    )
