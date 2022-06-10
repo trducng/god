@@ -323,9 +323,57 @@ def fetch_cmd(branch: str, remote: str):
     with open(settings.FILE_LINK, "r") as fi:
         local_path = json.load(fi)["STORAGE"]
     remote_loc = get_remote(link_path=settings.FILE_LINK, name=remote)
-    fetch_object_storage(
+    need_apply = fetch_object_storage(
         branch=branch,
         ref_remotes_dir=Path(settings.DIR_REFS_REMOTES, remote),
         remote_path=remote_loc[remote],
         local_path=local_path,
+    )
+    if need_apply:
+        print(f'"Fetched latest commit of "{branch}". Run `god apply` to merge')
+
+
+def clone_cmd(path, from_: str, location: str):
+    """Clone from remote storage to current storage"""
+    import json
+
+    import god.utils.constants as c
+    from god.fetch import fetch_object_storage
+    from god.remote.base import set_default_remote, set_remote
+
+    # initialize the repo
+    path = Path(path).resolve()
+    if path.is_dir():
+        repo_exists(path)
+    elif path.is_file():
+        raise RuntimeError(f'"{path}" is file')
+    else:
+        path.mkdir(parents=True, exist_ok=True)
+    init(path)
+
+    # edit to correct endpoints
+    set_remote(
+        name="origin",
+        location=from_,
+        link_path=path / c.FILE_LINK,
+        ref_remotes_dir=path / c.DIR_REFS_REMOTES,
+    )
+    set_default_remote(name="origin", link_path=path / c.FILE_LINK)
+    with (path / c.FILE_LINK).open("r") as fi:
+        links = json.load(fi)
+        links["STORAGE"] = location
+    with (path / c.FILE_LINK).open("w") as fo:
+        json.dump(links, fo)
+
+    if location == "file://":
+        new_location = "file://" + str(path / ".god")
+    else:
+        new_location = location
+
+    # fetch
+    fetch_object_storage(
+        branch="main",  # PRIORITY2: don't assume the branch is main
+        ref_remotes_dir=str(path / c.DIR_REFS_REMOTES / "origin"),
+        remote_path=from_,
+        local_path=new_location,
     )

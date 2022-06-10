@@ -11,6 +11,7 @@ from god.plugins.cli import main as plugin_cli
 from god.porcelain import (
     add_cmd,
     checkout_cmd,
+    clone_cmd,
     commit_cmd,
     fetch_cmd,
     init_cmd,
@@ -213,6 +214,20 @@ def merge(branch, include, exclude, continue_, abort):
 def fetch(branch, remote):
     settings.set_global_settings()
     fetch_cmd(branch, remote)
+
+
+@main.command("clone")
+@click.argument("path", required=True)
+@click.argument("from_", type=str)
+@click.option("--location", type=str, default="", help="Target storage")
+@click.option("--local", is_flag=True, default=False)
+def clone(path, from_, location, local):
+    if local:
+        location = "file://"
+    if not location:
+        location = from_
+
+    clone_cmd(path, from_, location)
 
 
 main.add_command(plugin_cli, "plugins")

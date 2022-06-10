@@ -57,20 +57,20 @@ def init(path):
     # Create file
     with Path(path, c.FILE_HEAD).open("w") as f_out:
         json.dump({"REFS": "main"}, f_out)
-    create_blank_index("files")
+    create_blank_index("files", path)
 
     # Setup configs
-    working_dir = construct_working_directory("configs")
-    create_blank_index("configs")
+    working_dir = construct_working_directory("configs", path)
+    create_blank_index("configs", path)
     configs_init(str(working_dir), False)
 
     # Setup plugins
-    working_dir = construct_working_directory("plugins")
-    create_blank_index("plugins")
+    working_dir = construct_working_directory("plugins", path)
+    create_blank_index("plugins", path)
     plugins_init(str(working_dir), False)
 
     # Setup default local storage
-    with open(c.FILE_LINK, "w") as fo:
+    with (path / c.FILE_LINK).open("w") as fo:
         json.dump({"STORAGE": DEFAULT_STORAGE, "REMOTES": {}, "DEFAULT_REMOTE": ""}, fo)
 
 
