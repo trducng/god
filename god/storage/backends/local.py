@@ -2,7 +2,6 @@ import shutil
 from pathlib import Path
 from typing import List
 
-import god.storage.constants as c
 from god.core.common import get_base_dir
 from god.storage.backends.base import BaseStorage
 
@@ -32,123 +31,76 @@ class LocalStorage(BaseStorage):
         # TODO: decide the format for storage config
         # TODO: might only allow relative path (to avoid overwrite hacking)
         self._base_path = parse_config(config)
-        self._object_path = self._base_path / c.DIR_OBJECTS
-        self._dir_path = self._base_path / c.DIR_DIRS
-        self._commit_path = self._base_path / c.DIR_COMMITS
         self._dir_levels = DEFAULT_DIR_LEVEL
 
-    def _get_hash_path(self, hash_value: str) -> str:
+    def _hash_path(self, hash_value: str, prefix: str = "") -> str:
         """From hash value, get relative hash path"""
         components = [
             hash_value[idx * 2 : (idx + 1) * 2] for idx in range(self._dir_levels)
         ]
-        return str(Path(*components, hash_value[self._dir_levels * 2 :]))
+        return str(
+            Path(
+                self._base_path, prefix, *components, hash_value[self._dir_levels * 2 :]
+            )
+        )
 
-    def _get(self, path: Path, hash_values: List[str], file_paths: List[str]):
+    def _get(self, storage_paths: List[str], paths: List[str]):
         """Get the file and store in file_path
 
         Args:
-            hash_values: the object hash value
-            file_paths: the file path to copy to
+            storage_paths: the path from storage
+            paths: the file path to copy to
         """
-        for each_hash, each_path in zip(hash_values, file_paths):
-            shutil.copy(path / self._get_hash_path(each_hash), each_path)
+        for storage_path, path in zip(storage_paths, paths):
+            shutil.copy(storage_path, path)
 
-    def _store(self, path: Path, file_paths: List[str], hash_values: List[str]):
+    def _store(self, storage_paths: List[str], paths: List[str]):
         """Store a file with a specific hash value
 
         Args:
-            file_path: the file path
-            hash_value: the hash value of the file
+            storage_paths: the path from storage
+            paths: the file path to send to storage
         """
-        for each_hash, each_path in zip(hash_values, file_paths):
-            hash_path = path / self._get_hash_path(each_hash)
-            if hash_path.exists():
+        for storage_path, path in zip(storage_paths, paths):
+            storage_path = Path(storage_path)
+            if storage_path.exists():
                 continue
 
-            hash_path.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy(each_path, hash_path)
+            storage_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy(path, storage_path)
 
-    def _delete(self, path: Path, hash_values: List[str]):
-        """Delete object that has specific hash value
+    def _delete(self, storage_paths: List[str]):
+        """Delete object
 
         Args:
-            hash_value: the hash value of the object
+            storage_paths: the location of object to delete
         """
-        for each_hash in hash_values:
-            hash_path = path / self._get_hash_path(each_hash)
-            if hash_path.exists():
-                hash_path.unlink()
+        for storage_path in storage_paths:
+            storage_path = Path(storage_path)
+            if storage_path.exists():
+                storage_path.unlink()
 
-    def _have(self, path: Path, hash_values: List[str]) -> List[bool]:
-        """Check whether an object or a file with a specific hash value exist
+    def _have(self, storage_paths: List[str]) -> List[bool]:
+        """Check whether a file with specific location exists in the storage
 
         Args:
-            hash_value: the file hash value
+            storage_paths: the location of the file
 
         Returns:
             True if the file exists, False otherwise
         """
         result = []
-        for each_hash in hash_values:
-            result.append((path / self._get_hash_path(each_hash)).exists())
+        for storage_path in storage_paths:
+            result.append(Path(storage_path).exists())
         return result
 
-    def _list(self, path: Path) -> List[str]:
+    def _list(self, storage_prefix: str) -> List[str]:
         """Return all hashes and location inside the object storage"""
-        path = path.resolve()
+        path = Path(storage_prefix).resolve()
 
         result = []
         for item in path.glob("**/????*"):
             if item.is_file:
-                result.append(str(item.relative_to(path)))
+                result.append(str(item.relative_to(path)).replace("/", ""))
 
         return result
-
-    ### objects
-    def get_objects(self, hash_values: List[str], paths: List[str]):
-        return self._get(self._object_path, hash_values, paths)
-
-    def store_objects(self, paths: List[str], hash_values: List[str]):
-        return self._store(self._object_path, paths, hash_values)
-
-    def delete_objects(self, hash_values: List[str]):
-        return self._delete(self._object_path, hash_values)
-
-    def have_objects(self, hash_values: List[str]) -> List[bool]:
-        return self._have(self._object_path, hash_values)
-
-    def list_objects(self) -> List[str]:
-        return self._list(self._object_path)
-
-    ### dirs
-    def get_dirs(self, hash_values: List[str], paths: List[str]):
-        return self._get(self._dir_path, hash_values, paths)
-
-    def store_dirs(self, paths: List[str], hash_values: List[str]):
-        return self._store(self._dir_path, paths, hash_values)
-
-    def delete_dirs(self, hash_values: List[str]):
-        return self._delete(self._dir_path, hash_values)
-
-    def have_dirs(self, hash_values: List[str]) -> List[bool]:
-        return self._have(self._dir_path, hash_values)
-
-    def list_dirs(self) -> List[str]:
-        return self._list(self._dir_path)
-
-    ### commits
-    def get_commits(self, hash_values: List[str], paths: List[str]):
-        return self._get(self._commit_path, hash_values, paths)
-
-    def store_commits(self, paths: List[str], hash_values: List[str]):
-        return self._store(self._commit_path, paths, hash_values)
-
-    def delete_commits(self, hash_values: List[str]):
-        return self._delete(self._commit_path, hash_values)
-
-    def have_commits(self, hash_values: List[str]) -> List[bool]:
-        return self._have(self._commit_path, hash_values)
-
-    def list_commits(self) -> List[str]:
-        return self._list(self._commit_path)
