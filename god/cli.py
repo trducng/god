@@ -221,17 +221,32 @@ def fetch(branch, remote):
 @main.command("apply")
 @click.argument("branch", required=False, type=str, default="")
 @click.option("--remote", type=str, default="")
-def apply(branch, remote):
+@click.option(
+    "--method", "method_", type=click.Choice(["fast", "fix", "rebase"]), default="fast"
+)
+def apply(branch, remote, method_):
     settings.set_global_settings()
-    apply_cmd(branch, remote)
+    method = {"fast": 0, "fix": 1, "rebase": 2}.get(method_, 0)
+    apply_cmd(branch, remote, method)
 
 
 @main.command("pull")
 @click.argument("branch", required=False, type=str, default="")
 @click.option("--remote", type=str, default="")
-def pull(branch, remote):
+@click.option(
+    "--method", "method_", type=click.Choice(["fast", "fix", "rebase"]), default="fast"
+)
+def pull(branch, remote, method_):
     settings.set_global_settings()
-    pull_cmd(branch, remote)
+    method = {"fast": 0, "fix": 1, "rebase": 2}.get(method_, 0)
+    pull_cmd(branch, remote, method)
+
+
+@main.command("push")
+@click.argument("branch", required=False, type=str, default="")
+@click.option("--remote", type=str, default="")
+def push(branch, remote):
+    settings.ste_global_settings()
 
 
 @main.command("clone")

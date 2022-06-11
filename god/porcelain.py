@@ -333,13 +333,19 @@ def fetch_cmd(branch: str, remote: str):
         print(f'"Fetched latest commit of "{branch}". Run `god apply` to merge')
 
 
-def apply_cmd(branch: str, remote: str):
+def apply_cmd(branch: str, remote: str, method: int):
     """Apply the change from remote branch to current local branch
 
     Args:
         branch: the name of the branch to apply changes
+        remote: the name of the remote
+        method: method to apply in case of branch divergence:
+            - 0: fast-forward
+            - 1: 3-way merge, no fast-forward
+            - 2: rebase
     """
     from god.checkout import _checkout_between_commits
+    from god.commits.base import get_latest_parent_commit
     from god.remote.base import get_default_remote
 
     if not remote:
@@ -353,17 +359,29 @@ def apply_cmd(branch: str, remote: str):
     if not branch:
         branch, _ = read_HEAD(settings.FILE_HEAD)
 
-    commit1 = get_ref(branch, settings.DIR_REFS_HEADS)
-    commit2 = get_ref(branch, Path(settings.DIR_REFS_REMOTES, remote))
-    _checkout_between_commits(commit1, commit2)
-    update_ref(branch, commit2, settings.DIR_REFS_HEADS)
+    if method == 0:
+        # can be fast forward if the tip of local inside remote
+        commit1 = get_ref(branch, settings.DIR_REFS_HEADS)
+        commit2 = get_ref(branch, Path(settings.DIR_REFS_REMOTES, remote))
+        if get_latest_parent_commit(commit1, commit2) != commit1:
+            raise RuntimeError(
+                "Cannot do fast-forward because the tip of local branch "
+                "does not show up in remote"
+            )
+        _checkout_between_commits(commit1, commit2)
+        update_ref(branch, commit2, settings.DIR_REFS_HEADS)
+    elif method == 1:
+        raise NotImplementedError("Hasn't implemented 3-way merge god apply")
+    elif method == 2:
+        raise NotImplementedError("Hasn't implemented rebase for god apply")
+
     print("Applied")
 
 
-def pull_cmd(branch: str, remote: str):
+def pull_cmd(branch: str, remote: str, method: int):
     """Combine fetch and apply in 1 command"""
     fetch_cmd(branch, remote)
-    apply_cmd(branch, remote)
+    apply_cmd(branch, remote, method)
 
 
 def clone_cmd(path, from_: str, location: str):
