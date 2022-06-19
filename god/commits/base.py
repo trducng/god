@@ -204,6 +204,9 @@ def get_latest_parent_commit(commit1: str, commit2: str) -> str:
     # Returns:
         <str>: commit id of parent, or empty string if there's no shared parent commit
     """
+    if not commit1:
+        return ""
+
     to_check = queue.Queue()
     to_check.put(commit1)
     to_check.put(commit2)
@@ -268,7 +271,7 @@ def get_in_between_commits(commit1: str, commit2: str) -> List[str]:
         return result
 
     to_check = queue.Queue()
-    to_check.put(commit1)
+    to_check.put(commit2)
 
     while not to_check.empty():
         commit_id = to_check.get()
@@ -276,7 +279,7 @@ def get_in_between_commits(commit1: str, commit2: str) -> List[str]:
         if commit_id == "":
             continue
 
-        if commit_id == commit2:
+        if commit_id == commit1:
             return result
 
         if commit_id != commit1:

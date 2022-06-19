@@ -24,16 +24,13 @@ def push_ref(
     # check if the ref exists on remote
     if not remote_storage.have_refs([ref_name])[0]:
         # if not upload and ok
-        remote_storage.store_refs(
-            paths=[str(Path(local_ref_path, ref_name))], refs=[ref_name]
-        )
-        return
+        remote_commit = ""
+    else:
+        # if yes, download and check
+        tmp_ref = str(Path("/tmp", ref_name))  # @PRIORITY2: use cache
+        remote_storage.get_refs(refs=[ref_name], paths=[tmp_ref])
+        remote_commit = get_ref(ref_name, "/tmp")
 
-    # if yes, download and check
-    tmp_ref = str(Path("/tmp", ref_name))  # @PRIORITY2: use cache
-    remote_storage.get_refs(refs=[ref_name], paths=[tmp_ref])
-
-    remote_commit = get_ref(ref_name, "/tmp")
     local_commit = get_ref(ref_name, local_ref_path)  # @PRIORITY2: stupid get_ref
     if remote_commit == local_commit:
         # 1. if the 2 tips are equal: then nothing to upload, ok
@@ -49,7 +46,6 @@ def push_ref(
 
     # get intermediate commits
     commits = list(set(get_in_between_commits(parent_commit, local_commit)))
-    commits.append(local_commit)
 
     # get directories and objects
     dirs, objects = [], []
