@@ -208,7 +208,7 @@ class BaseStorage(metaclass=ABCMeta):
 
 
 class RemoteRefsMixin(metaclass=ABCMeta):
-    """Mixins to get the refs"""
+    """Mixins to operate with refs"""
 
     REMOTE_REFS_PREFIX = "refs"
 
@@ -226,7 +226,7 @@ class RemoteRefsMixin(metaclass=ABCMeta):
         sources = [
             self._ref_path(each, prefix=self.REMOTE_REFS_PREFIX) for each in refs
         ]
-        return self._get(storage_paths=sources, paths=paths)
+        return self._get(storage_paths=sources, paths=paths)  # type: ignore
 
     def store_refs(self, paths: List[str], refs: List[str]):
         """Store the refs from local to central storage
@@ -238,7 +238,7 @@ class RemoteRefsMixin(metaclass=ABCMeta):
         targets = [
             self._ref_path(each, prefix=self.REMOTE_REFS_PREFIX) for each in refs
         ]
-        return self._store(storage_paths=targets, paths=paths)
+        return self._store(storage_paths=targets, paths=paths)  # type: ignore
 
     def delete_refs(self, refs: List[str]):
         """Delete the refs with specified name
@@ -249,7 +249,7 @@ class RemoteRefsMixin(metaclass=ABCMeta):
         targets = [
             self._ref_path(each, prefix=self.REMOTE_REFS_PREFIX) for each in refs
         ]
-        return self._delete(storage_paths=targets)
+        return self._delete(storage_paths=targets)  # type: ignore
 
     def have_refs(self, refs: List[str]) -> List[bool]:
         """Check if refs with specified names exist
@@ -260,10 +260,10 @@ class RemoteRefsMixin(metaclass=ABCMeta):
         targets = [
             self._ref_path(each, prefix=self.REMOTE_REFS_PREFIX) for each in refs
         ]
-        return self._have(storage_paths=targets)
+        return self._have(storage_paths=targets)  # type: ignore
 
     def list_refs(self) -> List[str]:
         """List refs, in the path format"""
-        return self._list(
+        return self._list(  # type: ignore
             storage_prefix=self._ref_path("", prefix=self.REMOTE_REFS_PREFIX)
         )

@@ -438,3 +438,40 @@ def clone_cmd(path, from_: str, location: str):
     commit2 = get_ref("main", path / c.DIR_REFS_REMOTES / "origin")
     _checkout_between_commits(commit1, commit2)
     update_ref("main", commit2, path / c.DIR_REFS_HEADS)
+
+
+def push_cmd(branch: str, remote: str):
+    """Push the local ref to remote
+
+    Args:
+        branch: the branch name to push to remote, if empty, the current branch
+        remote: the name of the target remote, if empty, the default one
+    """
+    from god.push import push_ref
+    from god.remote.base import get_default_remote, get_remote
+
+    if not remote:
+        remote = get_default_remote(link_path=settings.FILE_LINK)
+        if not remote:
+            raise RuntimeError(
+                "Default remote not found. Please set default remote with:\n"
+                "    god remote set [name] --defailt\n"
+            )
+
+    if not branch:
+        branch, _ = read_HEAD(settings.FILE_HEAD)
+
+    if not branch:
+        raise RuntimeError("Please specify branch, or get back from detached mode")
+
+    with open(settings.FILE_LINK, "r") as fi:
+        local_path = json.load(fi)["STORAGE"]
+    remote_loc = get_remote(link_path=settings.FILE_LINK, name=remote)[remote]
+
+    push_ref(
+        ref_name=branch,
+        local_ref_path=settings.DIR_REFS_HEADS,
+        remote_ref_path=str(Path(settings.DIR_REFS_REMOTES, remote)),
+        remote_path=remote_loc,
+        local_path=local_path,
+    )

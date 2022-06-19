@@ -19,6 +19,7 @@ from god.porcelain import (
     log_cmd,
     merge_cmd,
     pull_cmd,
+    push_cmd,
     reset_cmd,
     restore_staged_cmd,
     restore_working_cmd,
@@ -243,10 +244,11 @@ def pull(branch, remote, method_):
 
 
 @main.command("push")
-@click.argument("branch", required=False, type=str, default="")
+@click.option("--branch", type=str, default="")
 @click.option("--remote", type=str, default="")
 def push(branch, remote):
-    settings.ste_global_settings()
+    settings.set_global_settings()
+    push_cmd(branch, remote)
 
 
 @main.command("clone")

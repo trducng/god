@@ -1,21 +1,21 @@
 from pathlib import Path
+from typing import Union
 
 
-def get_ref(ref, ref_dir):
+def get_ref(ref: str, ref_dir: Union[str, Path]) -> str:
     """Get current commit
 
-    # Args:
-        ref <str>: the reference name
-        ref_dir <str>: the absolute path to reference folder
+    Args:
+        ref: the reference name
+        ref_dir: the absolute path to reference folder
 
-    # Returns:
-        <str>: the commit id
+    Returns:
+        The commit id
     """
-    ref = Path(ref_dir, ref)
-    if ref.is_file():
-        with ref.open("r") as f_in:
-            ref = f_in.read().strip()
-        return ref
+    ref_path = Path(ref_dir, ref)
+    if ref_path.is_file():
+        with ref_path.open("r") as f_in:
+            return f_in.read().strip()
 
     return ""
 

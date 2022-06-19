@@ -6,6 +6,7 @@ import os
 import queue
 import tempfile
 from pathlib import Path
+from typing import Dict, List
 
 import yaml
 
@@ -113,6 +114,62 @@ def get_files_hashes_in_commit(commit_id, plugin):
     return result
 
 
+def get_dirs_hashes_in_commit_dir(dir_id: str, prefix: str) -> Dict[str, str]:
+    """Get dir and hashes in a commit
+
+    # Args:
+        dir_id: the directory hash
+        prefix: the path prefix
+
+    # Returns:
+        <{str: str}>: dir and hashes
+    """
+    if not dir_id:
+        return {}
+
+    fd, temp_path = tempfile.mkstemp()
+    # @PRIORITY3: revamp god storages to act as proxy with cache
+    communicate(command=["god", "storages", "get-dirs"], stdin=[[temp_path, dir_id]])
+    with open(temp_path, "r") as f_in:
+        lines = f_in.read().splitlines()
+
+    os.close(fd)
+    os.unlink(temp_path)
+
+    result = {}
+    for each_line in lines:
+        components = each_line.split(",")
+        # @PRIORITY2: don't assume no ',' in filename -> more robust `dirs`
+        fn = components[0]  # assume no ',' in filename
+        if components[1] == "d":
+            result.update(
+                get_dirs_hashes_in_commit_dir(
+                    dir_id=components[-1],
+                    prefix=str(Path(prefix, fn)),
+                )
+            )
+
+    return result
+
+
+def get_dir_hashes_in_commit(commit_id: str, plugin: str):
+    """Get dirs and hashes in a commit
+
+    # Args:
+        commit_id: commit id
+        plugin: the plugin to get files
+
+    # Returns:
+        <{str: str}>: fn and hashes
+    """
+    commit_obj = read_commit(commit_id)
+    # @PRIORITY1: use the correct commit
+    result = get_dirs_hashes_in_commit_dir(commit_obj["tracks"][plugin], prefix=".")
+    result["."] = commit_obj["tracks"][plugin]
+
+    return result
+
+
 def exists_in_commit(files, commit_id, commit_dir, commit_dirs_dir):
     """Check whether files exist in commit
 
@@ -193,3 +250,43 @@ def is_commit(start, commit_dir):
         raise InvalidUserParams(f"Ambiguous commits: {', '.join(result)}")
     elif len(result) == 1:
         return result[0]
+
+
+def get_in_between_commits(commit1: str, commit2: str) -> List[str]:
+    """Get commits between commit1 and commit2 (exclusively)
+
+    Args:
+        commit1: id of commit1
+        commit2: id of commit2
+
+    Returns:
+        List of commit id between commit1 and commit2 (exclusively)
+    """
+    result = []
+
+    if commit1 == commit2:
+        return result
+
+    to_check = queue.Queue()
+    to_check.put(commit1)
+
+    while not to_check.empty():
+        commit_id = to_check.get()
+
+        if commit_id == "":
+            continue
+
+        if commit_id == commit2:
+            return result
+
+        if commit_id != commit1:
+            result.append(commit_id)
+
+        commit_obj = read_commit(commit_id)
+        if isinstance(commit_obj["prev"], (list, tuple)):
+            for _ in commit_obj["prev"]:
+                to_check.put(_)
+        elif isinstance(commit_obj["prev"], str) and commit_obj["prev"]:
+            to_check.put(commit_obj["prev"])
+
+    return result
