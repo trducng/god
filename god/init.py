@@ -22,9 +22,6 @@ def repo_exists(path):
     if Path(path, c.DIR_GOD).is_dir():
         raise RepoExisted(f"`{c.DIR_GOD}` directory already exists")
 
-    if Path(path, c.FILE_CONFIG).is_file():
-        raise RepoExisted(f"`{c.FILE_CONFIG}` file already exists")
-
 
 def init(path):
     """Initiate the repo

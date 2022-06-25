@@ -2,7 +2,7 @@ import json
 
 import click
 
-from god.core.conf import settings
+from god.configs.base import settings
 from god.remote.base import (
     get_default_remote,
     get_remote,

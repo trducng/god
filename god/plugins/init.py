@@ -11,4 +11,4 @@ def init(working_dir: str, force: bool):
         - tracked plugin configuration
     """
     # untracked
-    Path(working_dir, "bin").mkdir(exist_ok=force, parents=True)
+    Path(working_dir, "untracks", "bin").mkdir(exist_ok=force, parents=True)

@@ -4,8 +4,8 @@ from pathlib import Path
 
 import click
 
+from god.configs.base import settings
 from god.configs.cli import main as config_cli
-from god.core.conf import settings
 from god.files.cli import main as files_cli
 from god.plugins.cli import main as plugin_cli
 from god.porcelain import (

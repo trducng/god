@@ -17,8 +17,8 @@ from god.checkout import (
 )
 from god.commit import commit
 from god.commits.base import read_commit
+from god.configs.base import settings
 from god.core.add import add
-from god.core.conf import settings
 from god.core.head import read_HEAD
 from god.core.refs import get_ref, is_ref, update_ref
 from god.core.status import status

@@ -3,7 +3,7 @@ import shutil
 from collections import defaultdict
 from pathlib import Path
 
-from god.core.conf import settings
+from god.configs.base import settings
 
 
 def get_instances_from_snap(file_path):

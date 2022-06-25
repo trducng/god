@@ -3,7 +3,7 @@ import re
 import sqlite3
 from pathlib import Path
 
-from god.core.conf import settings
+from god.configs.base import settings
 
 
 def get_files(path, recursive=False):

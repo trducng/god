@@ -7,7 +7,7 @@ from typing import List, Union
 
 import magic
 
-from god.core.conf import settings
+from god.configs.base import settings
 
 
 def get_file_hash(file_):
