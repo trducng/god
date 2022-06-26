@@ -1,45 +1,46 @@
-import json
 import shutil
 from pathlib import Path
 from typing import Dict, Union
 
+import yaml
 
-def set_default_remote(name: str, link_path: Union[str, Path]):
+
+def set_default_remote(name: str, remote_config_path: Union[str, Path]):
     """Set default remote"""
-    with open(link_path, "r") as fi:
-        data = json.load(fi)
-        remotes = data.get("REMOTES", {})
+    with open(remote_config_path, "r") as fi:
+        data = yaml.safe_load(fi)
+        remotes = data.get("remotes", {})
 
     if name not in remotes:
         raise RuntimeError(f'Remote "{name}" does not exist')
 
-    data["DEFAULT_REMOTE"] = name
-    with open(link_path, "w") as fo:
-        json.dump(data, fo)
+    data["default_remote"] = name
+    with open(remote_config_path, "w") as fo:
+        yaml.dump(data, fo)
 
 
-def unset_default_remote(link_path: Union[str, Path]):
+def unset_default_remote(remote_config_path: Union[str, Path]):
     """Unset default remote"""
-    with open(link_path, "r") as fi:
-        data = json.load(fi)
+    with open(remote_config_path, "r") as fi:
+        data = yaml.safe_load(fi)
 
-    data["DEFAULT_REMOTE"] = ""
-    with open(link_path, "w") as fo:
-        json.dump(data, fo)
+    data["default_remote"] = ""
+    with open(remote_config_path, "w") as fo:
+        yaml.dump(data, fo)
 
 
-def get_default_remote(link_path: Union[str, Path]) -> str:
+def get_default_remote(remote_config_path: Union[str, Path]) -> str:
     """Get the default remote"""
-    with open(link_path, "r") as fi:
-        data = json.load(fi)
+    with open(remote_config_path, "r") as fi:
+        data = yaml.safe_load(fi)
 
-    return data.get("DEFAULT_REMOTE", "")
+    return data.get("default_remote", "")
 
 
-def get_remote(link_path: Union[str, Path], name: str = "") -> Dict[str, str]:
+def get_remote(remote_config_path: Union[str, Path], name: str = "") -> Dict[str, str]:
     """Get registered remote repository"""
-    with open(link_path, "r") as fi:
-        remotes = json.load(fi).get("REMOTES", {})
+    with open(remote_config_path, "r") as fi:
+        remotes = yaml.safe_load(fi).get("remotes", {})
 
     if not name:
         return remotes
@@ -53,7 +54,7 @@ def get_remote(link_path: Union[str, Path], name: str = "") -> Dict[str, str]:
 def set_remote(
     name: str,
     location: str,
-    link_path: Union[str, Path],
+    remote_config_path: Union[str, Path],
     ref_remotes_dir: Union[str, Path],
 ):
     """Add new remote to track"""
@@ -62,14 +63,14 @@ def set_remote(
     if not location:
         raise AttributeError("Location must not be empty")
 
-    with open(link_path, "r") as fi:
-        data = json.load(fi)
-        remotes = data.get("REMOTES", {})
+    with open(remote_config_path, "r") as fi:
+        data = yaml.safe_load(fi)
+        remotes = data.get("remotes", {})
 
     remotes[name] = location
-    data["REMOTES"] = remotes
-    with open(link_path, "w") as fo:
-        json.dump(data, fo)
+    data["remotes"] = remotes
+    with open(remote_config_path, "w") as fo:
+        yaml.dump(data, fo)
 
     remote_dir = Path(ref_remotes_dir, name)
     if remote_dir.is_file():
@@ -78,20 +79,20 @@ def set_remote(
 
 
 def unset_remote(
-    name: str, link_path: Union[str, Path], ref_remotes_dir: Union[str, Path]
+    name: str, remote_config_path: Union[str, Path], ref_remotes_dir: Union[str, Path]
 ):
     """Delete tracked remote from local"""
-    with open(link_path, "r") as fi:
-        data = json.load(fi)
-        remotes = data.get("REMOTES", {})
+    with open(remote_config_path, "r") as fi:
+        data = yaml.safe_load(fi)
+        remotes = data.get("remotes", {})
 
     if name not in remotes:
         raise RuntimeError(f'Remote "{name}" does not exist')
 
     remotes.pop(name)
-    data["REMOTES"] = remotes
-    with open(link_path, "w") as fo:
-        json.dump(data, fo)
+    data["remotes"] = remotes
+    with open(remote_config_path, "w") as fo:
+        yaml.dump(data, fo)
 
     remote_dir = Path(ref_remotes_dir, name)
     if remote_dir.exists():

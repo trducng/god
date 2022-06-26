@@ -11,7 +11,9 @@ from god.configs.utils import (
 from god.core.common import get_base_dir
 
 
-def get_config_path(plugin: str, level: Union[str, ConfigLevel]) -> str:
+def get_config_path(
+    plugin: str, level: Union[str, ConfigLevel], base_dir: str = None
+) -> str:
     """Get the path to plugin config, depending on the level
 
     Args:
@@ -33,12 +35,21 @@ def get_config_path(plugin: str, level: Union[str, ConfigLevel]) -> str:
     # @PRIORITY1: figure out shared_path and local_path the clean way
     if level == ConfigLevel.SHARED:
         return str(
-            Path(get_base_dir(), ".god", "workings", "configs", "tracks", plugin)
+            Path(
+                get_base_dir(base_dir), ".god", "workings", "configs", "tracks", plugin
+            )
         )
 
     if level == ConfigLevel.LOCAL:
         return str(
-            Path(get_base_dir(), ".god", "workings", "configs", "untracks", plugin)
+            Path(
+                get_base_dir(base_dir),
+                ".god",
+                "workings",
+                "configs",
+                "untracks",
+                plugin,
+            )
         )
 
     raise AttributeError(f'Unknown config level "{level}"')
@@ -89,7 +100,9 @@ def get_config(plugin: str = "configs") -> Settings:
     return base_setting
 
 
-def get_config_at_specific_level(plugin: str, level: ConfigLevel) -> Settings:
+def get_config_at_specific_level(
+    plugin: str, level: Union[str, ConfigLevel], base_dir: str = None
+) -> Settings:
     """Get the config of a plugin at a specific level
 
     Args:
@@ -100,7 +113,7 @@ def get_config_at_specific_level(plugin: str, level: ConfigLevel) -> Settings:
         The settings module of that config
 
     """
-    config_path = get_config_path(plugin, level)
+    config_path = get_config_path(plugin, level, base_dir=base_dir)
     config = read_config_file(config_path)
 
     if level in [ConfigLevel.SYSTEM, ConfigLevel.USER]:
@@ -109,7 +122,7 @@ def get_config_at_specific_level(plugin: str, level: ConfigLevel) -> Settings:
     return config
 
 
-def update_config(plugin: str, level: str, config_dict: Dict):
+def update_config(plugin: str, level: str, config_dict: Dict, base_dir: str = None):
     """Write the config out to YAML file
 
     # Args:
@@ -117,7 +130,7 @@ def update_config(plugin: str, level: str, config_dict: Dict):
         level: the config level of the plugin we wish to update
         config_dict: the configuration
     """
-    config_path = get_config_path(plugin, level)
+    config_path = get_config_path(plugin, level, base_dir=base_dir)
     config = read_config_file(config_path)
 
     # get the newly updated values
@@ -132,7 +145,7 @@ def update_config(plugin: str, level: str, config_dict: Dict):
     config.save(config_path)
 
 
-def edit_config_file(plugin: str, level: str):
+def edit_config_file(plugin: str, level: str, base_dir: str = None):
     """Edit file, copy to temporary location and then move back
 
     # Args:
@@ -143,7 +156,7 @@ def edit_config_file(plugin: str, level: str):
     import subprocess
     import uuid
 
-    config_path = get_config_path(plugin, level)
+    config_path = get_config_path(plugin, level, base_dir=base_dir)
 
     temp = Path(get_base_dir(), ".god", "temp", f"{uuid.uuid1().hex}")
     if not temp.parent.exists():

@@ -28,17 +28,16 @@ def migrate_cmd(ctx, path):
 @main.command("use")
 @click.argument("config")
 def use(config):
-    from pathlib import Path
+    import yaml
 
-    from god.core.common import get_base_dir
-    from god.utils.constants import FILE_LINK
+    from god.remote import get_remote_declaration_config_path
 
-    file_link = Path(get_base_dir(), FILE_LINK)
-    with file_link.open("r") as fi:
-        data = json.load(fi)
-    data["STORAGE"] = config
-    with file_link.open("w") as fo:
-        json.dump(data, fo)
+    config_path = get_remote_declaration_config_path()
+    with open(config_path, "r") as fi:
+        data = yaml.safe_load(fi)
+    data["storage"] = config
+    with open(config_path, "w") as fo:
+        yaml.dump(data, fo)
 
 
 @main.command("get-objects")

@@ -1,16 +1,4 @@
 from pathlib import Path
-from typing import Union
-
-import yaml
-
-
-def construct_empty_config(path: Union[str, Path], force: bool) -> None:
-    """Construct empty config"""
-    if Path(path).exists() and not force:
-        raise ValueError(f"{path} already exists. Supply `force` to override")
-
-    with open(path, "w") as fo:
-        yaml.safe_dump({}, fo)
 
 
 def init(working_dir: str, force: bool):

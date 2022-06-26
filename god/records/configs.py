@@ -21,7 +21,9 @@ def get_records_config() -> Dict:
     Returns:
         The records configuration
     """
-    result = communicate(["god", "configs", "list", "--plugin", "records"])
+    result = communicate(
+        ["god", "configs", "list", "--plugin", "records", "--format", "json"]
+    )
     return result.get("RECORDS", {})  # type: ignore
 
 

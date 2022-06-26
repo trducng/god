@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 
 import god.utils.constants as c
-from god.configs.init import init as configs_init
+from god.configs import update_config
 from god.plugins.init import init as plugins_init
 from god.plugins.install import construct_working_directory, create_blank_index
 from god.storage.utils import DEFAULT_STORAGE
@@ -59,16 +59,17 @@ def init(path):
     # Setup configs
     working_dir = construct_working_directory("configs", path)
     create_blank_index("configs", path)
-    configs_init(str(working_dir), False)
+    update_config(
+        plugin="configs",
+        level="local",
+        config_dict={"storage": DEFAULT_STORAGE, "remotes": {}, "default_remote": ""},
+        base_dir=str(path),
+    )
 
     # Setup plugins
     working_dir = construct_working_directory("plugins", path)
     create_blank_index("plugins", path)
     plugins_init(str(working_dir), False)
-
-    # Setup default local storage
-    with (path / c.FILE_LINK).open("w") as fo:
-        json.dump({"STORAGE": DEFAULT_STORAGE, "REMOTES": {}, "DEFAULT_REMOTE": ""}, fo)
 
 
 if __name__ == "__main__":

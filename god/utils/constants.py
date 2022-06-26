@@ -17,4 +17,3 @@ DIR_REFS_REMOTES = str(Path(DIR_REFS, "remotes"))
 FILE_HEAD = str(Path(DIR_GOD, "HEAD"))
 FILE_INDEX = str(Path(DIR_GOD, "index"))
 FILE_CONFIG = "godconfig"
-FILE_LINK = str(Path(DIR_GOD, "links"))

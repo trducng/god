@@ -108,7 +108,7 @@ def add_cmd(paths, plugin):
 def commit_cmd(message):
     """Commit the changes in staging area to commit"""
     config: dict = communicate(
-        ["god", "configs", "list", "--user", "--no-plugin"]
+        ["god", "configs", "list", "--user", "--no-plugin", "--format", "--json"]
     )  # type: ignore
 
     if config.get("USER", None) is None:
@@ -312,14 +312,17 @@ def fetch_cmd(branch: str, remote: str):
         remote: the specific remote repository that we will fetch from. If blank, use
             the default remote. If default remote has not been set, raise error
     """
-    import json
     from pathlib import Path
 
+    import yaml
+
     from god.fetch import fetch_object_storage
+    from god.remote import get_remote_declaration_config_path
     from god.remote.base import get_default_remote, get_remote
 
+    remote_config_path = get_remote_declaration_config_path()
     if not remote:
-        remote = get_default_remote(link_path=settings.FILE_LINK)
+        remote = get_default_remote(remote_config_path=remote_config_path)
         if not remote:
             raise RuntimeError(
                 "Default remote not found. Please set default remote with:\n"
@@ -332,9 +335,9 @@ def fetch_cmd(branch: str, remote: str):
     if not branch:
         raise RuntimeError("Please specify branch, or get back from detached mode")
 
-    with open(settings.FILE_LINK, "r") as fi:
-        local_path = json.load(fi)["STORAGE"]
-    remote_loc = get_remote(link_path=settings.FILE_LINK, name=remote)
+    with open(remote_config_path, "r") as fi:
+        local_path = yaml.safe_load(fi)["storage"]
+    remote_loc = get_remote(remote_config_path=remote_config_path, name=remote)
     need_apply = fetch_object_storage(
         branch=branch,
         ref_remotes_dir=Path(settings.DIR_REFS_REMOTES, remote),
@@ -358,10 +361,12 @@ def apply_cmd(branch: str, remote: str, method: int):
     """
     from god.checkout import _checkout_between_commits
     from god.commits.base import get_latest_parent_commit
+    from god.remote import get_remote_declaration_config_path
     from god.remote.base import get_default_remote
 
+    remote_config_path = get_remote_declaration_config_path()
     if not remote:
-        remote = get_default_remote(link_path=settings.FILE_LINK)
+        remote = get_default_remote(remote_config_path=remote_config_path)
         if not remote:
             raise RuntimeError(
                 "Default remote not found. Please set default remote with:\n"
@@ -398,13 +403,15 @@ def pull_cmd(branch: str, remote: str, method: int):
 
 def clone_cmd(path, from_: str, location: str):
     """Clone from remote storage to current storage"""
-    import json
     import os
+
+    import yaml
 
     import god.utils.constants as c
     from god.checkout import _checkout_between_commits
     from god.core.refs import get_ref, update_ref
     from god.fetch import fetch_object_storage
+    from god.remote import get_remote_declaration_config_path
     from god.remote.base import set_default_remote, set_remote
 
     # initialize the repo
@@ -418,18 +425,19 @@ def clone_cmd(path, from_: str, location: str):
     init(path)
 
     # edit to correct endpoints
+    remote_config_path = get_remote_declaration_config_path(str(path))
     set_remote(
         name="origin",
         location=from_,
-        link_path=path / c.FILE_LINK,
+        remote_config_path=remote_config_path,
         ref_remotes_dir=path / c.DIR_REFS_REMOTES,
     )
-    set_default_remote(name="origin", link_path=path / c.FILE_LINK)
-    with (path / c.FILE_LINK).open("r") as fi:
-        links = json.load(fi)
-        links["STORAGE"] = location
-    with (path / c.FILE_LINK).open("w") as fo:
-        json.dump(links, fo)
+    set_default_remote(name="origin", remote_config_path=remote_config_path)
+    with open(remote_config_path, "r") as fi:
+        links = yaml.safe_load(fi)
+        links["storage"] = location
+    with open(remote_config_path, "w") as fo:
+        yaml.dump(links, fo)
 
     if location == "file://":
         new_location = "file://" + str(path / ".god")
@@ -459,11 +467,15 @@ def push_cmd(branch: str, remote: str):
         branch: the branch name to push to remote, if empty, the current branch
         remote: the name of the target remote, if empty, the default one
     """
+    import yaml
+
     from god.push import push_ref
+    from god.remote import get_remote_declaration_config_path
     from god.remote.base import get_default_remote, get_remote
 
+    remote_config_path = get_remote_declaration_config_path()
     if not remote:
-        remote = get_default_remote(link_path=settings.FILE_LINK)
+        remote = get_default_remote(remote_config_path=remote_config_path)
         if not remote:
             raise RuntimeError(
                 "Default remote not found. Please set default remote with:\n"
@@ -476,9 +488,9 @@ def push_cmd(branch: str, remote: str):
     if not branch:
         raise RuntimeError("Please specify branch, or get back from detached mode")
 
-    with open(settings.FILE_LINK, "r") as fi:
-        local_path = json.load(fi)["STORAGE"]
-    remote_loc = get_remote(link_path=settings.FILE_LINK, name=remote)[remote]
+    with open(remote_config_path, "r") as fi:
+        local_path = yaml.safe_load(fi)["storage"]
+    remote_loc = get_remote(remote_config_path=remote_config_path, name=remote)[remote]
 
     push_ref(
         ref_name=branch,

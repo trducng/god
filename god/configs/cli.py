@@ -119,14 +119,17 @@ def set_(key: str, value: str, plugin: str, level: str):
     help="Specify the level of config. If blank (default), will aggregated config "
     "value across levels. Otherwise, possible values are: system, user, shared, local.",
 )
-@click.option("--pretty", is_flag=True, default=False, help="Whether to pretty print")
-def list_(plugin, level, pretty):
+@click.option(
+    "--format",
+    type=click.Choice(["json", "yaml"]),
+    default="yaml",
+    help="Machine should use json format, while human use yaml for pretty print",
+)
+def list_(plugin, level, format):
     """List the configurations
 
-    # Returns:
-        [Dict]: if `pretty`, the configuration is printed as YAML format (suitable to
-            print to console), otherwise, the configuration is printed as JSON format
-            (suitable for piping)
+    Example:
+        $ god configs list --format json
     """
     setting = (
         get_config(plugin)
@@ -134,7 +137,7 @@ def list_(plugin, level, pretty):
         else get_config_at_specific_level(plugin=plugin, level=level)
     )
 
-    if pretty:
+    if format == "yaml":
         print(setting)
     else:
         print(json.dumps(setting.as_dict()))
