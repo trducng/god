@@ -7,65 +7,6 @@ import god.utils.constants as c
 from god.core.common import get_base_dir
 
 
-def parse_dot_notation_to_dict(notation, value, upper=True):
-    """Parse dot notation to dictionary
-
-    Example:
-        >> parse_dot_notation_to_dict('abc.xyz': 10)
-        { "ABC": { "XYZ", 10 }}
-
-    # Args:
-        notation <str>: the dot notation
-        value <Any>: value
-        upper <bool>: whether to uppercase the key
-
-    # Returns:
-        <{}>: the parsed dictionary
-    """
-    components = notation.split(".")
-    components = list(reversed(components))
-    if upper:
-        components = [_.upper() for _ in components]
-
-    result = {components[0]: value}
-    for item in components[1:]:
-        result = {item: result}
-
-    return result
-
-
-def update_config(config_path, config_dict):
-    """Write the config out to YAML file
-
-    # Args:
-        config_path <str|Path>: the path to config file
-        config_dict <{}>: the configuration
-    """
-    settings = read_config_file(config_path)
-    for key, value in config_dict.items():
-        parsed_value = parse_dot_notation_to_dict(key, value)
-        settings.set_values(**parsed_value)
-
-    settings = settings.as_dict()
-    with open(config_path, "w") as f_out:
-        yaml.dump(settings, f_out)
-
-
-def read_config_file(config_path):
-    """Read values from local config into dictionary
-
-    # Args:
-        config_path <str>: path to config path
-
-    # Returns:
-        <Settings>: the setting object
-    """
-    settings = Settings()
-    if Path(config_path).is_file():
-        settings.set_values_from_yaml(config_path)
-    return settings
-
-
 @dataclass(frozen=True)
 class Settings(object):
     """Global setting module.
@@ -73,8 +14,8 @@ class Settings(object):
     The `settings` object will be accessible for all classes and functions.
 
     This settings module looks for and constructs settings in this following priority:
-        - User params
-        - Project-level (at `.godconfig`)
+        - User params (at `./configs/untracks/configs`)
+        - Project-level (at `./configs/tracks/configs`)
         - User-level (at `~/.godconfig`)
         - System-level (at `/etc/godconfig`)
 
@@ -87,7 +28,7 @@ class Settings(object):
     def __init__(self, level=0):
         """Initiate the setting object"""
         object.__setattr__(self, "_level", level)
-        object.__setattr__(self, "_initialized", False)
+        object.__setattr__(self, "_locked", False)
         object.__setattr__(self, "_values", [])
 
     def parse(self, item):
@@ -107,11 +48,10 @@ class Settings(object):
 
     def set_values(self, **kwargs):
         """Read settings"""
-        if self._initialized:
+        if self._locked:
             raise AttributeError("Setting has been initiated, cannot be re-iniated")
 
         for key, value in kwargs.items():
-            # key = key.upper()
             parsed_value = self.parse(value)
 
             if key in self._values:
@@ -132,7 +72,7 @@ class Settings(object):
         # Args
             path <str>: the path to config file
         """
-        if self._initialized:
+        if self._locked:
             raise AttributeError("Setting has been initiated, cannot be re-iniated")
 
         with open(path, "r") as f_in:
@@ -143,7 +83,7 @@ class Settings(object):
 
     def set_global_settings(self, dir_base=None, **kwargs):
         """Set global settings"""
-        if self._initialized:
+        if self._locked:
             raise AttributeError("Setting has been initiated, cannot be re-initiated")
         dir_base = get_base_dir() if dir_base is None else dir_base
 
@@ -174,7 +114,7 @@ class Settings(object):
                 constants[each_var] = str(Path(dir_base, getattr(c, each_var)))
             self.set_values(**constants)
 
-        object.__setattr__(self, "_initialized", True)
+        object.__setattr__(self, "_locked", True)
         object.__setattr__(self, "_values", tuple(self._values))
 
     def items(self):
@@ -220,6 +160,11 @@ class Settings(object):
         if key not in self._values:
             return default
         return getattr(self, key)
+
+    def save(self, path: str):
+        """Save the settings to specific path"""
+        with open(path, "w") as fo:
+            yaml.dump(self.as_dict(), fo)
 
     def __getitem__(self, key):
         """Allow accessing config value through string"""

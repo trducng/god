@@ -228,6 +228,18 @@ def merge_cmd(branch, include, exclude, continue_, abort):
     # Args:
         branch <str>: name of the branch
     """
+    from god.configs import get_config
+
+    configs = get_config("configs")
+    username = configs.get("user", {}).get("name", None)
+    email = configs.get("user", {}).get("email", None)
+    if username is None or email is None:
+        raise RuntimeError(
+            "Missing user's name and/or email. Please set: \n"
+            "    $ god configs set user.name=<name>\n"
+            "    $ god configs set user.email=<email>\n"
+        )
+
     if continue_ and abort:
         raise AttributeError("Cannot --continue and --abort at the same time")
 
@@ -250,8 +262,8 @@ def merge_cmd(branch, include, exclude, continue_, abort):
             # the theirs branch might have new commit during the conflict resolution
             merge_progress["theirs"]["name"],
             settings.DIR_REFS_HEADS,
-            user="some email",  # @PRIORITY0
-            email="some password",
+            user=username,
+            email=email,
             include=include,
             exclude=exclude,
         )
@@ -283,8 +295,8 @@ def merge_cmd(branch, include, exclude, continue_, abort):
             refs,
             branch,
             settings.DIR_REFS_HEADS,
-            user="some email",  # @PRIORITY0
-            email="some password",
+            user=username,
+            email=email,
             include=include,
             exclude=exclude,
         )

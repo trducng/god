@@ -1,18 +1,20 @@
 import json
-from collections import defaultdict
 from pathlib import Path
 
 import click
 from rich import print as rprint
 
+from god.configs import (
+    ConfigLevel,
+    edit_config_file,
+    get_config,
+    get_config_at_specific_level,
+    update_config,
+)
 from god.configs.add import add
-from god.configs.base import Settings, update_config
-from god.configs.constants import SYSTEM_CONFIG, USER_CONFIG
 from god.configs.init import init
 from god.configs.status import status
-from god.configs.utils import edit_file, get_config
 from god.core.common import get_base_dir
-from god.utils.process import error
 
 
 @click.group()
@@ -75,104 +77,50 @@ def status_():
 
 
 @main.command("edit")
-@click.option("--system", is_flag=True, default=False, help="System-level config")
-@click.option("--user", is_flag=True, default=False, help="User-level config")
+@click.option("--plugin", type=str, default="configs", help="Specify plugins")
 @click.option(
-    "--local-tree", is_flag=True, default=False, help="Local repo-level config"
+    "--level",
+    type=click.Choice(ConfigLevel.list()),
+    default="local",
+    help="Specify the level of config. "
+    "Possible values are: local (default), system, user, shared.",
 )
-@click.option("--shared-tree", is_flag=True, default=False, help="Shared repo config")
-@click.option("--plugin", type=str, default=None, help="Specify plugins")
-def edit(system, user, local_tree, shared_tree, plugin):
+def edit(plugin: str, level: str):
     """Edit the config file in YAML format"""
-    if plugin == "storages":
-        # cannot change config here, because we would want to support data migration
-        # in case user changes storage information.
-        error(
-            "god configs cannot change storages. Use `god storage use` instead",
-            statuscode=1,
-        )
-
-    if system:
-        edit_file(SYSTEM_CONFIG)
-        return
-
-    if user:
-        edit_file(USER_CONFIG)
-        return
-
-    shared_path = Path(get_base_dir(), ".god", "workings", "configs", "tracks")
-    local_path = Path(get_base_dir(), ".god", "workings", "configs")
-    if local_tree:
-        if plugin:
-            edit_file(str(local_path / "plugins" / plugin))
-            return
-        else:
-            edit_file(str(local_path / "configs"))
-            return
-
-    if shared_tree:
-        if plugin:
-            edit_file(str(shared_path / "plugins" / plugin))
-            return
-        else:
-            edit_file(str(shared_path / "configs"))
-            return
+    edit_config_file(plugin, level)
 
 
 @main.command("set")
 @click.argument("key")
 @click.argument("value")
-@click.option("--system", is_flag=True, default=False, help="System-level config")
-@click.option("--user", is_flag=True, default=False, help="User-level config")
+@click.option("--plugin", type=str, default="configs", help="Specify plugins")
 @click.option(
-    "--local-tree", is_flag=True, default=False, help="Local repo-level config"
+    "--level",
+    type=click.Choice(ConfigLevel.list()),
+    default="local",
+    help="Specify the level of config. "
+    "Possible values are: local (default), system, user, shared.",
 )
-@click.option("--shared-tree", is_flag=True, default=False, help="Shared repo config")
-@click.option("--plugin", type=str, default=None, help="Specify plugins")
-def set_(key, value, system, user, local_tree, shared_tree, plugin):
+def set_(key: str, value: str, plugin: str, level: str):
     """Set simple key-value config
 
     Example:
-        $ god-config set OTHER_CONFIG.KEY2 "hihihi" --shared-tree --plugin files
+        $ god-configs set user.name "trducng"
     """
-    if system:
-        update_config(SYSTEM_CONFIG, {key: value})
-        return
-
-    if user:
-        update_config(USER_CONFIG, {key: value})
-        return
-
-    shared_path = Path(get_base_dir(), ".god", "workings", "configs", "tracks")
-    local_path = Path(get_base_dir(), ".god", "workings", "configs")
-    if local_tree:
-        if plugin:
-            update_config(str(local_path / "plugins" / plugin), {key: value})
-            return
-        else:
-            update_config(str(local_path / "configs"), {key: value})
-            return
-
-    if shared_tree:
-        if plugin:
-            update_config(str(shared_path / "plugins" / plugin), {key: value})
-            return
-        else:
-            update_config(str(shared_path / "configs"), {key: value})
-            return
+    update_config(plugin=plugin, level=level, config_dict={key: value})
 
 
 @main.command("list")
-@click.option("--system", is_flag=True, default=False, help="System-level config")
-@click.option("--user", is_flag=True, default=False, help="User-level config")
+@click.option("--plugin", type=str, default="configs", help="Specify plugins")
 @click.option(
-    "--local-tree", is_flag=True, default=False, help="Local repo-level config"
+    "--level",
+    type=click.Choice(ConfigLevel.list()),
+    default=None,
+    help="Specify the level of config. If blank (default), will aggregated config "
+    "value across levels. Otherwise, possible values are: system, user, shared, local.",
 )
-@click.option("--shared-tree", is_flag=True, default=False, help="Shared repo config")
-@click.option("--plugin", type=str, default=None, help="Specify plugins")
-@click.option("--no-plugin", is_flag=True, default=False, help="Ignore plugin config")
 @click.option("--pretty", is_flag=True, default=False, help="Whether to pretty print")
-def list_(system, user, local_tree, shared_tree, plugin, no_plugin, pretty):
+def list_(plugin, level, pretty):
     """List the configurations
 
     # Returns:
@@ -180,62 +128,13 @@ def list_(system, user, local_tree, shared_tree, plugin, no_plugin, pretty):
             print to console), otherwise, the configuration is printed as JSON format
             (suitable for piping)
     """
-    shared_path = Path(get_base_dir(), ".god", "workings", "configs", "tracks")
-    local_path = Path(get_base_dir(), ".god", "workings", "configs")
-
-    base_setting = Settings()
-    plugins_setting = defaultdict(lambda: Settings(level=2))
-
-    if plugin:
-        if not (shared_tree or local_tree):
-            # for convenience, if user does not specify --shared-tree or --local-tree
-            # in the command line, assume the user wants all
-            shared_tree = True
-            local_tree = True
-
-        base_setting = get_config(
-            plugin=plugin, shared_tree=shared_tree, local_tree=local_tree
-        )
-        if pretty:
-            print(base_setting)
-        else:
-            print(json.dumps(base_setting.as_dict()))
-
-        return
-
-    if not (system or user or local_tree or shared_tree):
-        system, user, local_tree, shared_tree = True, True, True, True
-
-    if system and Path(SYSTEM_CONFIG).exists():
-        base_setting.set_values_from_yaml(SYSTEM_CONFIG)
-
-    if user and Path(USER_CONFIG).exists():
-        base_setting.set_values_from_yaml(USER_CONFIG)
-
-    shared_path = Path(get_base_dir(), ".god", "workings", "configs", "tracks")
-    if shared_tree:
-        base_setting.set_values_from_yaml(shared_path / "configs")
-        if not no_plugin:
-            for each_path in (shared_path / "plugins").glob("*"):
-                plugin_setting = Settings(level=2)
-                plugin_setting.set_values_from_yaml(each_path)
-                plugins_setting[each_path.name.upper()] += plugin_setting
-
-    local_path = Path(get_base_dir(), ".god", "workings", "configs")
-    if local_tree:
-        local_setting = Settings()
-        local_setting.set_values_from_yaml(local_path / "configs")
-        base_setting += local_setting
-        if not no_plugin:
-            for each_path in (shared_path / "plugins").glob("*"):
-                plugin_setting = Settings(level=2)
-                plugin_setting.set_values_from_yaml(each_path)
-                plugins_setting[each_path.name.upper()] += plugin_setting
-
-    if plugins_setting:
-        base_setting.set_values(PLUGINS=plugins_setting)
+    setting = (
+        get_config(plugin)
+        if level is None
+        else get_config_at_specific_level(plugin=plugin, level=level)
+    )
 
     if pretty:
-        print(base_setting)
+        print(setting)
     else:
-        print(json.dumps(base_setting.as_dict()))
+        print(json.dumps(setting.as_dict()))

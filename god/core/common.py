@@ -29,7 +29,7 @@ def get_base_dir(path=None) -> str:
         if fail:
             if current_path.parent == current_path:
                 # this is root directory
-                raise RuntimeError("Unitialized god repo. Please run `got init`")
+                raise RuntimeError("Uninitialized god repo. Please run `god init`")
             current_path = current_path.parent
 
         else:

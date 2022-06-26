@@ -18,12 +18,10 @@ def init(working_dir: str, force: bool):
 
     Run this command to create:
         - untracked personal configuration
-        - untracked plugin configuration
         - tracked shared configuration
-        - tracked plugin configuration
     """
     # untracked
-    Path(working_dir, "untracks", "plugins").mkdir(exist_ok=force, parents=True)
+    Path(working_dir, "untracks").mkdir(exist_ok=force, parents=True)
 
     # tracked
-    Path(working_dir, "tracks", "plugins").mkdir(exist_ok=force, parents=True)
+    Path(working_dir, "tracks").mkdir(exist_ok=force, parents=True)
