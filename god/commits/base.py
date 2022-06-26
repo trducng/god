@@ -57,6 +57,19 @@ def read_commit(commit_id):
     return commit_obj
 
 
+def get_plugins_in_commit(commit_id: str) -> List[str]:
+    """Get the list of tracked plugins inside commit
+
+    Args:
+        commit_id <str>: commit id
+
+    Returns:
+        List of tracked plugins shown in the commit
+    """
+    commit_obj = read_commit(commit_id)
+    return list(commit_obj.keys())
+
+
 def get_files_hashes_in_commit_dir(dir_id, prefix):
     """Get files and hashes in a commit
 
@@ -108,7 +121,6 @@ def get_files_hashes_in_commit(commit_id, plugin):
         <{str: str}>: fn and hashes
     """
     commit_obj = read_commit(commit_id)
-    # @PRIORITY1: use the correct commit
     result = get_files_hashes_in_commit_dir(commit_obj["tracks"][plugin], prefix=".")
 
     return result
@@ -163,7 +175,6 @@ def get_dir_hashes_in_commit(commit_id: str, plugin: str):
         <{str: str}>: fn and hashes
     """
     commit_obj = read_commit(commit_id)
-    # @PRIORITY1: use the correct commit
     result = get_dirs_hashes_in_commit_dir(commit_obj["tracks"][plugin], prefix=".")
     result["."] = commit_obj["tracks"][plugin]
 

@@ -4,9 +4,9 @@ from pathlib import Path
 
 import click
 
-from god.core.common import get_base_dir
+from god.core.common import get_base_dir, plugin_endpoints
 from god.index.base import Index
-from god.plugins.utils import installed_plugins, plugin_endpoints
+from god.plugins.utils import installed_plugins
 
 
 @click.group()

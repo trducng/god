@@ -258,7 +258,7 @@ def merge_cmd(branch, include, exclude, continue_, abort):
             )
         merge_continue(
             merge_progress["ours"]["name"],
-            # PRIORITY1: should use commit hash rather than branch name, because
+            # PRIORITY2: should use commit hash rather than branch name, because
             # the theirs branch might have new commit during the conflict resolution
             merge_progress["theirs"]["name"],
             settings.DIR_REFS_HEADS,

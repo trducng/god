@@ -8,12 +8,12 @@ from typing import Dict, List, Tuple
 from god.commit import commit
 from god.commits.base import get_latest_parent_commit, read_commit
 from god.commits.compare import transform_commit_id, transform_commit_obj
+from god.core.common import plugin_endpoints
 from god.core.files import get_file_hash, get_files_tst, is_binary
 from god.core.refs import get_ref, update_ref
 from god.index.base import Index
 from god.index.utils import column_index
 from god.plugins.manifest import load_manifest
-from god.plugins.utils import plugin_endpoints
 from god.utils.merge_text import Merge3
 from god.utils.process import communicate, delegate
 

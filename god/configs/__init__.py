@@ -8,7 +8,7 @@ from god.configs.utils import (
     ConfigLevel,
     parse_dot_notation_to_dict,
 )
-from god.core.common import get_base_dir
+from god.core.common import get_base_dir, plugin_endpoints
 
 
 def get_config_path(
@@ -32,25 +32,12 @@ def get_config_path(
     if level == ConfigLevel.USER:
         return USER_CONFIG
 
-    # @PRIORITY1: figure out shared_path and local_path the clean way
+    endpoints = plugin_endpoints(name="config", base_dir=base_dir)
     if level == ConfigLevel.SHARED:
-        return str(
-            Path(
-                get_base_dir(base_dir), ".god", "workings", "configs", "tracks", plugin
-            )
-        )
+        return str(Path(endpoints["tracks"], plugin))
 
     if level == ConfigLevel.LOCAL:
-        return str(
-            Path(
-                get_base_dir(base_dir),
-                ".god",
-                "workings",
-                "configs",
-                "untracks",
-                plugin,
-            )
-        )
+        return str(Path(endpoints["untracks"], plugin))
 
     raise AttributeError(f'Unknown config level "{level}"')
 
@@ -90,12 +77,8 @@ def get_config(plugin: str = "configs") -> Settings:
     if user_setting.get(plugin, None) is not None:
         base_setting += user_setting[plugin]
 
-    # @PRIORITY1: figure out shared_path and local_path the clean way
-    shared_path = Path(get_base_dir(), ".god", "workings", "configs", "tracks", plugin)
-    base_setting += read_config_file(shared_path)
-
-    local_path = Path(get_base_dir(), ".god", "workings", "configs", "untracks", plugin)
-    base_setting += read_config_file(local_path)
+    base_setting += read_config_file(get_config_path(plugin, ConfigLevel.SHARED))
+    base_setting += read_config_file(get_config_path(plugin, ConfigLevel.LOCAL))
 
     return base_setting
 

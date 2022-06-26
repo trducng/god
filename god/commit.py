@@ -9,8 +9,9 @@ from pathlib import Path
 import yaml
 
 from god.commits.base import calculate_commit_hash
+from god.core.common import plugin_endpoints
 from god.index.base import Index
-from god.plugins.utils import installed_plugins, plugin_endpoints
+from god.plugins.utils import installed_plugins
 from god.utils.common import get_string_hash
 from god.utils.process import communicate
 

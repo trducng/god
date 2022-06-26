@@ -6,6 +6,7 @@ from god.commits.base import (
     get_files_hashes_in_commit,
     get_in_between_commits,
     get_latest_parent_commit,
+    get_plugins_in_commit,
 )
 from god.core.refs import get_ref, update_ref
 from god.storage.commons import get_backend
@@ -50,13 +51,14 @@ def push_ref(
     # get directories and objects
     dirs, objects = [], []
     for commit in commits:
-        # @PRIORITY1: use all of plugins, rather than files
-        objects += list(
-            get_files_hashes_in_commit(commit_id=commit, plugin="files").values()
-        )
-        dirs += list(
-            get_dir_hashes_in_commit(commit_id=commit, plugin="files").values()
-        )
+        plugins = get_plugins_in_commit(commit_id=commit)
+        for plugin in plugins:
+            objects += list(
+                get_files_hashes_in_commit(commit_id=commit, plugin=plugin).values()
+            )
+            dirs += list(
+                get_dir_hashes_in_commit(commit_id=commit, plugin=plugin).values()
+            )
     objects = list(set(objects))
     dirs = list(set(dirs))
 
