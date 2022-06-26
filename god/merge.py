@@ -1,38 +1,4 @@
-"""
-Diff requirements:
-    - The diff should be able to show that there is a conflict. So that during merge:
-        + if there is a conflict, we will let user knows to resolve.
-        + if there isn't a conflict, we proceed with automatically building the
-        new complete entry.
-    - `god` does not know the optimal way to show diff for (1) a text file or (2) a
-    plugin.
-    - `god` does not know the optimal way to merge generally, because the diff
-    instruction can come from a single or multiple files
-    - `god` should be flexible to show diff for multiple file types -> Seems important
-    to store the diff locally, and then having each content rendered
-
-If there is a conflict, `god` will guide the user through the process of handling that
-conflict.
-
-If there is no conflict, `god` will have to be sure that it is *exactly* no conflict,
-and `god` will work with each respective plugin to handle that.
-
-Standardized format representing longest common blocks for 2 files (JSON format):
-    [
-        [(start1a, stop1a), (start1b, stop1b)],
-        [(start2a, stop2a), (start2b, stop2b)],
-        [(start3a, stop3a), (start3b, stop3b)],
-        ...
-    ]
-
-`god` shows diff on the console. `god` will by default treat every file as binary. It
-will relies on the plugin to show semantically meaningful diff. Also, it relies on the
-plugins to unfold the appropriate merge strategy. Otherwise, it will resort back to
-the default code conflict handler.
-
-@PRIORITY0: remove the "Seems important...", and put this rationale into technical
-document.
-"""
+"""Show diff"""
 import os
 import shutil
 import tempfile
@@ -204,12 +170,8 @@ def merge_plugin(
         return current_conflicts
 
     # get operations
-    add_ops1, remove_ops1 = transform_commit_obj(
-        parent_commit, our_commit, plugin  # @PRIORITY0: should reuse commit obj
-    )
-    add_ops2, remove_ops2 = transform_commit_obj(
-        parent_commit, their_commit, plugin  # @PRIORITY0
-    )
+    add_ops1, remove_ops1 = transform_commit_obj(parent_commit, our_commit, plugin)
+    add_ops2, remove_ops2 = transform_commit_obj(parent_commit, their_commit, plugin)
 
     # check for conflicts
     fp_add_ops1, fp_remove_ops1 = set(add_ops1.keys()), set(remove_ops1.keys())
@@ -340,8 +302,6 @@ def merge(
     # run merge for each plugin
     has_conflicts = False
     for plugin in plugins:
-        if plugin != "files":  # PRIORITY0: remove this debug
-            continue
         endpoints = plugin_endpoints(plugin)
         if merge_plugin(
             our_commit=commit_obj1,
@@ -412,8 +372,6 @@ def merge_continue(
     # run merge for each plugin
     has_conflicts = False
     for plugin in plugins:
-        if plugin != "files":  # PRIORITY0: remove this debug
-            continue
         endpoints = plugin_endpoints(plugin)
         if get_conflicts(endpoints["index"]):
             has_conflicts = True

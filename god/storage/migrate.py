@@ -55,7 +55,7 @@ def safe_migrate(storage1: BaseStorage, storage2: BaseStorage):
     for item in storage1.get_hashes():
         # download
         # upload
-        storage2.store_files()  # PRIORITY0: continue from here, upload directly
+        storage2.store_files()  # PRIORITY5: reconsider the necessity of migrate
 
 
 def migrate(storage1: BaseStorage, storage2: BaseStorage):
