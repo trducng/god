@@ -1,5 +1,5 @@
 from abc import ABCMeta, abstractmethod
-from typing import List
+from typing import Callable, List, Union
 
 import god.storage.constants as c
 
@@ -30,7 +30,21 @@ class BaseStorage(metaclass=ABCMeta):
         raise NotImplementedError("Should implement `_hash_path`")
 
     @abstractmethod
-    def _get(self, storage_paths: List[str], paths: List[str]):
+    def _get(
+        self,
+        storage_paths: List[str],
+        paths: List[str],
+        progress_callback: Union[Callable, None] = None,
+        n_processes: Union[int, None] = None,
+    ):
+        """Get objects from `storage_paths` to local `paths`
+
+        Args:
+            storage_paths: the paths in the storage
+            paths: corresponding target local locations
+            progress_callback: it is passed total_files (int) and total_bytes (int)
+            n_processes: number of processes to handle getting objects
+        """
         raise NotImplementedError("Should implement `_get`")
 
     @abstractmethod
@@ -50,17 +64,30 @@ class BaseStorage(metaclass=ABCMeta):
         raise NotImplementedError("Should implement `_list`")
 
     ### objects
-    def get_objects(self, hash_values: List[str], paths: List[str]):
+    def get_objects(
+        self,
+        hash_values: List[str],
+        paths: List[str],
+        progress_callback: Union[Callable, None] = None,
+        n_processes: Union[int, None] = None,
+    ):
         """Get the objects to a local file
 
         Args:
             hash_values: list of object hashes we wish to get
             paths: corresponding target locations that store the objects
+            progress_callback: it is passed total_files (int) and total_bytes (int)
+            n_processes: number of processes to handle getting objects
         """
         sources = [
             self._hash_path(each, prefix=self.OBJECTS_PREFIX) for each in hash_values
         ]
-        return self._get(storage_paths=sources, paths=paths)
+        return self._get(
+            storage_paths=sources,
+            paths=paths,
+            progress_callback=progress_callback,
+            n_processes=n_processes,
+        )
 
     def store_objects(self, paths: List[str], hash_values: List[str]):
         """Store local object to storage
@@ -103,7 +130,13 @@ class BaseStorage(metaclass=ABCMeta):
         )
 
     ### dirs
-    def get_dirs(self, hash_values: List[str], paths: List[str]):
+    def get_dirs(
+        self,
+        hash_values: List[str],
+        paths: List[str],
+        progress_callback: Union[Callable, None] = None,
+        n_processes: Union[int, None] = None,
+    ):
         """Get the directory to local
 
         Args:
@@ -113,7 +146,12 @@ class BaseStorage(metaclass=ABCMeta):
         sources = [
             self._hash_path(each, prefix=self.DIRS_PREFIX) for each in hash_values
         ]
-        return self._get(storage_paths=sources, paths=paths)
+        return self._get(
+            storage_paths=sources,
+            paths=paths,
+            progress_callback=progress_callback,
+            n_processes=n_processes,
+        )
 
     def store_dirs(self, paths: List[str], hash_values: List[str]):
         """Store local directory to storage
@@ -154,7 +192,13 @@ class BaseStorage(metaclass=ABCMeta):
         return self._list(storage_prefix=self._hash_path("", prefix=self.DIRS_PREFIX))
 
     ### commits
-    def get_commits(self, hash_values: List[str], paths: List[str]):
+    def get_commits(
+        self,
+        hash_values: List[str],
+        paths: List[str],
+        progress_callback: Union[Callable, None] = None,
+        n_processes: Union[int, None] = None,
+    ):
         """Get the commits to local
 
         Args:
@@ -164,7 +208,12 @@ class BaseStorage(metaclass=ABCMeta):
         sources = [
             self._hash_path(each, prefix=self.COMMITS_PREFIX) for each in hash_values
         ]
-        return self._get(storage_paths=sources, paths=paths)
+        return self._get(
+            storage_paths=sources,
+            paths=paths,
+            progress_callback=progress_callback,
+            n_processes=n_processes,
+        )
 
     def store_commits(self, paths: List[str], hash_values: List[str]):
         """Store local commit to storage

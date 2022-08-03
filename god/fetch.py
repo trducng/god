@@ -5,6 +5,7 @@ from typing import Union
 import yaml  # @PRIORITY3: whether to replace yaml with JSON
 
 from god.core.refs import get_ref, is_ref
+from god.storage.callbacks import show_download_progress
 from god.storage.commons import get_backend
 
 
@@ -116,7 +117,11 @@ def fetch_object_storage(
     to_migrate = [objects[idx] for idx in range(len(objects)) if not exists[idx]]
     if to_migrate:
         tmp_paths = [str(Path("/tmp", each)) for each in to_migrate]
-        remote_storage.get_objects(hash_values=to_migrate, paths=tmp_paths)
+        remote_storage.get_objects(
+            hash_values=to_migrate,
+            paths=tmp_paths,
+            progress_callback=show_download_progress,
+        )
         local_storage.store_objects(paths=tmp_paths, hash_values=to_migrate)
         for each in tmp_paths:
             os.unlink(each)

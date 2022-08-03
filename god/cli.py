@@ -62,7 +62,7 @@ def execute_plugin(extra_args):
     from god.core.common import get_base_dir
 
     # subprocess.run([])
-    plugin_bin = Path(get_base_dir(), ".god", "workings", "plugins", "bin")
+    plugin_bin = Path(get_base_dir(), ".god", "workings", "plugins", "untracks", "bin")
     executable = f"god-{extra_args[0]}"
     if not (plugin_bin / executable).is_file():
         print(f'Please make sure plugin "{executable}" is installed')

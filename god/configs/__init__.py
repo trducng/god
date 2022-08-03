@@ -32,7 +32,7 @@ def get_config_path(
     if level == ConfigLevel.USER:
         return USER_CONFIG
 
-    endpoints = plugin_endpoints(name="config", base_dir=base_dir)
+    endpoints = plugin_endpoints(name="configs", base_dir=base_dir)
     if level == ConfigLevel.SHARED:
         return str(Path(endpoints["tracks"], plugin))
 

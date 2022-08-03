@@ -4,6 +4,7 @@
 cli right into porcelain.
 """
 import json
+import sys
 from pathlib import Path
 
 from rich import print as rprint
@@ -443,6 +444,7 @@ def clone_cmd(path, from_: str, location: str):
         new_location = "file://" + str(path / ".god")
     else:
         new_location = location
+    print(f'=> Create directory "{path.name}"', file=sys.stderr)
 
     # fetch
     fetch_object_storage(

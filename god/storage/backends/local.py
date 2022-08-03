@@ -1,6 +1,6 @@
 import shutil
 from pathlib import Path
-from typing import List
+from typing import Callable, List, Union
 
 from god.core.common import get_base_dir
 from god.storage.backends.base import BaseStorage
@@ -19,7 +19,7 @@ def parse_config(config: str) -> Path:
 
     path = Path(config)
     if not path.is_absolute():
-        raise ValueError("Expect absoute file path (e.g. file:///path/to/file")
+        raise ValueError("Expect absoute file path (e.g. file:///path/to/file)")
 
     return path.resolve()
 
@@ -44,15 +44,30 @@ class LocalStorage(BaseStorage):
             )
         )
 
-    def _get(self, storage_paths: List[str], paths: List[str]):
+    def _get(
+        self,
+        storage_paths: List[str],
+        paths: List[str],
+        progress_callback: Union[Callable, None] = None,
+        n_processes: Union[int, None] = None,
+    ):
         """Get the file and store in file_path
+
+        Ignore `n_processes` as copying multiple files at once within local computer
+        can be slower than copying files sequentially (HDD disk seek).
 
         Args:
             storage_paths: the path from storage
             paths: the file path to copy to
+            progress_callback: it is passed total_files (int) and total_bytes (int)
+            n_processes: number of processes to handle getting objects
         """
-        for storage_path, path in zip(storage_paths, paths):
+        for idx, (storage_path, path) in enumerate(zip(storage_paths, paths)):
+            parent = Path(path).parent
+            parent.mkdir(parents=True, exist_ok=True)
             shutil.copy(storage_path, path)
+            if progress_callback:
+                progress_callback(total_files=idx + 1, total_bytes=0)
 
     def _store(self, storage_paths: List[str], paths: List[str]):
         """Store a file with a specific hash value
