@@ -157,7 +157,7 @@ def add(fds, plugin):
     #   - It seems we have to expose the config as a component, like a plumbing-command
     # so that 3rd-party plugin can readily use it to extract information they need.
     from god.core.common import get_base_dir
-    from god.plugins.manifest import load_manifest
+    from god.plugins.base import load_manifest
 
     if plugin == "files":
         base_dir = get_base_dir()

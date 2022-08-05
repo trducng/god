@@ -49,7 +49,7 @@ def status(fds: List[str], plugins: List[str]):
     # 1. get all plugins that has status
     # 1a. get all plugins
     # 1b. filter out those that do not have status
-    from god.plugins.manifest import load_manifest
+    from god.plugins.base import load_manifest
 
     hooks = {}
     for plugin in plugins:

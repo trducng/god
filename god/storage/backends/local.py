@@ -53,18 +53,20 @@ class LocalStorage(BaseStorage):
     ):
         """Get the file and store in file_path
 
-        Ignore `n_processes` as copying multiple files at once within local computer
-        can be slower than copying files sequentially (HDD disk seek).
-
         Args:
             storage_paths: the path from storage
             paths: the file path to copy to
             progress_callback: it is passed total_files (int) and total_bytes (int)
-            n_processes: number of processes to handle getting objects
+            n_processes: number of processes to handle getting objects. Ignore
+                `n_processes` as copying multiple files at once within local computer
+                can be slower than copying files sequentially (HDD disk seek).
         """
+        created = set()
         for idx, (storage_path, path) in enumerate(zip(storage_paths, paths)):
             parent = Path(path).parent
-            parent.mkdir(parents=True, exist_ok=True)
+            if parent not in created:
+                parent.mkdir(parents=True, exist_ok=True)
+                created.add(parent)
             shutil.copy(storage_path, path)
             if progress_callback:
                 progress_callback(total_files=idx + 1, total_bytes=0)

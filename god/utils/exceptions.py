@@ -26,3 +26,9 @@ class InternalNodeNotFound(Exception):
     """Internal node not found"""
 
     pass
+
+
+class PluginNotFound(Exception):
+    """Plugin not founded"""
+
+    pass

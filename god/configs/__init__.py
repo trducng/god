@@ -8,7 +8,8 @@ from god.configs.utils import (
     ConfigLevel,
     parse_dot_notation_to_dict,
 )
-from god.core.common import get_base_dir, plugin_endpoints
+from god.core.common import get_base_dir
+from god.plugins.base import plugin_endpoints
 
 
 def get_config_path(

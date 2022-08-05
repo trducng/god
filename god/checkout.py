@@ -3,14 +3,13 @@ from typing import List
 
 from god.commits.base import read_commit
 from god.commits.compare import transform_commit_id
-from god.core.common import plugin_endpoints
 from god.core.files import get_files_tst
 from god.core.head import read_HEAD, update_HEAD
 from god.core.refs import get_ref, update_ref
 from god.index.base import Index
 from god.index.trackchanges import track_staging_changes, track_working_changes
 from god.index.utils import column_index
-from god.plugins.utils import installed_plugins
+from god.plugins.base import installed_plugins, plugin_endpoints
 from god.utils.exceptions import OperationNotPermitted
 
 
@@ -186,8 +185,8 @@ def _checkout_between_commits(
     # get staged and unstaged information
     import shutil
 
-    from god.core.common import plugin_endpoints
     from god.core.status import status
+    from god.plugins.base import plugin_endpoints
     from god.utils.process import communicate
 
     new_plugs, update_plugs, remove_plugs, _ = compare_plugins(commit1, commit2)

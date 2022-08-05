@@ -4,8 +4,7 @@ from pathlib import Path
 
 import god.utils.constants as c
 from god.configs import update_config
-from god.plugins.init import init as plugins_init
-from god.plugins.install import construct_working_directory, create_blank_index
+from god.plugins.base import initiate_plugin
 from god.storage.utils import DEFAULT_STORAGE
 from god.utils.exceptions import RepoExisted
 
@@ -53,25 +52,16 @@ def init(path):
 
     # Create file
     with Path(path, c.FILE_HEAD).open("w") as f_out:
-        json.dump({"REFS": "main"}, f_out)
-    create_blank_index("files", path)
+        json.dump({"REFS": "main", "EXPOSED_PLUGINS": "files"}, f_out)
 
-    # Setup configs
-    working_dir = construct_working_directory("configs", path)
-    create_blank_index("configs", path)
+    initiate_plugin("files", path)
+    initiate_plugin("plugins", path)
+    initiate_plugin("configs", path)
+
+    # Default configs
     update_config(
         plugin="configs",
         level="local",
         config_dict={"storage": DEFAULT_STORAGE, "remotes": {}, "default_remote": ""},
         base_dir=str(path),
     )
-
-    # Setup plugins
-    working_dir = construct_working_directory("plugins", path)
-    create_blank_index("plugins", path)
-    plugins_init(str(working_dir), False)
-
-
-if __name__ == "__main__":
-    path = "."
-    init(path)
