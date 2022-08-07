@@ -26,7 +26,6 @@ from god.core.status import status
 from god.init import init, repo_exists
 from god.merge import merge, merge_continue
 from god.utils.exceptions import InvalidUserParams
-from god.utils.process import communicate
 
 
 def init_cmd(path):
@@ -108,19 +107,19 @@ def add_cmd(paths, plugin):
 
 def commit_cmd(message):
     """Commit the changes in staging area to commit"""
-    config: dict = communicate(
-        ["god", "configs", "list", "--user", "--no-plugin", "--format", "--json"]
-    )  # type: ignore
+    from god.configs import get_config
 
-    if config.get("USER", None) is None:
-        print("Please config USER.NAME and USER.EMAIL")
+    config = get_config("configs")
+
+    if config.get("user", None) is None:
+        print("Please config user.name and user.email")
         return
 
-    if config["USER"].get("NAME", None) is None:
+    if config["user"].get("name", None) is None:
         print("Please config user.name")
         return
 
-    if config["USER"].get("EMAIL", None) is None:
+    if config["user"].get("email", None) is None:
         print("Please config user.email")
         return
 
@@ -128,8 +127,8 @@ def commit_cmd(message):
     prev_commit = get_ref(refs, settings.DIR_REFS_HEADS)
 
     current_commit = commit(
-        user=config["USER"]["NAME"],
-        email=config["USER"]["EMAIL"],
+        user=config["user"]["name"],
+        email=config["user"]["email"],
         message=message,
         prev_commit=prev_commit,
     )
@@ -412,6 +411,8 @@ def clone_cmd(path, from_: str, location: str):
     from god.checkout import _checkout_between_commits
     from god.core.refs import get_ref, update_ref
     from god.fetch import fetch_object_storage
+    from god.plugins.base import installed_plugins
+    from god.plugins.manager import awake_passive_plugin
     from god.remote import get_remote_declaration_config_path
     from god.remote.base import set_default_remote, set_remote
 
@@ -459,6 +460,8 @@ def clone_cmd(path, from_: str, location: str):
     commit1 = None
     commit2 = get_ref("main", path / c.DIR_REFS_REMOTES / "origin")
     _checkout_between_commits(commit1, commit2)
+    for plugin in installed_plugins():
+        awake_passive_plugin(plugin)
     update_ref("main", commit2, path / c.DIR_REFS_HEADS)
 
 

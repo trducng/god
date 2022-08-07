@@ -1,16 +1,13 @@
 import json
-from distutils.dir_util import copy_tree
 from pathlib import Path
 
 import click
 
 from god.core.common import get_base_dir
-from god.plugins.base import (
-    build_plugin_directories,
-    build_plugin_index,
-    installed_plugins,
-    load_manifest,
-    plugin_endpoints,
+from god.plugins.base import installed_plugins, load_manifest, plugin_endpoints
+from god.plugins.manager import (
+    install_plugin_from_gztar_file,
+    retrieve_plugin_gztar_file,
 )
 
 
@@ -23,67 +20,19 @@ def main():
 @main.command("install")
 @click.option("-n", "--name", type=str, help="Name of the plugin")
 @click.option("-t", "--tar", type=str, help="Path to installation tar file")
-@click.option("--store", is_flag=True, default=False)
-def install_cmd(name: str, tar: str, store: bool):
-    import shutil
-    import tempfile
-
+def install_cmd(name: str, tar: str):
     if not (name or tar):
         raise AttributeError("Must specify either `--name` or --tar`")
 
     if name and tar:
         raise AttributeError("Must specify either `--name` or --tar`")
 
-    if tar:
-        # @TODO: unpack tar file
-        path = tempfile.mkdtemp()
-        shutil.unpack_archive(tar, path)
-
-        with Path(path, "info.json").open("r") as fi:
-            info = json.load(fi)
-        plugin_name = info["name"]
-
-        # create working dir and structure in working dir (dev prepares sample folder)
-        endpoints = plugin_endpoints(plugin_name)
-        build_plugin_directories(plugin_name)
-        copy_tree(str(Path(path, "untracks")), endpoints["untracks"])
-        copy_tree(str(Path(path, "tracks")), endpoints["tracks"])
-
-        # create blank index
-        if info["index"]:
-            build_plugin_index(plugin_name)
-
-        # store source, manifest and binary inside plugin's working dir
-        plugin_manager_endpoints = plugin_endpoints("plugins")
-
-        src_dir = Path(plugin_manager_endpoints["tracks"], "src")
-        src_dir.mkdir(parents=True, exist_ok=True)
-        shutil.copy(path, src_dir)
-
-        manifest_dir = Path(plugin_manager_endpoints["tracks"], "manifest")
-        manifest_dir.mkdir(parents=True, exist_ok=True)
-        with (manifest_dir / plugin_name).open("w") as fo:
-            json.dump(
-                {
-                    "name": plugin_name,
-                    "hash-type": "sha256",
-                    "hash-value": "some-tar-hash",
-                    "info": info,
-                },
-                fo,
-            )
-
-        bin_dir = Path(plugin_manager_endpoints["untracks"], "bin")
-        bin_dir.mkdir(parents=True, exist_ok=True)
-        shutil.copy(Path(path, f"god-{plugin_name}"), bin_dir)
-
-        shutil.rmtree(path)
-
+    store_src = True
     if name:
-        print("Not currently supported with --name, use --tar instead")
+        tar = retrieve_plugin_gztar_file(name=name)
+        store_src = False
 
-    if store:
-        print("Not currently supported store")
+    install_plugin_from_gztar_file(tar=tar, store_src=store_src)
 
 
 @main.command("uninstall")

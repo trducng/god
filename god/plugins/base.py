@@ -4,7 +4,6 @@ from typing import Dict, List, Union
 
 import god.utils.constants as c
 from god.core.common import get_base_dir
-from god.utils.exceptions import PluginNotFound
 
 BUILTIN_PLUGINS = {"records", "snapshots"}
 
@@ -65,8 +64,10 @@ def installed_plugins(base_dir: Union[str, Path, None] = None) -> List[str]:
     """
     names = []
 
-    plugin_dir = Path(plugin_endpoints("plugins", base_dir=base_dir)["tracks"])
-    for each in sorted(plugin_dir.glob("*")):
+    manifest_dir = Path(
+        plugin_endpoints("plugins", base_dir=base_dir)["tracks"], "manifest"
+    )
+    for each in sorted(manifest_dir.glob("*")):
         names.append(each.name)
 
     return names
@@ -81,6 +82,7 @@ def build_plugin_directories(name: str, base_dir: Union[str, Path, None] = None)
     """
     endpoints = plugin_endpoints(name, base_dir)
     Path(endpoints["tracks"]).mkdir(exist_ok=True, parents=True)
+    Path(endpoints["untracks"]).mkdir(exist_ok=True, parents=True)
 
 
 def build_plugin_index(name, base_dir: Union[str, Path, None] = None):
@@ -116,14 +118,11 @@ def load_manifest(name: str, base_dir: Union[str, Path, None] = None) -> Dict:
 
     Returns:
         A dict that show the plugin information
-
-    Raises:
-        PluginNotFound: when plugin not found
     """
-    manifest = Path(plugin_endpoints("plugins", base_dir)["tracks"], name)
+    manifest = Path(plugin_endpoints("plugins", base_dir)["tracks"], "manifest", name)
 
     if not manifest.is_file():
-        raise PluginNotFound(f"Plugin {name} not found")
+        return {}
 
     with manifest.open("r") as fi:
         return json.load(fi)["info"]

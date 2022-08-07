@@ -42,7 +42,7 @@ def init(name: str, base_dir: str, force: bool) -> None:
     (track_dir / RECORDS_LEAVES).mkdir()
 
     # update the config
-    print("Please run `god configs edit --shared-tree --plugin records` to edit info")
+    print("Please run `god configs edit --level shared --plugin records` to edit info")
 
     # create empty tree
     root: str = prolly_create(

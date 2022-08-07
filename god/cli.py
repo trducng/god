@@ -1,6 +1,5 @@
 import os
 import sys
-from pathlib import Path
 
 import click
 
@@ -94,7 +93,7 @@ def status(paths, plugins):
 
     Display the changes and what would be commited, including files and records.
     """
-    from god.core.common import get_base_dir
+    from god.plugins.base import installed_plugins
 
     settings.set_global_settings()
     if not paths:
@@ -102,11 +101,7 @@ def status(paths, plugins):
 
     plugins_list = plugins.split(",") if isinstance(plugins, str) else []
     if not plugins_list:
-        plugin_dir = Path(get_base_dir(), ".god", "workings", "plugins", "tracks")
-        files = list(sorted(plugin_dir.glob("*")))
-        plugins_list = ["files", "plugins", "configs"]
-        for each in files:
-            plugins_list.append(each.name)
+        plugins_list = ["files", "plugins", "configs"] + installed_plugins()
 
     status_cmd(paths, plugins_list)
 

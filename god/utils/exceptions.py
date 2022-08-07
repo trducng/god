@@ -32,3 +32,9 @@ class PluginNotFound(Exception):
     """Plugin not founded"""
 
     pass
+
+
+class NotYetSupported(Exception):
+    """A feature that is within planning but not yet implemented"""
+
+    pass
