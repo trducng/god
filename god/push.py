@@ -60,7 +60,7 @@ def push_ref(
                 get_dir_hashes_in_commit(commit_id=commit, plugin=plugin).values()
             )
     objects = list(set(objects))
-    dirs = list(set(dirs))
+    dirs = list(set(dirs).difference(["", None]))
 
     # upload objects
     exists = remote_storage.have_objects(objects)

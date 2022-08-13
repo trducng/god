@@ -1,5 +1,7 @@
 import posixpath
 import threading
+from concurrent.futures import ThreadPoolExecutor
+from functools import partial
 from multiprocessing import Pool, Process, Queue, cpu_count
 from pathlib import Path
 from typing import Callable, List, Tuple, Union
@@ -104,6 +106,16 @@ def upload_worker(task):
     client.upload_file(input_, bucket, key)
 
 
+def _object_exists_worker(client, bucket: str, prefix: str) -> bool:
+    """Check if an object exists in S3"""
+    try:
+        client.head_object(Bucket=bucket, Prefix=prefix)
+    except ClientError:
+        return False
+
+    return True
+
+
 def parse_config(config: str) -> Tuple[str, str]:
     """Parse bucket/prefix s3://bucket/[prefix]
 
@@ -129,13 +141,20 @@ class S3Storage(BaseStorage, RemoteRefsMixin):
     """Store objects locally"""
 
     def __init__(self, config: str):
-        # TODO: decide the format for storage config
         # TODO: might only allow relative path (to avoid overwrite hacking)
         # self._bucket = config["BUCKET"]
         # @PRIORITY2: remove these default values, raise error if users do not
         # supply these values
         self._bucket, self._prefix = parse_config(config)
         self._dir_levels = DEFAULT_DIR_LEVEL
+
+        s3c = boto3.client("s3")
+        try:
+            s3c.head_bucket(Bucket=self._bucket)
+        except ClientError:
+            raise Exception(
+                f"Bucket {self._bucket} does not exist or you don't have credentials"
+            )
 
     def _hash_path(self, hash_value: str, prefix: str = "") -> str:
         """From hash value, get relative hash path"""
@@ -252,21 +271,35 @@ class S3Storage(BaseStorage, RemoteRefsMixin):
     def _have(self, storage_paths: List[str]) -> List[bool]:
         """Check whether a file with specific location exists in the storage
 
+        Since len(storage_paths) can easily reach 10s of millions
+
         Args:
             storage_paths: the location of the file
 
         Returns:
             True if the file exists, False otherwise
         """
-        # PRIORITY3: parallelize this operation (maybe with threading)
-        result = []
         s3c = boto3.client("s3")
-        for storage_path in storage_paths:
-            try:
-                s3c.head_object(Bucket=self._bucket, Key=storage_path)
-                result.append(True)
-            except ClientError:
-                result.append(False)
+        if not s3c.list_objects_v2(Bucket=self._bucket, Prefix=self._prefix, MaxKeys=1)[
+            "KeyCount"
+        ]:
+            return [False] * len(storage_paths)
+
+        result = []
+        if len(storage_paths) < 10:
+            for storage_path in storage_paths:
+                try:
+                    s3c.head_object(Bucket=self._bucket, Key=storage_path)
+                    result.append(True)
+                except ClientError:
+                    result.append(False)
+        else:
+            # good when len(storage_paths) < 100000 (3 mins)
+            # but if the dataset is millions file, then multithreading is still slow
+            fn = partial(_object_exists_worker, s3c, self._bucket)
+            n_workers = int(min(128, len(storage_paths) / 2))
+            with ThreadPoolExecutor(max_workers=n_workers) as executor:
+                result = list(executor.map(fn, storage_paths))
 
         return result
 

@@ -67,7 +67,7 @@ def get_plugins_in_commit(commit_id: str) -> List[str]:
         List of tracked plugins shown in the commit
     """
     commit_obj = read_commit(commit_id)
-    return list(commit_obj.keys())
+    return list(commit_obj["tracks"].keys())
 
 
 def get_files_hashes_in_commit_dir(dir_id, prefix):
