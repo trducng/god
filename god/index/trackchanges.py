@@ -3,8 +3,8 @@ from pathlib import Path
 from typing import List
 
 from god.core.files import (
-    filter_common_parents,
     get_file_hash,
+    remove_subpaths,
     retrieve_files_info,
     separate_paths_to_files_dirs,
 )
@@ -12,7 +12,7 @@ from god.index.base import Index
 from god.index.utils import column_index
 
 
-def track_staging_changes(fds, index_path, base_dir):
+def track_staging_changes(fds: List[str], index_path, base_dir):
     """Track staging changes
 
     # Args:
@@ -29,7 +29,7 @@ def track_staging_changes(fds, index_path, base_dir):
     if not isinstance(fds, (list, tuple)):
         fds = [fds]
 
-    fds = filter_common_parents(fds)  # list of relative paths to `base_dir`
+    fds = remove_subpaths(fds)  # list of relative paths to `base_dir`
 
     add, update, remove = [], [], []
 
@@ -86,7 +86,7 @@ def track_working_changes(fds: List[str], index_path, base_dir):
     if not isinstance(fds, (list, tuple)):
         fds = [fds]
 
-    fds = filter_common_parents(fds)  # list of relative directory paths to `base_dir`
+    fds = remove_subpaths(fds)  # list of relative directory paths to `base_dir`
 
     files, dirs, _ = separate_paths_to_files_dirs(fds, base_dir)
     files_dirs = retrieve_files_info(files, dirs, base_dir)
@@ -134,7 +134,7 @@ def track_working_changes(fds: List[str], index_path, base_dir):
                 )
 
         for each_dir in remove_dirs:
-            for _ in remove_dirs[each_dir]:
+            for _ in index_files_dirs[each_dir]:
                 remove.append(str(Path(each_dir, _[0])))
 
         for each_dir in remain_dirs:

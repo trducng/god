@@ -162,7 +162,7 @@ def organize_files_in_dirs_by_prefix_with_tstamp(
     base_dir = Path(base_dir).resolve()
     files_dirs = defaultdict(list) if files_dirs is None else files_dirs
 
-    if not isinstance(dirs, (list, int)):
+    if not isinstance(dirs, (list, tuple)):
         dirs = [dirs]
 
     for each_dir in dirs:
@@ -218,16 +218,20 @@ def separate_paths_to_files_dirs(fds, base_dir):
     return files, dirs, unknowns
 
 
-def filter_common_parents(fds: List[str]):
-    """Filter common parents in a list of files and directories
+def remove_subpaths(fds: List[str]):
+    """Remove redundant subpaths in a list of files and directories
 
-    # Args:
+    Removing subpaths is useful in case of adding multiple files or directories.
+    Example, if the user `god add folder1 folder1/file1`, then the folder1/file1 is
+    unnecessary because it is already included inside folder1.
+
+    Args:
         fds: list of relative paths
     """
-    fds = sorted(fds, key=lambda obj: len(obj))
-
     if "." in fds:
         return ["."]
+
+    fds = sorted(fds, key=lambda obj: len(obj))
 
     matches = set()
     for fd in fds:

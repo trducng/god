@@ -87,23 +87,39 @@ def init(path):
 
 @main.command("status")
 @click.argument("paths", nargs=-1, type=str)
-@click.option("--plugins", "-p", type=str)
-def status(paths, plugins):
+@click.option("--name", "-n", type=str, help="Plugin name. If blank, default to files")
+def status(paths, name):
     """Show the working tree status
 
-    Display the changes and what would be commited, including files and records.
+    Display the changes and what would be commited.
     """
-    from god.plugins.base import installed_plugins
+    from pathlib import Path
+
+    from god.plugins.base import installed_plugins, plugin_endpoints
 
     settings.set_global_settings()
-    if not paths:
-        paths = []
+    plugins = [name] if name else []
 
-    plugins_list = plugins.split(",") if isinstance(plugins, str) else []
-    if not plugins_list:
-        plugins_list = ["files", "plugins", "configs"] + installed_plugins()
+    if not paths and not plugins:
+        plugins = ["files", "plugins", "configs"] + installed_plugins()
+        paths = [["."] for _ in range(len(plugins))]
+    elif paths and not plugins:
+        plugins = ["files"]  # PRIORITY3 should be default plugin here
+        base_path = Path(plugin_endpoints("files")["tracks"])
+        paths = [[str(Path(each).resolve().relative_to(base_path)) for each in paths]]
+    elif not paths and plugins:
+        paths = [["."]]
+    else:
+        # both paths and plugins
+        if plugins[0] == "files":  # PRIORITY3 should be default plugin here
+            base_path = Path(plugin_endpoints("files")["tracks"])
+            paths = [
+                [str(Path(each).resolve().relative_to(base_path)) for each in paths]
+            ]
+        else:
+            paths = [list(paths)]
 
-    status_cmd(paths, plugins_list)
+    status_cmd(paths, plugins)
 
 
 @main.command("add")

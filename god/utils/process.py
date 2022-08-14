@@ -2,9 +2,9 @@ import json
 import subprocess
 import sys
 from io import TextIOWrapper
-from typing import Dict, List, Union
+from typing import Dict, List, Tuple, Union
 
-_JSON = Union[Dict, List, None]
+_JSON = Union[Dict, List, Tuple, None]
 
 
 def communicate(command: List[str], stdin: _JSON = None) -> _JSON:

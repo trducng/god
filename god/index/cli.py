@@ -131,14 +131,14 @@ def track(name: str, fds_in: str, staging: bool, working: bool):
     """Get entries as folder"""
     endpoints = plugin_endpoints(name)
     index_path = endpoints["index"]
-    base_dir = endpoints["base_dir"]
+    tracks = endpoints["tracks"]
     fds = json.loads(fds_in)
 
     if staging and not working:
-        result = track_staging_changes(fds, index_path, base_dir)
+        result = track_staging_changes(fds, index_path, tracks)
     elif working and not staging:
-        result = track_working_changes(fds, index_path, base_dir)
+        result = track_working_changes(fds, index_path, tracks)
     else:
-        result = track_files(fds, index_path, base_dir)
+        result = track_files(fds, index_path, tracks)
 
     print(json.dumps(result))
