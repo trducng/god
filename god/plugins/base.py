@@ -32,11 +32,11 @@ def plugin_endpoints(name: str, base_dir: Union[str, Path] = None) -> Dict[str, 
         base_dir: the repository path
 
     Returns:
-        [str]: index path
-        [str]: track directory
-        [str]: untrack directory
-        [str]: cache directory
-        [str]: the base directory
+        [str]: index - index path
+        [str]: tracks - track directory
+        [str]: untracks - untrack directory
+        [str]: cache - cache directory
+        [str]: base_dir - the base directory
     """
     base_dir = Path(get_base_dir(path=base_dir))
     result = {

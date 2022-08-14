@@ -17,34 +17,8 @@ from god.index.trackchanges import (
     track_staging_changes,
     track_working_changes,
 )
+from god.plugins.base import plugin_endpoints
 from god.utils.process import str_stdin_option
-
-
-def get_index_path_temp(name: str) -> str:
-    """We will remove this
-
-    @TODO: use a plugin-method to get index path
-    """
-    from pathlib import Path
-
-    from god.core.common import get_base_dir
-
-    return str(Path(get_base_dir(), ".god", "indices", name))
-
-
-def get_working_base_dir(name: str) -> str:
-    """We will remove this
-
-    @TODO: use a plugin-method to get index path
-    """
-    from pathlib import Path
-
-    from god.core.common import get_base_dir
-
-    if name == "files":
-        return str(get_base_dir())
-    else:
-        return str(Path(get_base_dir(), ".god", "workings", name, "tracks"))
 
 
 @click.group()
@@ -58,7 +32,7 @@ def main():
 @click.option("--force", is_flag=True, default=False)
 def build(name: str, force: bool):
     """Construct the index"""
-    index_path = get_index_path_temp(name)
+    index_path = plugin_endpoints(name)["index"]
     index = Index(index_path)
     index.build(force=force)
 
@@ -67,7 +41,7 @@ def build(name: str, force: bool):
 @click.argument("name", type=str)
 def unbuild(name: str):
     """Delete the index"""
-    index_path = get_index_path_temp(name)
+    index_path = plugin_endpoints(name)["index"]
     index = Index(index_path)
     index.unbuild()
 
@@ -78,7 +52,7 @@ def unbuild(name: str):
 @click.option("--staged", is_flag=True, default=False)
 def add(name: str, items_in: str, staged: bool):
     """Add entries to the index"""
-    index_path = get_index_path_temp(name)
+    index_path = plugin_endpoints(name)["index"]
     items = json.loads(items_in)
     with Index(index_path) as index:
         index.add(items=items, staged=staged)
@@ -90,7 +64,7 @@ def add(name: str, items_in: str, staged: bool):
 @click.option("--staged", is_flag=True, default=False)
 def delete(name: str, items_in: str, staged: bool):
     """Delete entries from the index"""
-    index_path = get_index_path_temp(name)
+    index_path = plugin_endpoints(name)["index"]
     items = json.loads(items_in)
     with Index(index_path) as index:
         index.delete(items=items, staged=staged)
@@ -103,7 +77,7 @@ def delete(name: str, items_in: str, staged: bool):
 @click.option("--remove", is_flag=True, default=False)
 def revert(name: str, items_in: str, mhash: bool, remove: bool):
     """Revert entries to the original version"""
-    index_path = get_index_path_temp(name)
+    index_path = plugin_endpoints(name)["index"]
     items = json.loads(items_in)
     with Index(index_path) as index:
         index.revert(items=items, mhash=mhash, remove=remove)
@@ -114,7 +88,7 @@ def revert(name: str, items_in: str, mhash: bool, remove: bool):
 @click.option("--items", "items_in", type=str_stdin_option, default=sys.stdin)
 def update(name: str, items_in: str):
     """Update information of the newest entries"""
-    index_path = get_index_path_temp(name)
+    index_path = plugin_endpoints(name)["index"]
     items = json.loads(items_in)
     with Index(index_path) as index:
         index.update(items=items)
@@ -127,7 +101,7 @@ def update(name: str, items_in: str):
 @click.option("--not-in", is_flag=True, default=False)
 def get_files(name: str, names_in: str, get_remove: bool, not_in: bool):
     """Get entries as files"""
-    index_path = get_index_path_temp(name)
+    index_path = plugin_endpoints(name)["index"]
     names = json.loads(names_in)
     with Index(index_path) as index:
         result = index.get_files(names=names, get_remove=get_remove, not_in=not_in)
@@ -141,7 +115,7 @@ def get_files(name: str, names_in: str, get_remove: bool, not_in: bool):
 @click.option("--conflict", is_flag=True, default=False)
 def get_folder(name: str, names_in: str, get_remove: bool, conflict: bool):
     """Get entries as folder"""
-    index_path = get_index_path_temp(name)
+    index_path = plugin_endpoints(name)["index"]
     names = json.loads(names_in)
     with Index(index_path) as index:
         result = index.get_folder(names=names, get_remove=get_remove, conflict=conflict)
@@ -155,8 +129,9 @@ def get_folder(name: str, names_in: str, get_remove: bool, conflict: bool):
 @click.option("--working", is_flag=True, default=False)
 def track(name: str, fds_in: str, staging: bool, working: bool):
     """Get entries as folder"""
-    index_path = get_index_path_temp(name)
-    base_dir = get_working_base_dir(name)
+    endpoints = plugin_endpoints(name)
+    index_path = endpoints["index"]
+    base_dir = endpoints["base_dir"]
     fds = json.loads(fds_in)
 
     if staging and not working:
