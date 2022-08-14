@@ -154,6 +154,7 @@ def get_dirs_hashes_in_commit_dir(dir_id: str, prefix: str) -> Dict[str, str]:
         # @PRIORITY2: don't assume no ',' in filename -> more robust `dirs`
         fn = components[0]  # assume no ',' in filename
         if components[1] == "d":
+            result[str(Path(prefix, fn))] = components[2]
             result.update(
                 get_dirs_hashes_in_commit_dir(
                     dir_id=components[-1],

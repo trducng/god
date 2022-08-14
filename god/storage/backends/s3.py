@@ -109,7 +109,7 @@ def upload_worker(task):
 def _object_exists_worker(client, bucket: str, prefix: str) -> bool:
     """Check if an object exists in S3"""
     try:
-        client.head_object(Bucket=bucket, Prefix=prefix)
+        client.head_object(Bucket=bucket, Key=prefix)
     except ClientError:
         return False
 
