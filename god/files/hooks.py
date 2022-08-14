@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from typing import List, Set, Tuple
 
+from god.core.files import remove_subpaths
 from god.index.base import Index
 from god.index.utils import column_index
 from god.plugins.base import plugin_endpoints
@@ -21,27 +22,31 @@ def collapse_directory_status_add(add: List) -> Tuple[List, Set]:
         Similar to add [name, hash, timestamp]. But if the name is a folder, then
         hash will be empty string, and timestamp will be 0
     """
-    result, visited, collapse = [], set([]), set([])
+    endpoints = plugin_endpoints("files")
+    current_dir = str(Path.cwd().resolve().relative_to(endpoints["tracks"]))
 
-    with Index(index_path=plugin_endpoints("files")["index"]) as index:
+    result, visited, collapse = [], set([]), set([])
+    with Index(index_path=endpoints["index"]) as index:
         for name, hash_, timestamp in add:
             parent = str(Path(name).parent)
             if parent == ".":
-                result.append([name, hash_, timestamp])
+                result.append([os.path.relpath(name, current_dir), hash_, timestamp])
                 continue
             if parent in collapse:
                 continue
             if parent in visited:
-                result.append([name, hash_, timestamp])
+                result.append([os.path.relpath(name, current_dir), hash_, timestamp])
                 continue
 
             visited.add(parent)
             if index.get_folder(names=[parent], get_remove=False, conflict=False):
-                result.append([name, hash_, timestamp])
+                result.append([os.path.relpath(name, current_dir), hash_, timestamp])
                 continue
 
             collapse.add(parent)
-            result.append([f"{parent}{os.sep}", "", 0])
+
+    for each_dir in remove_subpaths(list(collapse)):
+        result.append([f"{os.path.relpath(each_dir, current_dir)}{os.sep}", "", 0])
 
     return result, visited
 
@@ -60,25 +65,29 @@ def collapse_directory_status_remove(remove: List[str]) -> List[str]:
         Similar to remove: [name]
     """
     tracks_dir = Path(plugin_endpoints("files")["tracks"])
+    current_dir = str(Path.cwd().resolve().relative_to(tracks_dir))
+
     result, visited, collapse = [], set([]), set([])
 
     for name in remove:
         parent = str(Path(name).parent)
         if parent == ".":
-            result.append(name)
+            result.append(os.path.relpath(name, current_dir))
         if parent in collapse:
             continue
         if parent in visited:
-            result.append(name)
+            result.append(os.path.relpath(name, current_dir))
             continue
 
         visited.add(parent)
         if (tracks_dir / parent).is_dir():
-            result.append(name)
+            result.append(os.path.relpath(name, current_dir))
             continue
 
         collapse.add(parent)
-        result.append(f"{parent}{os.sep}")
+
+    for each_dir in remove_subpaths(list(collapse)):
+        result.append(f"{os.path.relpath(each_dir, current_dir)}{os.sep}")
 
     return result
 
@@ -101,23 +110,26 @@ def collapse_directory_status_stage_add(
     Returns:
         Similar to stage_add [name]
     """
+    endpoints = plugin_endpoints("files")
+    current_dir = str(Path.cwd().resolve().relative_to(endpoints["tracks"]))
+
     result, visited, collapse = [], set([]), set([])
 
-    with Index(index_path=plugin_endpoints("files")["index"]) as index:
+    with Index(index_path=endpoints["index"]) as index:
         for name in stage_add:
             parent = str(Path(name).parent)
             if parent == ".":
-                result.append(name)
+                result.append(os.path.relpath(name, current_dir))
                 continue
             if parent in collapse:
                 continue
             if parent in visited:
-                result.append(name)
+                result.append(os.path.relpath(name, current_dir))
                 continue
 
             visited.add(parent)
             if parent in add:
-                result.append(name)
+                result.append(os.path.relpath(name, current_dir))
                 continue
             files = [
                 each
@@ -127,17 +139,23 @@ def collapse_directory_status_stage_add(
                 if each[column_index("hash")]
             ]
             if files:
-                result.append([name])
+                result.append(os.path.relpath(name, current_dir))
                 continue
 
             collapse.add(parent)
-            result.append(f"{parent}{os.sep}")
+
+    for each_dir in remove_subpaths(list(collapse)):
+        result.append(f"{os.path.relpath(each_dir, current_dir)}{os.sep}")
 
     return result
 
 
 def poststatus(file_status):
-    """Collapse files into parent folder for add, remove, stage_add and stage_remove
+    """Post-process the files status for easier viewing.
+
+    The post-process:
+        - Collapse files into parent folder for add, remove, and stage_add.
+        - Show the file/directory paths relative to current working directory
 
     Args:
         file_status: the file status, they are: stage_add, stage_update, stage_remove,

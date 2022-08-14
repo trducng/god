@@ -218,7 +218,7 @@ def separate_paths_to_files_dirs(fds, base_dir):
     return files, dirs, unknowns
 
 
-def remove_subpaths(fds: List[str]):
+def remove_subpaths(fds: List[str]) -> List[str]:
     """Remove redundant subpaths in a list of files and directories
 
     Removing subpaths is useful in case of adding multiple files or directories.
@@ -226,7 +226,7 @@ def remove_subpaths(fds: List[str]):
     unnecessary because it is already included inside folder1.
 
     Args:
-        fds: list of relative paths
+        fds: list of relative paths. Don't suffix directory with os.sep.
     """
     if "." in fds:
         return ["."]
