@@ -82,6 +82,8 @@ def restore_working_one(fds, index_path, base_dir):
     _, update, remove, _, _ = track_working_changes(fds, index_path, base_dir)
 
     restore = [_[0] for _ in update] + remove
+    if not restore:
+        return
     iname = column_index("name")
     ihash = column_index("hash")
     imhash = column_index("mhash")
@@ -192,7 +194,7 @@ def _checkout_between_commits(
     new_plugs, update_plugs, remove_plugs, _ = compare_plugins(commit1, commit2)
 
     # plugins = ["files", "configs", "plugins"] + installed_plugins()
-    statuses = status(["."], update_plugs)
+    statuses = status([["."] for _ in range(len(update_plugs))], update_plugs)
     abort = False
     for plugin_name, (
         stage_add,

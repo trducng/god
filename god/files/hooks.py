@@ -73,6 +73,7 @@ def collapse_directory_status_remove(remove: List[str]) -> List[str]:
         parent = str(Path(name).parent)
         if parent == ".":
             result.append(os.path.relpath(name, current_dir))
+            continue
         if parent in collapse:
             continue
         if parent in visited:
@@ -171,15 +172,21 @@ def poststatus(file_status):
         - reset_timestamp
         - unset_mhash
     """
+    endpoints = plugin_endpoints("files")
+    current_dir = str(Path.cwd().resolve().relative_to(endpoints["tracks"]))
+
     add, add_visited = collapse_directory_status_add(file_status[3])
     stage_add = collapse_directory_status_stage_add(file_status[0], add_visited)
     return [
         stage_add,
-        file_status[1],
-        file_status[2],
+        [os.path.relpath(each, current_dir) for each in file_status[1]],
+        [os.path.relpath(each, current_dir) for each in file_status[2]],
         add,
-        file_status[4],
+        [
+            (os.path.relpath(each[0], current_dir), each[1], each[2])
+            for each in file_status[4]
+        ],
         collapse_directory_status_remove(file_status[5]),
-        file_status[6],
-        file_status[7],
+        [(os.path.relpath(each[0], current_dir), each[1]) for each in file_status[6]],
+        [(os.path.relpath(each[0], current_dir), each[1]) for each in file_status[7]],
     ]

@@ -94,7 +94,6 @@ def _add(fds: List[str], base_dir: str, index_name: str, hooks: Dict[str, List[s
         stdout=subprocess.PIPE,
         stdin=subprocess.PIPE,
     )
-    print(new_objs)
     _, _ = child.communicate(input=json.dumps(new_objs).encode())
     if child.returncode:
         raise RuntimeError(f"Cannot run {storage_cmd}")
