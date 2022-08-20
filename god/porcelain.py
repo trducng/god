@@ -361,6 +361,8 @@ def apply_cmd(branch: str, remote: str, method: int):
     """
     from god.checkout import _checkout_between_commits
     from god.commits.base import get_latest_parent_commit
+    from god.plugins.base import installed_plugins
+    from god.plugins.manager import awake_passive_plugin
     from god.remote import get_remote_declaration_config_path
     from god.remote.base import get_default_remote
 
@@ -386,6 +388,8 @@ def apply_cmd(branch: str, remote: str, method: int):
                 "does not show up in remote"
             )
         _checkout_between_commits(commit1, commit2)
+        for plugin in installed_plugins(plugin_type=2):
+            awake_passive_plugin(plugin)
         update_ref(branch, commit2, settings.DIR_REFS_HEADS)
     elif method == 1:
         raise NotImplementedError("Hasn't implemented 3-way merge god apply")

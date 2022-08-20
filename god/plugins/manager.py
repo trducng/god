@@ -125,10 +125,11 @@ def retrieve_plugin_gztar_file(
 def awake_passive_plugin(name: str, base_dir: Union[str, Path, None] = None):
     """Initialize inactive plugin
 
-    Passive pluins situation usually happens when a repository is cloned. The plugins
-    will have downloaded files. However, the executable binary file will not be set
-    up, and plugin-specific initialization scripts aren't run. Hence, after
-    `git clone`, we need to initialize available plugins.
+    Passive pluins situation usually happens when a repository is cloned, or
+    when a repo is pull where remote exists newer plugin. The plugins will have
+    downloaded files. However, the executable binary file will not be set up,
+    and plugin-specific initialization scripts aren't run. Hence, after `git
+    clone`, we need to initialize available plugins.
 
     Args:
         name: the name of plugin
@@ -153,14 +154,3 @@ def awake_passive_plugin(name: str, base_dir: Union[str, Path, None] = None):
     plugin_manifest = load_manifest(name, base_dir=base_dir)
     if "postinstall" in plugin_manifest.get("commands", {}):
         communicate(plugin_manifest["commands"]["postinstall"])
-
-    if plugin_manifest.get("config"):
-        from god.configs import update_config
-        from god.configs.utils import ConfigLevel
-
-        update_config(
-            plugin=name,
-            level=ConfigLevel.SHARED,
-            config_dict=plugin_manifest["config"],
-            base_dir=base_dir,
-        )

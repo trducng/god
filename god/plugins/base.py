@@ -53,24 +53,40 @@ def plugin_endpoints(name: str, base_dir: Union[str, Path] = None) -> Dict[str, 
     return result
 
 
-def installed_plugins(base_dir: Union[str, Path, None] = None) -> List[str]:
+def installed_plugins(
+    plugin_type: int = 0, base_dir: Union[str, Path, None] = None
+) -> List[str]:
     """List the name of all installed plugins
 
     Args:
+        plugin_type: can be 0 (all), 1 (active only), 2 (passive only)
         base_dir: the repository path
 
     Returns:
         List of names of installed plugins
     """
-    names = []
+    if plugin_type not in [0, 1, 2]:
+        raise AttributeError("plugin_type should be 0 (all), 1 (active), 2 (passive)")
 
-    manifest_dir = Path(
-        plugin_endpoints("plugins", base_dir=base_dir)["tracks"], "manifest"
-    )
+    names = []
+    plugin_dir = plugin_endpoints("plugins", base_dir=base_dir)
+
+    manifest_dir = Path(plugin_dir["tracks"], "manifest")
     for each in sorted(manifest_dir.glob("*")):
         names.append(each.name)
 
-    return names
+    if plugin_type == 0:
+        return names
+
+    actives = []
+    binary_dir = Path(plugin_dir["untracks"], "bin")
+    for each in binary_dir.glob("*"):
+        actives.append(each.name.replace("god-", ""))
+
+    if plugin_type == 1:
+        return list(sorted(actives))
+
+    return list(sorted(set(names).difference(actives)))
 
 
 def build_plugin_directories(name: str, base_dir: Union[str, Path, None] = None):
