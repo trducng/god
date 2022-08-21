@@ -44,7 +44,8 @@ def init_cmd(path):
 
 def status_cmd(paths, plugins):
     """Viewing repo status"""
-    refs, commits = read_HEAD(settings.FILE_HEAD)
+    head_obj = read_HEAD(settings.FILE_HEAD)
+    refs, commits = head_obj.ref(), head_obj.commit()
 
     if refs:
         rprint(f"On branch {refs}")
@@ -123,7 +124,7 @@ def commit_cmd(message):
         print("Please config user.email")
         return
 
-    refs, _ = read_HEAD(settings.FILE_HEAD)
+    refs = read_HEAD(settings.FILE_HEAD).get("REFS", None)
     prev_commit = get_ref(refs, settings.DIR_REFS_HEADS)
 
     current_commit = commit(
@@ -138,7 +139,7 @@ def commit_cmd(message):
 
 def log_cmd():
     """Print out repository history"""
-    refs, _ = read_HEAD(settings.FILE_HEAD)
+    refs = read_HEAD(settings.FILE_HEAD).get("REFS", None)
     commit_id = get_ref(refs, settings.DIR_REFS_HEADS)
 
     while commit_id:
@@ -179,14 +180,15 @@ def checkout_cmd(branch, new=False):
         branch <str>: name of the branch
         new <bool>: whether to create new branch
     """
+    head_obj = read_HEAD(settings.FILE_HEAD)
     if new:
-        refs, _ = read_HEAD(settings.FILE_HEAD)
+        refs = head_obj.ref()
         commit_id = get_ref(refs, settings.DIR_REFS_HEADS)
         checkout_new_branch(
             branch, commit_id, settings.DIR_REFS_HEADS, settings.FILE_HEAD
         )
     else:
-        refs, commit1 = read_HEAD(settings.FILE_HEAD)  # start
+        refs, commit1 = head_obj.ref(), head_obj.commit()  # start
 
         branch2 = branch if is_ref(branch, settings.DIR_REFS_HEADS) else None
         # commit2 = is_commit(branch, settings.DIR_COMMITS)
@@ -249,7 +251,8 @@ def merge_cmd(branch, include, exclude, continue_, abort):
             raise RuntimeError("Not in the middle of merge process")
         with merge_file.open("r") as fi:
             merge_progress = json.load(fi)
-        refs, commit1 = read_HEAD(settings.FILE_HEAD)
+        head_obj = read_HEAD(settings.FILE_HEAD)
+        refs, commit1 = head_obj.ref(), head_obj.commit()
         if merge_progress["ours"]["name"] != refs:
             raise RuntimeError(f"Not in branch {refs}")
         if merge_progress["ours"]["commit"] != commit1:
@@ -275,7 +278,8 @@ def merge_cmd(branch, include, exclude, continue_, abort):
         restore_staged(fds=[], plugins=[])
         restore_working(fds=[], plugins=[])
     else:
-        refs, commit1 = read_HEAD(settings.FILE_HEAD)
+        head_obj = read_HEAD(settings.FILE_HEAD)
+        refs, commit1 = head_obj.ref(), head_obj.commit()
         if merge_file.is_file():
             raise RuntimeError(
                 "Seems to be in middle of merge, please 'god merge --abort' first"
@@ -330,7 +334,7 @@ def fetch_cmd(branch: str, remote: str):
             )
 
     if not branch:
-        branch, _ = read_HEAD(settings.FILE_HEAD)
+        branch = read_HEAD(settings.FILE_HEAD).get("REFS", None)
 
     if not branch:
         raise RuntimeError("Please specify branch, or get back from detached mode")
@@ -376,7 +380,7 @@ def apply_cmd(branch: str, remote: str, method: int):
             )
 
     if not branch:
-        branch, _ = read_HEAD(settings.FILE_HEAD)
+        branch = read_HEAD(settings.FILE_HEAD).get("REFS", None)
 
     if method == 0:
         # can be fast forward if the tip of local inside remote
@@ -492,7 +496,7 @@ def push_cmd(branch: str, remote: str):
             )
 
     if not branch:
-        branch, _ = read_HEAD(settings.FILE_HEAD)
+        branch = read_HEAD(settings.FILE_HEAD).get("REFS", None)
 
     if not branch:
         raise RuntimeError("Please specify branch, or get back from detached mode")

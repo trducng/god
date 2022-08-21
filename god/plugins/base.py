@@ -4,11 +4,12 @@ from typing import Dict, List, Union
 
 import god.utils.constants as c
 from god.core.common import get_base_dir
+from god.core.head import read_HEAD
 
 BUILTIN_PLUGINS = {"records", "snapshots"}
 
 
-def get_exposed_plugin(base_dir: Union[str, Path, None] = None) -> str:
+def get_exposed_plugin(base_dir: Union[str, Path, None] = None) -> Union[str, None]:
     """Plugin that is exposed in the base directory
 
     Args:
@@ -18,10 +19,7 @@ def get_exposed_plugin(base_dir: Union[str, Path, None] = None) -> str:
         The name of the exposed plugin in base directory
     """
     base_dir = Path(get_base_dir(path=base_dir))
-    with (base_dir / c.FILE_HEAD).open("r") as fi:
-        data = json.load(fi)
-
-    return data["EXPOSED_PLUGINS"]
+    return read_HEAD(base_dir / c.FILE_HEAD).exposed_plugin()
 
 
 def plugin_endpoints(name: str, base_dir: Union[str, Path] = None) -> Dict[str, str]:
